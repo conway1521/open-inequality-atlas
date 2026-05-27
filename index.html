@@ -201,6 +201,34 @@ section { margin-top: 3rem; }
 }
 .card-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 1rem; }
 
+/* ── USES GRID ───────────────────────────────────── */
+.uses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+.use-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1.4rem 1.4rem 1.2rem;
+  box-shadow: var(--shadow);
+}
+.use-icon { font-size: 1.3rem; margin-bottom: 0.6rem; color: var(--blue); }
+.use-card h3 {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 0.98rem; font-weight: 600;
+  color: var(--navy); margin-bottom: 0.5rem;
+}
+.use-card p { font-size: 0.84rem; color: var(--muted); line-height: 1.55; }
+.use-card code {
+  font-size: 0.78rem; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 0.1rem 0.35rem; color: var(--navy);
+  font-family: 'JetBrains Mono','Consolas',monospace;
+}
+
 /* ── CHART AREAS ─────────────────────────────────── */
 .chart-wrap {
   background: var(--surface);
@@ -454,6 +482,27 @@ a { color: var(--blue); }
         <span class="src-name">DFA</span>
         <span>Fed Distributional Accounts · US quarterly</span>
         <span class="src-tier tier-a">Tier A</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── USES ─────────────────────────────────────────────── -->
+  <section id="uses">
+    <div class="uses-grid">
+      <div class="use-card">
+        <div class="use-icon">⬇︎</div>
+        <h3>One file, five sources</h3>
+        <p>WID · HFCS · LWS · SCF · DFA harmonized into a single Parquet or CSV with ISO-3 keys and CC BY 4.0 license. One <code>pd.merge()</code> away from any panel dataset.</p>
+      </div>
+      <div class="use-card">
+        <div class="use-icon">⚙︎</div>
+        <h3>Macro model calibration</h3>
+        <p>The <strong>Moments Atlas</strong> companion supplies the exact targets heterogeneous-agent and HANK models need: top-1%, top-10%, bottom-50% shares and mean/median wealth for 53 countries, 1800–2025.</p>
+      </div>
+      <div class="use-card">
+        <div class="use-icon">≋</div>
+        <h3>Methodology-aware comparison</h3>
+        <p>Every row carries <code>comparability_tier</code> (A = harmonized survey, B = mixed methodology) and <code>top_tail_flag</code> (survey-only vs admin-enhanced). Filter by quality in one line — no hand-curated exclusions.</p>
       </div>
     </div>
   </section>
