@@ -578,7 +578,7 @@ a { color: var(--blue); }
 </footer>
 
 <!-- ── SCRIPTS ────────────────────────────────────────────────────── -->
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.27.0/plotly.min.js"></script>
 <script>
 // ─── Color palette ─────────────────────────────────────────────────
 const PALETTE = [
@@ -877,8 +877,9 @@ async function boot() {
     initScrollSpy();
   } catch (err) {
     console.error('Data load failed:', err);
-    document.getElementById('map-loading').innerHTML  = '<span style="color:#999">Map unavailable — run a local server to load data files.</span>';
-    document.getElementById('ts-loading').innerHTML   = '<span style="color:#999">Chart unavailable — run a local server to load data files.</span>';
+    const msg = `<span style="color:#999">Could not load data: ${err.message}</span>`;
+    document.getElementById('map-loading').innerHTML  = msg;
+    document.getElementById('ts-loading').innerHTML   = msg;
   }
 }
 
