@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open Inequality Atlas — Wealth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f7f6f2;
+  --surface:  #ffffff;
+  --navy:     #1a2744;
+  --blue:     #2c5f8a;
+  --blue-lt:  #e8f0f8;
+  --amber:    #c96a1a;
+  --green:    #1a7a4a;
+  --border:   #dde3ed;
+  --muted:    #64748b;
+  --text:     #1a2744;
+  --max:      1080px;
+  --r:        14px;
+  --shadow:   0 2px 16px rgba(26,39,68,0.07);
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── HERO ────────────────────────────────────────── */
+.hero {
+  background: linear-gradient(135deg, #1a2744 0%, #2c4a7c 100%);
+  color: #fff;
+  padding: 3.5rem 1.5rem 3rem;
+}
+.hero .inner { max-width: var(--max); margin: 0 auto; }
+.hero h1 {
+  font-family: 'Lora', Georgia, serif;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+  margin-bottom: 0.75rem;
+}
+.hero .sub {
+  font-size: 1.05rem;
+  color: #a8bdd8;
+  max-width: 580px;
+  margin-bottom: 1.6rem;
+}
+.stat-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.stat-pill {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 100px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.82rem;
+  color: #c8daee;
+  font-weight: 500;
+}
+.stat-pill strong { color: #fff; }
+.module-row { display: flex; gap: 0.5rem; margin-top: 1.4rem; flex-wrap: wrap; }
+.module-btn {
+  display: inline-block;
+  padding: 0.45rem 1.1rem;
+  border-radius: 100px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.module-btn.active { background: #fff; color: var(--navy); }
+.module-btn.soon {
+  background: transparent;
+  border-color: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.45);
+  cursor: default;
+}
+
+/* ── NAV ─────────────────────────────────────────── */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+nav .inner {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  gap: 0;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+nav a {
+  display: inline-block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.8rem 1rem;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+nav a:hover { color: var(--navy); border-bottom-color: var(--border); }
+nav a.active-nav { color: var(--blue); border-bottom-color: var(--blue); }
+nav .spacer { flex: 1; }
+nav .gh-link {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 0.8rem 0 0.8rem 1rem;
+  border-bottom: none;
+}
+nav .gh-link:hover { color: var(--navy); }
+
+/* ── MAIN ────────────────────────────────────────── */
+main { max-width: var(--max); margin: 0 auto; padding: 0 1.5rem 5rem; }
+
+section { margin-top: 3rem; }
+
+.section-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+.section-title {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 0.4rem;
+}
+.section-desc {
+  color: var(--muted);
+  font-size: 0.9rem;
+  max-width: 640px;
+  margin-bottom: 1.3rem;
+}
+
+/* ── SOURCE BADGES ──────────────────────────────── */
+.source-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.3rem 0;
+}
+.src-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.8rem;
+  box-shadow: var(--shadow);
+}
+.src-badge .src-name { font-weight: 600; color: var(--navy); }
+.src-badge .src-tier {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.tier-a { background: #dcfce7; color: #166534; }
+.tier-b { background: #fef9c3; color: #713f12; }
+
+/* ── CARDS ───────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+}
+.card + .card { margin-top: 1rem; }
+.card-title {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin-bottom: 0.25rem;
+}
+.card-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 1rem; }
+
+/* ── CHART AREAS ─────────────────────────────────── */
+.chart-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  padding: 1rem 0.5rem 0.5rem;
+  min-height: 420px;
+  position: relative;
+}
+.chart-wrap.tall { min-height: 500px; }
+.chart-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── COUNTRY SELECTOR ────────────────────────────── */
+.selector-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.search-wrap { position: relative; flex: 0 0 240px; }
+#country-search {
+  width: 100%;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+#country-search:focus { border-color: var(--blue); }
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 50;
+}
+.search-dropdown.hidden { display: none; }
+.search-item {
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.1s;
+}
+.search-item:hover { background: var(--blue-lt); }
+.search-item .iso { font-size: 0.75rem; color: var(--muted); font-variant: small-caps; }
+.chips-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; flex: 1; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.25rem 0.65rem 0.25rem 0.8rem;
+  border-radius: 100px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  color: #fff;
+}
+.chip:hover { opacity: 0.85; }
+.chip .x { font-size: 0.9rem; line-height: 1; opacity: 0.75; }
+.chart-note {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.6rem;
+  padding: 0 0.5rem;
+}
+
+/* ── US PANEL ────────────────────────────────────── */
+.us-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 640px) { .us-grid { grid-template-columns: 1fr; } }
+.us-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1rem 1.2rem;
+  box-shadow: var(--shadow);
+}
+.us-stat .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.2rem; }
+.us-stat .val { font-size: 1.6rem; font-weight: 700; color: var(--navy); line-height: 1; }
+.us-stat .sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+
+/* ── DOWNLOAD ────────────────────────────────────── */
+.dl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
+.dl-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1.2rem;
+  box-shadow: var(--shadow);
+}
+.dl-card h3 { font-size: 0.9rem; font-weight: 600; color: var(--navy); margin-bottom: 0.3rem; }
+.dl-card .meta { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.9rem; }
+.dl-links { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.btn {
+  display: inline-block;
+  padding: 0.35rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary { background: var(--navy); color: #fff; }
+.btn-primary:hover { background: var(--blue); }
+.btn-secondary { background: var(--bg); color: var(--navy); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+
+/* ── CITE BOX ────────────────────────────────────── */
+.cite-box {
+  background: var(--bg);
+  border-left: 3px solid var(--blue);
+  border-radius: 0 8px 8px 0;
+  padding: 0.9rem 1.2rem;
+  font-size: 0.83rem;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+/* ── FOOTER ──────────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  max-width: var(--max);
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+footer a { color: var(--muted); text-decoration: none; }
+footer a:hover { color: var(--blue); }
+
+/* ── MISC ────────────────────────────────────────── */
+.divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+a { color: var(--blue); }
+@media (max-width: 600px) {
+  .hero { padding: 2rem 1rem 1.8rem; }
+  main { padding: 0 1rem 3rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── HERO ─────────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="inner">
+    <p style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:#7a9cc0;margin-bottom:0.5rem">Open Inequality Atlas</p>
+    <h1>Wealth Inequality<br>Across the World</h1>
+    <p class="sub">
+      Open, versioned panel data on household net wealth inequality —
+      harmonized from the best available sources into a single citable dataset.
+    </p>
+    <div class="stat-row">
+      <span class="stat-pill"><strong>10,783</strong> observations</span>
+      <span class="stat-pill"><strong>213</strong> countries</span>
+      <span class="stat-pill"><strong>1800–2025</strong></span>
+      <span class="stat-pill"><strong>v0.4.0</strong></span>
+      <span class="stat-pill">CC BY 4.0</span>
+    </div>
+    <div class="module-row">
+      <span class="module-btn active">Wealth</span>
+      <span class="module-btn soon">Wellbeing <span style="font-size:0.7em;opacity:0.6">(coming)</span></span>
+    </div>
+  </div>
+</header>
+
+<!-- ── NAV ──────────────────────────────────────────────────────── -->
+<nav>
+  <div class="inner">
+    <a href="#map" class="active-nav">Global Map</a>
+    <a href="#trends">Country Trends</a>
+    <a href="#us">US Long-Run</a>
+    <a href="#download">Download</a>
+    <div class="spacer"></div>
+    <a href="https://github.com/conway1521/wealth_ineq" class="gh-link" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</nav>
+
+<!-- ── MAIN ─────────────────────────────────────────────────────── -->
+<main>
+
+  <!-- About / sources -->
+  <section id="about">
+    <p style="max-width:680px;color:var(--muted);font-size:0.92rem">
+      The Wealth Gini Atlas harmonizes authoritative published wealth inequality series into a
+      single long-format panel with explicit source priority and comparability metadata.
+      Each row carries a <strong>comparability tier</strong> so you know whether you're looking at
+      a survey-only estimate or one anchored to administrative records.
+    </p>
+    <div class="source-strip">
+      <div class="src-badge">
+        <span class="src-name">WID</span>
+        <span>World Inequality Database · global</span>
+        <span class="src-tier tier-b">Tier B</span>
+      </div>
+      <div class="src-badge">
+        <span class="src-name">HFCS</span>
+        <span>ECB Household Finance · Euro area</span>
+        <span class="src-tier tier-a">Tier A</span>
+      </div>
+      <div class="src-badge">
+        <span class="src-name">LWS</span>
+        <span>Luxembourg Wealth Study · 24 countries</span>
+        <span class="src-tier tier-a">Tier A</span>
+      </div>
+      <div class="src-badge">
+        <span class="src-name">SCF</span>
+        <span>Survey of Consumer Finances · US</span>
+        <span class="src-tier tier-a">Tier A</span>
+      </div>
+      <div class="src-badge">
+        <span class="src-name">DFA</span>
+        <span>Fed Distributional Accounts · US quarterly</span>
+        <span class="src-tier tier-a">Tier A</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── GLOBAL MAP ───────────────────────────────────────── -->
+  <section id="map">
+    <p class="section-label">Wealth Inequality</p>
+    <h2 class="section-title">Global Wealth Gini</h2>
+    <p class="section-desc">
+      Wealth Gini coefficient by country, latest available year (WID, 1990–2024).
+      Higher values mean greater concentration — wealth is far more unequal than income.
+    </p>
+    <div class="chart-wrap tall" id="map-wrap">
+      <div class="chart-loading" id="map-loading">
+        <div class="spinner"></div>
+        <span>Loading map…</span>
+      </div>
+      <div id="map-chart" style="width:100%;height:480px"></div>
+    </div>
+    <p class="chart-note">Source: WID (World Inequality Database). Per-adult equal-split basis. Gini after zero-out of negative net wealth.</p>
+  </section>
+
+  <!-- ── COUNTRY TRENDS ───────────────────────────────────── -->
+  <section id="trends">
+    <p class="section-label">Wealth Inequality</p>
+    <h2 class="section-title">Country Trends Over Time</h2>
+    <p class="section-desc">
+      Wealth Gini for selected countries, 1990–2024. Search to add or remove countries.
+    </p>
+
+    <div class="selector-bar">
+      <div class="search-wrap">
+        <input type="text" id="country-search" placeholder="Add a country…" autocomplete="off">
+        <div id="search-results" class="search-dropdown hidden"></div>
+      </div>
+      <div id="selected-chips" class="chips-row"></div>
+    </div>
+
+    <div class="chart-wrap" id="ts-wrap">
+      <div class="chart-loading" id="ts-loading">
+        <div class="spinner"></div>
+        <span>Loading time series…</span>
+      </div>
+      <div id="ts-chart" style="width:100%;height:400px"></div>
+    </div>
+    <p class="chart-note">Source: WID. Per-adult equal-split basis. Country coverage varies; gaps indicate years without published data.</p>
+  </section>
+
+  <!-- ── US LONG-RUN ──────────────────────────────────────── -->
+  <section id="us">
+    <p class="section-label">United States</p>
+    <h2 class="section-title">US Wealth Distribution, 1989–2025</h2>
+    <p class="section-desc">
+      Annual top-share series from the Fed's Distributional Financial Accounts (DFA),
+      with SCF triennial mean and median anchors.
+    </p>
+
+    <div class="us-grid" style="margin-bottom:1.2rem" id="us-stats">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="chart-wrap" id="us-chart-wrap">
+      <div id="us-chart" style="width:100%;height:400px"></div>
+    </div>
+    <p class="chart-note">
+      Shares from DFA (admin-anchored, Q4). Mean/median from SCF (triennial surveys, 2022 USD);
+      interpolated values shown as dashed line. Shaded years: post-last-SCF (no level data).
+    </p>
+  </section>
+
+  <!-- ── DOWNLOAD ─────────────────────────────────────────── -->
+  <section id="download">
+    <p class="section-label">Data</p>
+    <h2 class="section-title">Download</h2>
+    <p class="section-desc">All release files are CC BY 4.0. Parquet files are ~10× smaller than CSV.</p>
+
+    <div class="dl-grid">
+      <div class="dl-card">
+        <h3>Wealth Gini Atlas</h3>
+        <p class="meta">10,783 rows · 213 countries · WID + HFCS + LWS · non-null Gini</p>
+        <div class="dl-links">
+          <a class="btn btn-primary" href="https://raw.githubusercontent.com/conway1521/wealth_ineq/main/data/release/wealth_gini_atlas_v0.4.0.csv" download>CSV (2.6 MB)</a>
+          <a class="btn btn-secondary" href="https://raw.githubusercontent.com/conway1521/wealth_ineq/main/data/release/wealth_gini_atlas_v0.4.0.parquet" download>Parquet</a>
+        </div>
+      </div>
+      <div class="dl-card">
+        <h3>Wealth Moments Atlas</h3>
+        <p class="meta">7,923 rows · 53 countries · WID + SCF + DFA · top shares, mean, median</p>
+        <div class="dl-links">
+          <a class="btn btn-primary" href="https://raw.githubusercontent.com/conway1521/wealth_ineq/main/data/release/wealth_moments_atlas_v0.4.0.csv" download>CSV (1.1 MB)</a>
+          <a class="btn btn-secondary" href="https://raw.githubusercontent.com/conway1521/wealth_ineq/main/data/release/wealth_moments_atlas_v0.4.0.parquet" download>Parquet</a>
+        </div>
+      </div>
+      <div class="dl-card">
+        <h3>US Long-Run Series</h3>
+        <p class="meta">37 annual rows · 1989–2025 · DFA shares + SCF level anchors</p>
+        <div class="dl-links">
+          <a class="btn btn-primary" href="https://raw.githubusercontent.com/conway1521/wealth_ineq/main/data/release/us_longrun.csv" download>CSV</a>
+        </div>
+      </div>
+      <div class="dl-card">
+        <h3>Pipeline &amp; Code</h3>
+        <p class="meta">MIT license · Python · reproducible build from raw sources</p>
+        <div class="dl-links">
+          <a class="btn btn-secondary" href="https://github.com/conway1521/wealth_ineq" target="_blank" rel="noopener">GitHub ↗</a>
+          <a class="btn btn-secondary" href="https://github.com/conway1521/wealth_ineq/blob/main/docs/methods.md" target="_blank" rel="noopener">Methods</a>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider">
+    <h3 style="font-family:'Lora',serif;font-size:1rem;margin-bottom:0.6rem;color:var(--navy)">How to cite</h3>
+    <div class="cite-box">Conway (2026). <em>Open Inequality Atlas — Wealth Gini v0.4.0.</em><br>Harmonized panel of household net wealth inequality.<br>https://github.com/conway1521/wealth_ineq</div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-top:0.6rem">A Zenodo DOI will be minted at v1.0. Until then, cite the GitHub URL and version tag.</p>
+  </section>
+
+</main>
+
+<footer>
+  <span>Open Inequality Atlas · Wealth module v0.4.0 · CC BY 4.0 data · MIT code</span>
+  <span><a href="https://github.com/conway1521/wealth_ineq">github.com/conway1521/wealth_ineq</a></span>
+</footer>
+
+<!-- ── SCRIPTS ────────────────────────────────────────────────────── -->
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<script>
+// ─── Color palette ─────────────────────────────────────────────────
+const PALETTE = [
+  '#2c5f8a','#c96a1a','#1a7a4a','#8b3a5a','#5a3a8b',
+  '#1a6a6a','#7a6a1a','#6a2a1a','#2a6a2a','#6a4a1a'
+];
+
+const PLOTLY_LAYOUT_BASE = {
+  paper_bgcolor: '#ffffff',
+  plot_bgcolor:  '#ffffff',
+  font: { family: 'Inter, system-ui, sans-serif', color: '#1a2744', size: 12 },
+  margin: { t: 20, b: 50, l: 55, r: 20 },
+  legend: { bgcolor: 'rgba(255,255,255,0.9)', bordercolor: '#dde3ed', borderwidth: 1 },
+  hovermode: 'x unified',
+  hoverlabel: { bgcolor: '#fff', bordercolor: '#dde3ed', font: { size: 12 } },
+  xaxis: { gridcolor: '#f0f0f0', zeroline: false },
+  yaxis: { gridcolor: '#f0f0f0', zeroline: false },
+};
+
+const CONFIG = { responsive: true, displayModeBar: false };
+
+// ─── Data: embedded inline ──────────────────────────────────────────
+// (populated below via fetch at load; latest and us-longrun are small enough to embed)
+
+let LATEST_DATA  = null;
+let US_DATA      = null;
+let TS_DATA      = null;
+
+// ─── Country selector state ─────────────────────────────────────────
+const DEFAULT_COUNTRIES = ['USA','GBR','FRA','DEU','SWE','ZAF','BRA','CHN'];
+let selected = new Set(DEFAULT_COUNTRIES);
+
+// ─── US stat snapshot (2025 latest) ─────────────────────────────────
+function renderUSStats(usData) {
+  const latest = usData[usData.length - 1];
+  const el = document.getElementById('us-stats');
+  el.innerHTML = [
+    { label: 'Top 1% wealth share', val: pct(latest.top1_share), sub: `${latest.year} · DFA` },
+    { label: 'Top 10% wealth share', val: pct(latest.top10_share), sub: `${latest.year} · DFA` },
+    { label: 'Bottom 50% wealth share', val: pct(latest.bottom50_share), sub: `${latest.year} · DFA` },
+    { label: 'Median household wealth', val: `$${fmt(192700)}`, sub: '2022 · SCF (last survey)' },
+  ].map(s => `
+    <div class="us-stat">
+      <div class="label">${s.label}</div>
+      <div class="val">${s.val}</div>
+      <div class="sub">${s.sub}</div>
+    </div>`).join('');
+}
+
+function pct(v) { return v != null ? (v * 100).toFixed(1) + '%' : '–'; }
+function fmt(v) { return v != null ? Number(v).toLocaleString('en-US', {maximumFractionDigits:0}) : '–'; }
+
+// ─── Choropleth ─────────────────────────────────────────────────────
+function initMap(data) {
+  document.getElementById('map-loading').style.display = 'none';
+
+  const trace = {
+    type: 'choropleth',
+    locationmode: 'ISO-3',
+    locations: data.map(d => d.geo_id),
+    z: data.map(d => d.wealth_gini),
+    text: data.map(d =>
+      `<b>${d.geo_name}</b><br>` +
+      `Gini: <b>${d.wealth_gini.toFixed(3)}</b><br>` +
+      (d.top10_wealth_share ? `Top 10%: <b>${(d.top10_wealth_share*100).toFixed(1)}%</b><br>` : '') +
+      (d.bottom50_wealth_share ? `Bottom 50%: <b>${(d.bottom50_wealth_share*100).toFixed(1)}%</b><br>` : '') +
+      `Year: ${d.year}`
+    ),
+    hovertemplate: '%{text}<extra></extra>',
+    colorscale: [
+      [0,   '#fff7e6'], [0.2, '#ffc875'],
+      [0.45,'#f57c00'], [0.7, '#c62828'],
+      [1,   '#4a0e0e'],
+    ],
+    zmin: 0.6, zmax: 1.0,
+    colorbar: {
+      title: { text: 'Wealth Gini', font: { size: 11 } },
+      tickformat: '.2f',
+      thickness: 14,
+      len: 0.6,
+    },
+    marker: { line: { color: '#ffffff', width: 0.4 } },
+  };
+
+  const layout = {
+    paper_bgcolor: '#ffffff',
+    geo: {
+      showframe: false,
+      showcoastlines: true,
+      coastlinecolor: '#dde3ed',
+      showland: true, landcolor: '#f4f6f9',
+      showocean: true, oceancolor: '#e8f0f8',
+      showlakes: false,
+      projection: { type: 'natural earth' },
+      bgcolor: '#ffffff',
+    },
+    margin: { t: 10, b: 10, l: 0, r: 0 },
+    font: { family: 'Inter, system-ui, sans-serif', size: 11, color: '#1a2744' },
+  };
+
+  Plotly.newPlot('map-chart', [trace], layout, CONFIG);
+}
+
+// ─── US Long-Run chart ───────────────────────────────────────────────
+function initUSChart(usData) {
+  const years = usData.map(d => d.year);
+
+  // Find SCF survey years
+  const scfYears = usData.filter(d => d.source_moments === 'SCF').map(d => d.year);
+
+  const traces = [
+    {
+      x: years, y: usData.map(d => d.top1_share != null ? +(d.top1_share*100).toFixed(2) : null),
+      name: 'Top 1%', type: 'scatter', mode: 'lines',
+      line: { color: '#c96a1a', width: 2.5 },
+      connectgaps: false,
+    },
+    {
+      x: years, y: usData.map(d => d.top10_share != null ? +(d.top10_share*100).toFixed(2) : null),
+      name: 'Top 10%', type: 'scatter', mode: 'lines',
+      line: { color: '#2c5f8a', width: 2.5 },
+      connectgaps: false,
+    },
+    {
+      x: years, y: usData.map(d => d.bottom50_share != null ? +(d.bottom50_share*100).toFixed(2) : null),
+      name: 'Bottom 50%', type: 'scatter', mode: 'lines',
+      line: { color: '#1a7a4a', width: 2.5 },
+      connectgaps: false,
+    },
+  ];
+
+  const layout = {
+    ...PLOTLY_LAYOUT_BASE,
+    margin: { t: 20, b: 50, l: 55, r: 20 },
+    yaxis: { title: 'Share of total household wealth (%)', ticksuffix: '%', gridcolor: '#f0f0f0' },
+    xaxis: { gridcolor: '#f0f0f0', zeroline: false, dtick: 5 },
+    hovermode: 'x unified',
+    shapes: scfYears.map(yr => ({
+      type: 'line', x0: yr, x1: yr, y0: 0, y1: 1, yref: 'paper',
+      line: { color: '#dde3ed', width: 1, dash: 'dot' },
+    })),
+    annotations: [{ x: 2022, y: 1, yref: 'paper', text: 'SCF 2022', showarrow: false,
+      font: { size: 9, color: '#999' }, xshift: -18, yshift: -12 }],
+  };
+
+  Plotly.newPlot('us-chart', traces, layout, CONFIG);
+  renderUSStats(usData);
+}
+
+// ─── Time Series chart ───────────────────────────────────────────────
+function renderTimeSeries() {
+  if (!TS_DATA) return;
+  document.getElementById('ts-loading').style.display = 'none';
+
+  // Group by geo_id for fast lookup
+  const byCountry = {};
+  for (const row of TS_DATA) {
+    if (!byCountry[row.geo_id]) byCountry[row.geo_id] = [];
+    byCountry[row.geo_id].push(row);
+  }
+
+  const traces = [];
+  let ci = 0;
+  for (const iso of selected) {
+    const rows = byCountry[iso];
+    if (!rows || rows.length === 0) continue;
+    rows.sort((a,b) => a.year - b.year);
+    traces.push({
+      x: rows.map(r => r.year),
+      y: rows.map(r => r.wealth_gini),
+      name: rows[0].geo_name,
+      type: 'scatter',
+      mode: 'lines+markers',
+      line: { color: PALETTE[ci % PALETTE.length], width: 2 },
+      marker: { size: 3.5, color: PALETTE[ci % PALETTE.length] },
+      connectgaps: false,
+    });
+    ci++;
+  }
+
+  const layout = {
+    ...PLOTLY_LAYOUT_BASE,
+    yaxis: { title: 'Wealth Gini', range: [0.4, 1.0], gridcolor: '#f0f0f0' },
+    xaxis: { gridcolor: '#f0f0f0', zeroline: false, dtick: 5 },
+    hovermode: 'x unified',
+  };
+
+  Plotly.react('ts-chart', traces, layout, CONFIG);
+}
+
+// ─── Country selector UI ─────────────────────────────────────────────
+let countryList = []; // [{geo_id, geo_name}] deduplicated
+
+function buildCountrySelector() {
+  // Build unique country list from TS_DATA
+  const seen = new Set();
+  countryList = [];
+  for (const r of TS_DATA) {
+    if (!seen.has(r.geo_id)) {
+      seen.add(r.geo_id);
+      countryList.push({ geo_id: r.geo_id, geo_name: r.geo_name });
+    }
+  }
+  countryList.sort((a,b) => a.geo_name.localeCompare(b.geo_name));
+  renderChips();
+}
+
+function renderChips() {
+  const row = document.getElementById('selected-chips');
+  row.innerHTML = '';
+  let ci = 0;
+  for (const iso of selected) {
+    const c = countryList.find(x => x.geo_id === iso);
+    const name = c ? c.geo_name : iso;
+    const color = PALETTE[ci % PALETTE.length];
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.style.background = color;
+    chip.innerHTML = `${name} <span class="x">×</span>`;
+    chip.addEventListener('click', () => { selected.delete(iso); renderChips(); renderTimeSeries(); });
+    row.appendChild(chip);
+    ci++;
+  }
+}
+
+function setupSearch() {
+  const input = document.getElementById('country-search');
+  const dropdown = document.getElementById('search-results');
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    dropdown.innerHTML = '';
+    if (!q) { dropdown.classList.add('hidden'); return; }
+    const matches = countryList.filter(c =>
+      c.geo_name.toLowerCase().includes(q) || c.geo_id.toLowerCase().includes(q)
+    ).slice(0, 12);
+    if (matches.length === 0) { dropdown.classList.add('hidden'); return; }
+    for (const c of matches) {
+      const item = document.createElement('div');
+      item.className = 'search-item';
+      item.innerHTML = `<span>${c.geo_name}</span><span class="iso">${c.geo_id}</span>`;
+      item.addEventListener('mousedown', e => {
+        e.preventDefault();
+        selected.add(c.geo_id);
+        input.value = '';
+        dropdown.classList.add('hidden');
+        renderChips();
+        renderTimeSeries();
+      });
+      dropdown.appendChild(item);
+    }
+    dropdown.classList.remove('hidden');
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => dropdown.classList.add('hidden'), 150);
+  });
+  input.addEventListener('focus', () => {
+    if (input.value.trim()) input.dispatchEvent(new Event('input'));
+  });
+}
+
+// ─── Nav highlight on scroll ─────────────────────────────────────────
+function initScrollSpy() {
+  const links = document.querySelectorAll('nav a[href^="#"]');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active-nav'));
+        const active = [...links].find(l => l.getAttribute('href') === '#'+e.target.id);
+        if (active) active.classList.add('active-nav');
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px' });
+  document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+}
+
+// ─── Boot ────────────────────────────────────────────────────────────
+async function boot() {
+  try {
+    // Load all three in parallel
+    const [latestRes, usRes, tsRes] = await Promise.all([
+      fetch('data/wealth_latest.json'),
+      fetch('data/us_longrun.json'),
+      fetch('data/wealth_timeseries.json'),
+    ]);
+    LATEST_DATA = await latestRes.json();
+    US_DATA     = await usRes.json();
+    TS_DATA     = await tsRes.json();
+
+    initMap(LATEST_DATA);
+    initUSChart(US_DATA);
+    buildCountrySelector();
+    setupSearch();
+    renderTimeSeries();
+    initScrollSpy();
+  } catch (err) {
+    console.error('Data load failed:', err);
+    document.getElementById('map-loading').innerHTML  = '<span style="color:#999">Map unavailable — run a local server to load data files.</span>';
+    document.getElementById('ts-loading').innerHTML   = '<span style="color:#999">Chart unavailable — run a local server to load data files.</span>';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+</body>
+</html>
