@@ -905,14 +905,15 @@ function initScrollSpy() {
   document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
 }
 
+const RAW = 'https://raw.githubusercontent.com/conway1521/open-inequality-atlas/main/data/';
+
 // ─── Boot ────────────────────────────────────────────────────────────
 async function boot() {
   try {
-    // Load all three in parallel
     const [latestRes, usRes, tsRes] = await Promise.all([
-      fetch('data/wealth_latest.json'),
-      fetch('data/us_longrun.json'),
-      fetch('data/wealth_timeseries.json'),
+      fetch(RAW + 'wealth_latest.json'),
+      fetch(RAW + 'us_longrun.json'),
+      fetch(RAW + 'wealth_timeseries.json'),
     ]);
     LATEST_DATA = await latestRes.json();
     US_DATA     = await usRes.json();
