@@ -1,38 +1,33 @@
 # Open inequality atlas
 
-An interactive atlas of household **net wealth inequality** across the world, built as the public front-end for the [Wealth Gini Atlas](https://github.com/conway1521/wealth_ineq) dataset.
+The web front end for the [Wealth Gini Atlas](https://github.com/conway1521/wealth_ineq): an interactive look at how unequally household wealth is held, across countries and over time.
 
-The motivation is simple. Wealth inequality gets discussed constantly, but the underlying series are scattered across incompatible sources, each with its own definitions, coverage, and quality caveats. Most public charts pick one source and move on. I wanted a single place where the numbers are harmonized, the provenance stays visible, and you can actually see how concentrated wealth is, both across countries and over time, without having to trust an unlabeled aggregate.
+Wealth inequality gets talked about constantly, but the actual numbers live in a handful of sources that disagree with each other on definitions, coverage, and how far to trust the top tail. Most charts online just pick one and move on. This started as a way to put the harmonized series somewhere you can actually look at them, provenance attached, instead of asking anyone to trust an unlabeled headline figure.
 
-Live site: https://conway1521.github.io/open-inequality-atlas/
+Live: https://conway1521.github.io/open-inequality-atlas/
 
-## What it shows
+## What you can look at
 
-- **Global wealth Gini** by country, latest available year (WID, per-adult equal-split basis). Higher values mean greater concentration, and wealth turns out to be far more unequal than income almost everywhere.
-- **Country trends over time**, Wealth Gini from 1990 to 2024, with search to add or remove countries.
-- **US wealth distribution, 1989 to 2025**: annual top-share series from the Fed's Distributional Financial Accounts (admin-anchored), with mean and median wealth from the Survey of Consumer Finances.
+- A world map of the wealth Gini by country, latest year, from WID. Wealth is far more concentrated than income almost everywhere, and the map makes that hard to miss.
+- Country trends from 1990 to 2024. Search to drop countries in and out.
+- The US up close, 1989 to 2025: top shares from the Fed's Distributional Financial Accounts, with mean and median wealth from the SCF layered on.
 
-A theme I keep coming back to is that the story depends on whether you are looking at survey-based or administratively-anchored series. The atlas tries to make that difference legible rather than hiding it behind a single number.
+The distinction I care about most here is survey-based versus administratively-anchored series, because that choice quietly changes the story. The atlas keeps it visible rather than smoothing it over.
 
 ## Data
 
-The atlas reads three JSON extracts under `data/`, generated from the Wealth Gini Atlas panel:
+Three JSON extracts in `data/`, cut from the Wealth Gini Atlas panel: `wealth_latest.json` (cross-country, latest year), `wealth_timeseries.json` (trends), and `us_longrun.json` (the US series).
 
-- `wealth_latest.json` cross-country Gini, latest year
-- `wealth_timeseries.json` country trends
-- `us_longrun.json` US top-share and level series
+The panel itself harmonizes WID, HFCS, LWS, SCF, and DFA into one long-format dataset. Each row carries a comparability tier and a top-tail flag, so filtering by quality is one line rather than a curated list of exceptions. That work lives upstream in [`wealth_ineq`](https://github.com/conway1521/wealth_ineq), not here.
 
-The upstream panel harmonizes WID, HFCS, LWS, SCF, and DFA into a single long-format dataset with explicit source priority and comparability metadata. Every row carries a comparability tier (harmonized survey versus mixed methodology) and a top-tail flag (survey-only versus admin-enhanced), so quality filtering is one line rather than a hand-curated exclusion list.
+## Running it
 
-## Running locally
-
-It is a static site with no build step. Serve the folder and open it:
+Static site, no build. Serve the folder:
 
 ```bash
 python -m http.server 8000
-# then open http://localhost:8000
 ```
 
-## Relation to other work
+## Why it is a separate repo
 
-This is the display layer. The data work, source harmonization, and versioned, citable releases live in [`wealth_ineq`](https://github.com/conway1521/wealth_ineq) (the Wealth Gini Atlas, plus its companion Moments Atlas of distributional moments for heterogeneous-agent and HANK calibration). I keep them separate so the dataset stays reproducible and citable on its own, while the atlas is free to iterate on presentation.
+I keep the data and the display apart on purpose. The dataset has to stay reproducible and citable on its own; the atlas should be free to change how things look without disturbing any of that. The ingestion, the source-priority logic, and the versioned releases all sit in [`wealth_ineq`](https://github.com/conway1521/wealth_ineq).
