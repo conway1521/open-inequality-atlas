@@ -1,33 +1,13 @@
-# Open inequality atlas
+# Open Inequality Atlas
 
-The web front end for the [Wealth Gini Atlas](https://github.com/conway1521/wealth_ineq): an interactive look at how unequally household wealth is held, across countries and over time.
+This repo is the front-end of the full versioned panel behind it, which is currently in [wealth_ineq](https://github.com/conway1521/wealth_ineq). It shows an interactive look at how unequally household wealth is held, across countries and over time. The user can pick a country, see how concentrated its household wealth is and how that's moved over time. Wealth Gini and the top 1%, top 10%, and bottom 50% shares for 213 countries, plus a longer US series back to 1989 built from the Survey of Consumer Finances.
 
-Wealth inequality gets talked about constantly, but the actual numbers live in a handful of sources that disagree with each other on definitions, coverage, and how far to trust the top tail. Most charts online just pick one and move on. This started as a way to put the harmonized series somewhere you can actually look at them, provenance attached, instead of asking anyone to trust an unlabeled headline figure.
+Wealth inequality gets talked about constantly, but the actual numbers live in a handful of sources that disagree with each other on definitions, coverage, and how far to trust the top tail. Most charts online just pick one and move on. This started as a way to put the harmonized series somewhere one can actually look at them, provenance attached. 
+So this is a static site with no backend. `index.html` reads three JSON files from `data/` and makes the html. Open it locally, or see it live at https://conway1521.github.io/open-inequality-atlas/.
 
-Live: https://conway1521.github.io/open-inequality-atlas/
+Speficially, this view shows:
+- A world map of the wealth Gini by country, latest year, from WID. Wealth is far more concentrated than income almost everywhere which we can see clearly on the map.
+- Country trends from 1990 to 2024, with the ability to search to drop countries in and out.
+- A focus on the USA from 1989 to 2025, where we see the top shares from the Fed's Distributional Financial Accounts, with mean and median wealth from the SCF layered on.
 
-## What you can look at
-
-- A world map of the wealth Gini by country, latest year, from WID. Wealth is far more concentrated than income almost everywhere, and the map makes that hard to miss.
-- Country trends from 1990 to 2024. Search to drop countries in and out.
-- The US up close, 1989 to 2025: top shares from the Fed's Distributional Financial Accounts, with mean and median wealth from the SCF layered on.
-
-The distinction I care about most here is survey-based versus administratively-anchored series, because that choice quietly changes the story. The atlas keeps it visible rather than smoothing it over.
-
-## Data
-
-Three JSON extracts in `data/`, cut from the Wealth Gini Atlas panel: `wealth_latest.json` (cross-country, latest year), `wealth_timeseries.json` (trends), and `us_longrun.json` (the US series).
-
-The panel itself harmonizes WID, HFCS, LWS, SCF, and DFA into one long-format dataset. Each row carries a comparability tier and a top-tail flag, so filtering by quality is one line rather than a curated list of exceptions. That work lives upstream in [`wealth_ineq`](https://github.com/conway1521/wealth_ineq), not here.
-
-## Running it
-
-Static site, no build. Serve the folder:
-
-```bash
-python -m http.server 8000
-```
-
-## Why it is a separate repo
-
-I keep the data and the display apart on purpose. The dataset has to stay reproducible and citable on its own; the atlas should be free to change how things look without disturbing any of that. The ingestion, the source-priority logic, and the versioned releases all sit in [`wealth_ineq`](https://github.com/conway1521/wealth_ineq).
+As noted in the full repo, for reference: the numbers come from sources that don't naturally line up (WID, the SCF, the Fed's Distributional Financial Accounts, the ECB's HFCS), so every row has its own source and a comparability flag.
