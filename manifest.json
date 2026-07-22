@@ -1,0 +1,75 @@
+{
+  "version": "0.4.0",
+  "metrics": [
+    {
+      "id": "gdp_pc",
+      "label": "GDP per person",
+      "topic": "income",
+      "file": "data/gdp_pc.json",
+      "countries": 162,
+      "year_min": 1950,
+      "year_max": 2022,
+      "source": "OWID / Global Carbon Budget"
+    },
+    {
+      "id": "income_gini",
+      "label": "income Gini",
+      "topic": "income",
+      "file": "data/income_gini.json",
+      "countries": 164,
+      "year_min": 1967,
+      "year_max": 2021,
+      "source": "World Bank PIP via OWID"
+    },
+    {
+      "id": "median_income",
+      "label": "median income",
+      "topic": "income",
+      "file": "data/median_income.json",
+      "countries": 163,
+      "year_min": 1967,
+      "year_max": 2021,
+      "source": "World Bank PIP via OWID"
+    },
+    {
+      "id": "wealth_gini",
+      "label": "wealth Gini",
+      "topic": "wealth",
+      "file": "data/wealth_timeseries.json",
+      "countries": 213,
+      "year_min": 1990,
+      "year_max": 2024,
+      "source": "WID"
+    },
+    {
+      "id": "co2_pc",
+      "label": "CO2 per person",
+      "topic": "wellbeing",
+      "file": "data/co2_per_capita.json",
+      "countries": 205,
+      "year_min": 1950,
+      "year_max": 2024,
+      "source": "Global Carbon Budget via OWID"
+    },
+    {
+      "id": "life_exp",
+      "label": "life expectancy",
+      "topic": "wellbeing",
+      "file": "data/life_expectancy.json",
+      "countries": 210,
+      "year_min": 1950,
+      "year_max": 2019,
+      "source": "UN WPP, Clio Infra, Riley via OWID"
+    },
+    {
+      "id": "poverty_rate",
+      "label": "poverty rate",
+      "topic": "wellbeing",
+      "file": "data/poverty_rate.json",
+      "countries": 163,
+      "year_min": 1967,
+      "year_max": 2021,
+      "source": "World Bank PIP via OWID"
+    }
+  ]
+}

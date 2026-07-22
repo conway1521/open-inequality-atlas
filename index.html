@@ -263,26 +263,27 @@ footer a { color: inherit; }
 
   <div id="view-ask" class="wrap">
     <section class="ask">
-      <h1>Ask the atlas.</h1>
+      <h1>How life goes where wealth concentrates.</h1>
       <p class="sub">
-        Wealth and income inequality, life expectancy, and emissions across
-        213 countries and territories. Short questions chain: start anywhere,
-        slice further, switch topic mid-chain.
+        Health, poverty, income, and emissions across 213 countries and
+        territories, held up against how unequal each one is. Ask a short
+        question, then hold it against inequality; answers chain, and you can
+        switch measure mid-thread.
       </p>
       <form class="askbox" id="ask-form">
         <input id="q" type="text" autocomplete="off" spellcheck="false"
-               placeholder="least equal">
+               placeholder="life expectancy against inequality">
         <button type="button" class="qmark" id="helpbtn" aria-label="What can I ask">?</button>
         <span class="slash">/</span>
       </form>
       <div class="chips" id="chips"></div>
       <div class="help" id="help" hidden>
-        <div class="help-row"><span class="help-k">Start with a place</span><span class="help-v" data-qs="France;Brazil in 2000;the United States"></span></div>
-        <div class="help-row"><span class="help-k">Or an extreme</span><span class="help-v" data-qs="least equal;most unequal in Europe;above 0.85"></span></div>
-        <div class="help-row"><span class="help-k">Or movement</span><span class="help-v" data-qs="biggest risers since 2000;biggest fallers"></span></div>
+        <div class="help-row"><span class="help-k">Hold against inequality</span><span class="help-v" data-qs="life expectancy against inequality;poverty against inequality;median income against inequality"></span></div>
+        <div class="help-row"><span class="help-k">Or by tier</span><span class="help-v" data-qs="life expectancy across inequality tiers;CO2 across inequality tiers"></span></div>
+        <div class="help-row"><span class="help-k">Start with a place</span><span class="help-v" data-qs="France;the United States;Brazil in 2000"></span></div>
+        <div class="help-row"><span class="help-k">Or an extreme</span><span class="help-v" data-qs="least equal;highest life expectancy;most poverty"></span></div>
         <div class="help-row"><span class="help-k">Then slice</span><span class="help-v" data-qs="over time;compared to whom;vs the average;the other extreme"></span></div>
-        <div class="help-row"><span class="help-k">Switch measure</span><span class="help-v" data-qs="top 1% share;top 10% share;bottom 50% share"></span></div>
-        <div class="help-row"><span class="help-k">Cross topics</span><span class="help-v" data-qs="income inequality;life expectancy;CO2 per person;wealth inequality"></span></div>
+        <div class="help-row"><span class="help-k">Switch measure</span><span class="help-v" data-qs="income inequality;life expectancy;poverty;CO2 per person"></span></div>
         <div class="help-row"><span class="help-k">Or a region</span><span class="help-v" data-qs="Africa average;least equal in Latin America"></span></div>
         <p class="help-foot">Answers stack into a chain. Remove any line with its &times;, or clear and start again.</p>
       </div>
@@ -323,15 +324,15 @@ footer a { color: inherit; }
       </div>
       <div class="block">
         <h2>Distribution shares</h2>
-        <p>Top 1%, top 10%, and bottom 50% shares of household net wealth,
-        latest year per country, plus the US long-run series back to 1989.</p>
-        <p class="try" data-qs="top 1% share;bottom 50% share;the United States"></p>
+        <p>Top 1%, top 10%, and bottom 50% shares of household net wealth. Draw
+        the Lorenz curve for any country to see the concentration directly.</p>
+        <p class="try" data-qs="Lorenz curve for the United States;top 1% share;bottom 50% share"></p>
       </div>
       <div class="block">
-        <h2>The full panel</h2>
-        <p>10,783 rows, 213 countries and territories, 1800 to 2025 in the
-        release files, with comparability tiers and top-tail flags per row.</p>
-        <p><a href="#" class="goto-db" style="color:var(--accent)">Browse the database</a></p>
+        <h2>Against everything else</h2>
+        <p>The reason the atlas exists: hold life expectancy, poverty, or income
+        up against how unequal a place is, as a scatter or by tier.</p>
+        <p class="try" data-qs="life expectancy against inequality;poverty across inequality tiers"></p>
       </div>
     </div>
   </div>
@@ -352,15 +353,17 @@ footer a { color: inherit; }
         <p class="try" data-qs="income inequality;least equal on income;income in Brazil over time"></p>
       </div>
       <div class="block">
-        <h2>Wealth against income</h2>
-        <p>Ask one, then the other, without losing your place: the chain keeps
-        the country and switches the measure.</p>
-        <p class="try" data-qs="France;income inequality;compared to whom"></p>
+        <h2>Median income and GDP</h2>
+        <p>Median daily income from the same surveys, and GDP per person as the
+        backdrop. <span id="cov-median"></span></p>
+        <p class="try" data-qs="highest median income;GDP per person against inequality;median income in Brazil over time"></p>
       </div>
       <div class="block">
-        <h2>Source</h2>
-        <p>PIP data via Our World in Data, CC BY 4.0. Survey years vary by
-        country; the chart marks sparse series point by point.</p>
+        <h2>Wealth against income</h2>
+        <p>Ask one, then the other, without losing your place: the chain keeps
+        the country and switches the measure. PIP via OWID, CC BY 4.0; sparse
+        surveys draw point by point.</p>
+        <p class="try" data-qs="France;income inequality;wealth inequality against income inequality"></p>
       </div>
     </div>
   </div>
@@ -381,10 +384,10 @@ footer a { color: inherit; }
         <p class="try" data-qs="life expectancy in France;highest life expectancy;least equal"></p>
       </div>
       <div class="block">
-        <h2>CO2 per person</h2>
-        <p>Territorial emissions per person in tonnes, Global Carbon Budget via
-        Our World in Data. <span id="cov-co2"></span></p>
-        <p class="try" data-qs="highest CO2 per person;CO2 in China over time;compared to whom"></p>
+        <h2>Poverty and emissions</h2>
+        <p>Share below $2.15 a day, and territorial CO2 per person in tonnes,
+        both via Our World in Data. <span id="cov-poverty"></span> <span id="cov-co2"></span></p>
+        <p class="try" data-qs="most poverty;poverty against inequality;highest CO2 per person"></p>
       </div>
       <div class="block">
         <h2>Subjective wellbeing</h2>
@@ -577,6 +580,8 @@ const g3 = v => v == null ? 'n/a' : v.toFixed(3);
 const pc = v => v == null ? 'n/a' : (v * 100).toFixed(1) + '%';
 const yrs1 = v => v == null ? 'n/a' : v.toFixed(1) + ' years';
 const t1 = v => v == null ? 'n/a' : v.toFixed(1) + ' t';
+const usd0 = v => v == null ? 'n/a' : '$' + Math.round(v).toLocaleString('en-US');
+const usdDay = v => v == null ? 'n/a' : '$' + v.toFixed(1) + '/day';
 function ord(n) {
   const s = ['th','st','nd','rd'], v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
@@ -612,6 +617,24 @@ const META = {
     fmt: t1, fmtD: t1, hover: '%{y:.1f}',
     lineSrc: 'Source: Global Carbon Budget, via Our World in Data. Territorial emissions per person, tonnes of CO2.',
     poolSrc: 'Source: Global Carbon Budget via OWID, latest year per country.',
+  },
+  poverty_rate: {
+    label: 'poverty rate', topic: 'wellbeing', series: true, file: 'data/poverty_rate.json',
+    higherWorse: true, fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. Share below $2.15 a day (2017 PPP).',
+    poolSrc: 'Source: World Bank PIP via OWID. Share below the international poverty line, latest survey per country.',
+  },
+  median_income: {
+    label: 'median income', topic: 'income', series: true, file: 'data/median_income.json',
+    fmt: usdDay, fmtD: usdDay, hover: '$%{y:.1f}/day',
+    lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. Median daily income or consumption, 2017 PPP.',
+    poolSrc: 'Source: World Bank PIP via OWID, latest survey per country.',
+  },
+  gdp_pc: {
+    label: 'GDP per person', topic: 'income', series: true, file: 'data/gdp_pc.json',
+    fmt: usd0, fmtD: usd0, hover: '$%{y:,.0f}',
+    lineSrc: 'Source: Maddison and World Bank via the Global Carbon Budget dataset. GDP per person, international dollars.',
+    poolSrc: 'Source: GDP per person via OWID, latest year per country.',
   },
   top1_wealth_share: { label: 'top 1% share', topic: 'wealth', snap: true, us: 'top1_share', fmt: pc, fmtD: pc },
   top10_wealth_share: { label: 'top 10% share', topic: 'wealth', snap: true, us: 'top10_share', fmt: pc, fmtD: pc },
@@ -675,18 +698,32 @@ function focusIsos() {
 }
 
 /* ── parsing ───────────────────────────────────────────────────────── */
-function detectMetric(r) {
-  if (/\btop\s*10\b|\b10%|\b10\s*(per\s*cent|percent|pct)\b/.test(r)) return 'top10_wealth_share';
-  if (/\btop\s*1\b|\b1%|\btop\s*one\b|\b1\s*(per\s*cent|percent|pct)\b|\brich(est)?\b/.test(r)) return 'top1_wealth_share';
-  if (/\bbottom\s*(50|half)\b|\b50%|\bpoor(est)?\s*half\b/.test(r)) return 'bottom50_wealth_share';
-  if (/\bincome\b|\bearnings\b|\bwages?\b/.test(r)) return 'income_gini';
-  if (/\blife expectancy\b|\blongevity\b|\blifespan\b/.test(r)) return 'life_exp';
-  if (/\bco2\b|\bcarbon\b|\bemissions?\b|\benvironment\w*\b/.test(r)) return 'co2_pc';
-  if (/\bhappiness\b|\bwell\s?being\b|\blife satisfaction\b|\bsatisfaction\b/.test(r)) return 'PENDING';
-  if (/\bwealth\b/.test(r)) return 'wealth_gini';
-  if (/\bgini\b/.test(r)) return META[ctx.metric].giniFam ? ctx.metric : 'wealth_gini';
-  return null;
+function detectMetrics(r) {
+  const found = [];
+  const push = (re, key) => { if (re.test(r) && !found.includes(key)) found.push(key); };
+  push(/\btop\s*10\b|\b10%|\b10\s*(per\s*cent|percent|pct)\b/, 'top10_wealth_share');
+  push(/\btop\s*1\b|\b1%|\btop\s*one\b|\b1\s*(per\s*cent|percent|pct)\b|\brich(est)?\b/, 'top1_wealth_share');
+  push(/\bbottom\s*(50|half)\b|\b50%|\bpoor(est)?\s*half\b/, 'bottom50_wealth_share');
+  push(/\blife expectancy\b|\blongevity\b|\blifespan\b|\bhealth\b/, 'life_exp');
+  push(/\bco2\b|\bcarbon\b|\bemissions?\b|\benvironment\w*\b|\bclimate\b/, 'co2_pc');
+  push(/\bpoverty\b|\bpoor\b(?!\s*(est\s*)?half)/, 'poverty_rate');
+  push(/\bmedian income\b|\bmedian\b|\btypical income\b|\bmiddle\b/, 'median_income');
+  push(/\bgdp\b|\boutput\b|\bprosper\w*\b|\beconomic size\b/, 'gdp_pc');
+  push(/\bincome inequality\b|\bincome gini\b/, 'income_gini');
+  push(/\bwealth inequality\b|\bwealth gini\b/, 'wealth_gini');
+  // bare "income"/"wealth" only if no more specific income/wealth metric already matched
+  if (!found.some(k => META[k].topic === 'income') && /\bincome\b|\bearnings\b|\bwages?\b/.test(r)) found.push('income_gini');
+  if (!found.some(k => k === 'wealth_gini' || META[k].snap) && /\bwealth\b/.test(r)) found.push('wealth_gini');
+  if (/\bhappiness\b|\bwell\s?being\b|\blife satisfaction\b|\bsatisfaction\b|\bladder\b/.test(r)) found.push('PENDING');
+  if (/\bgini\b/.test(r) && !found.length) found.push(META[ctx.metric].giniFam ? ctx.metric : 'wealth_gini');
+  return found;
 }
+function detectMetric(r) {
+  const m = detectMetrics(r);
+  return m.length ? m[0] : null;
+}
+const INEQ_METRICS = ['wealth_gini', 'income_gini'];
+function isIneq(key) { return INEQ_METRICS.includes(key); }
 
 function parse(raw) {
   let text = norm(raw);
@@ -696,8 +733,33 @@ function parse(raw) {
   }
   const { isos, residual: r } = findCountries(text);
   const years = (r.match(/\b(?:19|20)\d{2}\b/g) || []).map(Number).filter(y => y >= 1950 && y <= 2025);
-  const metric = detectMetric(r);
-  if (metric === 'PENDING') return { kind: 'pending' };
+  const metrics = detectMetrics(r);
+  const metric = metrics.length ? metrics[0] : null;
+  if (metrics.includes('PENDING')) return { kind: 'pending' };
+
+  // correlate: relate two measures across countries
+  const wantsCorr = /\bagainst\b|\bvs\b|\bversus\b|\bcorrelat\w*\b|\brelationship\b|\brelate[sd]?\b|\btrack[s]?\b|\btied to\b|\blinked to\b|\bpredict\w*\b/.test(r) && !isos.length;
+  const wantsTiers = /\btiers?\b|\bbands?\b|\bterciles?\b|\bquartiles?\b|\bgroup(ed|s)?\b|\bhigh (vs|versus|and) low\b|\bunequal (vs|versus|and)\b/.test(r);
+  if (wantsTiers) {
+    const aspect = metrics.find(m => !isIneq(m) && META[m].series) ||
+      (META[ctx.metric].series && !isIneq(ctx.metric) ? ctx.metric : 'life_exp');
+    const lens = metrics.find(isIneq) || 'wealth_gini';
+    return { kind: 'tiers', aspect, lens, region: region };
+  }
+  if (wantsCorr) {
+    let x, y;
+    const ineqNamed = metrics.find(isIneq);
+    const aspectNamed = metrics.find(m => !isIneq(m) && META[m].series);
+    if (metrics.length >= 2) {
+      x = metrics.find(isIneq) || (META[metrics[0]].series ? metrics[0] : 'wealth_gini');
+      y = metrics.find(m => m !== x && META[m].series) || metrics.find(m => m !== x) || 'life_exp';
+    } else {
+      x = ineqNamed || (isIneq(ctx.metric) ? ctx.metric : 'wealth_gini');
+      y = aspectNamed || (META[ctx.metric].series && ctx.metric !== x ? ctx.metric : 'life_exp');
+      if (x === y) y = x === 'wealth_gini' ? 'life_exp' : 'wealth_gini';
+    }
+    return { kind: 'correlate', x, y, region };
+  }
 
   const hasEqual = /\bequal\b/.test(r), hasUnequal = /\bunequal\b|\binequality\b/.test(r);
   const most = /\bmost\b|\bhighest\b|\bworst\b/.test(r), least = /\bleast\b|\blowest\b/.test(r);
@@ -719,6 +781,10 @@ function parse(raw) {
   if (th)
     return { kind: 'threshold', op: (th[1] === 'above' || th[1] === 'over') ? 'above' : 'below',
              val: parseFloat(th[2]), region, metric };
+  if (/\blorenz\b|\bconcentration curve\b/.test(r) || (/\bdistribution\b|\bshares?\b/.test(r) && isos.length && !metric))
+    return { kind: 'lorenz', isos: isos.length ? isos : focusIsos() };
+  if (/\bspread\b|\bdistribution\b|\brange\b|\bhow varied\b|\bacross countries\b/.test(r) && isos.length === 0)
+    return { kind: 'spread', metric, region };
   if (rankDir && isos.length === 0) return { kind: 'rank', dir: rankDir, region, metric, giniWords };
   if (/\bcompared to (whom|what|who)\b|^\s*compared\s*$|\bneighbou?rs\b/.test(r))
     return { kind: 'context' };
@@ -753,6 +819,39 @@ function latestValOf(metric, iso) {
   return s.length ? { val: s[s.length - 1].v, year: s[s.length - 1].year } : null;
 }
 
+/* ── cross-metric helpers ──────────────────────────────────────────── */
+function pairedPoints(xMetric, yMetric, region) {
+  const out = [];
+  for (const iso in BY_ISO) {
+    if (!inRegion(iso, region)) continue;
+    const xv = latestValOf(xMetric, iso), yv = latestValOf(yMetric, iso);
+    if (xv && yv) out.push({ iso, name: BY_ISO[iso].name, x: xv.val, y: yv.val, xy: yv.year });
+  }
+  return out;
+}
+function pearson(pts) {
+  const n = pts.length; if (n < 3) return null;
+  let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+  for (const p of pts) { sx += p.x; sy += p.y; sxx += p.x * p.x; syy += p.y * p.y; sxy += p.x * p.y; }
+  const cov = n * sxy - sx * sy;
+  const dx = Math.sqrt(n * sxx - sx * sx), dy = Math.sqrt(n * syy - sy * sy);
+  if (dx === 0 || dy === 0) return null;
+  return cov / (dx * dy);
+}
+function corrClause(r, xlabel) {
+  const a = Math.abs(r);
+  if (a < 0.15) return `barely moves with ${xlabel}`;
+  const lo = r < 0 ? 'lower' : 'higher';
+  if (a < 0.35) return `tends to run ${lo} where ${xlabel} is higher`;
+  if (a < 0.6) return `runs ${lo} where ${xlabel} is higher`;
+  return `runs much ${lo} where ${xlabel} is higher`;
+}
+function terciles(lensMetric, region) {
+  const pool = rankedPool(lensMetric, 'high', region).map(r => r.val);
+  const n = pool.length;
+  return { hi: pool[Math.floor(n / 3)], lo: pool[Math.floor(2 * n / 3)] };
+}
+
 /* ── answering ─────────────────────────────────────────────────────── */
 let factSeq = 0;
 const chain = [];
@@ -771,7 +870,81 @@ function answer(q) {
 
   let f = { id: ++factSeq, query: q, kind: p.kind, isos: [], mode: 'lines', bar: null, metric: null, marker: null };
 
-  if (p.kind === 'profile') {
+  if (p.kind === 'correlate') {
+    const mx = META[p.x], my = META[p.y];
+    const pts = pairedPoints(p.x, p.y, p.region);
+    const r = pearson(pts);
+    if (!pts.length || r == null) return miss();
+    ctx.metric = p.x;
+    const focus = focusIsos().filter(i => pts.some(pt => pt.iso === i));
+    if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
+    f.mode = 'scatter';
+    f.scatter = { x: p.x, y: p.y, pts, r, region: p.region, focus };
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    let t = `Across ${pts.length} countries${where}, ${my.label} ${corrClause(r, mx.label)} ` +
+      `(r = ${r.toFixed(2)}).`;
+    if (focus.length === 1) {
+      const pt = pts.find(x => x.iso === focus[0]);
+      t += ` ${esc(pt.name)} is the highlighted point.`;
+    }
+    f.text = t;
+  }
+
+  else if (p.kind === 'tiers') {
+    const my = META[p.aspect], ml = META[p.lens];
+    const { hi, lo } = terciles(p.lens, p.region);
+    const groups = { high: [], mid: [], low: [] };
+    for (const iso in BY_ISO) {
+      if (!inRegion(iso, p.region)) continue;
+      const lv = latestValOf(p.lens, iso), av = latestValOf(p.aspect, iso);
+      if (!lv || !av) continue;
+      const g = lv.val >= hi ? 'high' : lv.val <= lo ? 'low' : 'mid';
+      groups[g].push(av.val);
+    }
+    if (!groups.high.length || !groups.low.length) return miss();
+    const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+    const mh = mean(groups.high), mm = mean(groups.mid), mlo = mean(groups.low);
+    ctx.metric = p.lens;
+    f.mode = 'tiers';
+    f.tiers = { aspect: p.aspect, lens: p.lens, rows: [
+      { label: `Most unequal third`, val: mh, n: groups.high.length },
+      { label: `Middle third`, val: mm, n: groups.mid.length },
+      { label: `Least unequal third`, val: mlo, n: groups.low.length },
+    ] };
+    const dir = mh > mlo ? 'higher' : 'lower';
+    f.text = `Grouping countries by ${ml.label}: the most unequal third average ` +
+      `<strong>${my.fmt(mh)}</strong> on ${my.label}, the least unequal third <strong>${my.fmt(mlo)}</strong> ` +
+      `(${dir} where inequality is greater).`;
+  }
+
+  else if (p.kind === 'lorenz') {
+    const isos = (p.isos || []).filter(i => BY_ISO[i] && BY_ISO[i].latest.bottom50_wealth_share != null).slice(0, 5);
+    if (!isos.length) { showNotice('Name a country to draw its wealth Lorenz curve.'); return null; }
+    f.mode = 'lorenz'; f.isos = isos; ctx.lastIso = isos[isos.length - 1];
+    f.lorenz = { isos };
+    const c = BY_ISO[isos[0]].latest;
+    f.text = `<strong>${esc(BY_ISO[isos[0]].name)}</strong> wealth Lorenz: the bottom half hold ` +
+      `<strong>${pc(c.bottom50_wealth_share)}</strong>, the top 10% hold <strong>${pc(c.top10_wealth_share)}</strong>.`;
+  }
+
+  else if (p.kind === 'spread') {
+    const key = p.metric && META[p.metric].series ? p.metric : (META[ctx.metric].series ? ctx.metric : 'wealth_gini');
+    ctx.metric = key;
+    const m = META[key];
+    const pool = rankedPool(key, 'high', p.region);
+    if (pool.length < 3) return miss();
+    const med = medianOf(pool.map(r => r.val));
+    const foc = focusIsos().filter(i => pool.some(r => r.geo_id === i));
+    if (foc.length) { f.isos = foc; ctx.lastIso = foc[foc.length - 1]; }
+    f.mode = 'strip';
+    f.strip = { key, pool, region: p.region, focus: foc };
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    f.text = `${cap(m.label)}${where} ranges from <strong>${m.fmt(pool[pool.length - 1].val)}</strong> ` +
+      `(${esc(pool[pool.length - 1].geo_name)}) to <strong>${m.fmt(pool[0].val)}</strong> ` +
+      `(${esc(pool[0].geo_name)}), median <strong>${m.fmt(med)}</strong>.`;
+  }
+
+  else if (p.kind === 'profile') {
     const key = ctx.metric.startsWith('top') || ctx.metric.startsWith('bottom') ? ctx.metric : ctx.metric;
     const m = META[key];
     const c = BY_ISO[p.iso]; if (!c) return miss();
@@ -1119,6 +1292,123 @@ function drawChart() {
     src.textContent = 'Source: Fed Distributional Financial Accounts, with SCF anchors. Share of total household net wealth.';
   }
 
+  else if (mode === 'scatter') {
+    const sc = chain.slice().reverse().find(f => f.mode === 'scatter').scatter;
+    const mx = META[sc.x], my = META[sc.y];
+    const focusSet = new Set(sc.focus);
+    const bg = sc.pts.filter(p => !focusSet.has(p.iso));
+    const fg = sc.pts.filter(p => focusSet.has(p.iso));
+    const scale = (m, v) => m.fmt === pc ? v * 100 : v;
+    const mk = pts => ({ x: pts.map(p => scale(mx, p.x)), y: pts.map(p => scale(my, p.y)),
+      text: pts.map(p => p.name), customdata: pts.map(p => [mx.fmt(p.x), my.fmt(p.y)]) });
+    const traces = [{
+      type: 'scatter', mode: 'markers', ...mk(bg),
+      marker: { color: '#c9d3e0', size: 7 },
+      hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
+    }];
+    if (fg.length) traces.push({
+      type: 'scatter', mode: 'markers+text', ...mk(fg),
+      marker: { color: '#eb6834', size: 11, line: { color: '#fff', width: 1.5 } },
+      textposition: 'top center', textfont: { size: 11, color: '#1a2744' },
+      hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
+    });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 12, b: 44, l: 56 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: mx.label, font: { size: 12 } },
+        ticksuffix: mx.fmt === pc ? '%' : '' }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: my.label, font: { size: 12 } },
+        ticksuffix: my.fmt === pc ? '%' : '' }),
+    }), CFG);
+    title.textContent = `${cap(my.label)} against ${mx.label}` +
+      (sc.region ? ` in ${REGION_LABEL[sc.region]}` : '');
+    src.textContent = `Each dot is a country at its latest overlapping year. ${(mx.poolSrc || '').replace(/^Source: /, 'Inequality: ')} ${(my.poolSrc || '').replace(/^Source: /, 'Aspect: ')}`;
+  }
+
+  else if (mode === 'tiers') {
+    const t = chain.slice().reverse().find(f => f.mode === 'tiers').tiers;
+    const my = META[t.aspect], ml = META[t.lens];
+    const rows = t.rows.slice().reverse();
+    const isPct = my.fmt === pc;
+    const vals = rows.map(r => isPct ? r.val * 100 : r.val);
+    Plotly.react(el, [{
+      type: 'bar', orientation: 'h',
+      y: rows.map(r => r.label), x: vals,
+      marker: { color: ['#1baf7a', '#c9d3e0', '#eb6834'] },
+      text: rows.map(r => my.fmt(r.val) + '  ·  ' + r.n),
+      textposition: 'outside', textfont: { size: 11, color: '#555555' },
+      hovertemplate: '%{y}: %{text} countries<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 90, b: 36, l: 150 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, isPct ? { ticksuffix: '%' } : {}),
+      bargap: 0.4,
+    }), CFG);
+    title.textContent = `${cap(my.label)} by ${ml.label} tier`;
+    src.textContent = `Countries split into thirds by ${ml.label}, latest year. Bars show the mean of each third; the count follows each bar.`;
+  }
+
+  else if (mode === 'strip') {
+    const st = chain.slice().reverse().find(f => f.mode === 'strip').strip;
+    const m = META[st.key];
+    const focusSet = new Set(st.focus);
+    const scale = v => m.fmt === pc ? v * 100 : v;
+    const jitter = st.pool.map(() => (((Math.sin(st.pool.length) + 1) % 1)));
+    const bg = st.pool.filter(r => !focusSet.has(r.geo_id));
+    const fg = st.pool.filter(r => focusSet.has(r.geo_id));
+    const yj = (arr, seed) => arr.map((_, i) => ((Math.sin((i + seed) * 12.9898) * 43758.5453) % 1 + 1) % 1 * 0.8 - 0.4);
+    const traces = [{
+      type: 'scatter', mode: 'markers',
+      x: bg.map(r => scale(r.val)), y: yj(bg, 1),
+      text: bg.map(r => r.geo_name), customdata: bg.map(r => m.fmt(r.val)),
+      marker: { color: '#2a78d6', size: 6, opacity: 0.5 },
+      hovertemplate: '%{text}: %{customdata}<extra></extra>',
+    }];
+    if (fg.length) traces.push({
+      type: 'scatter', mode: 'markers+text',
+      x: fg.map(r => scale(r.val)), y: yj(fg, 99),
+      text: fg.map(r => r.geo_name), customdata: fg.map(r => m.fmt(r.val)),
+      textposition: 'top center', textfont: { size: 11, color: '#1a2744' },
+      marker: { color: '#eb6834', size: 11, line: { color: '#fff', width: 1.5 } },
+      hovertemplate: '%{text}: %{customdata}<extra></extra>',
+    });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 12, b: 40, l: 12 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: cap(m.label), font: { size: 12 } },
+        ticksuffix: m.fmt === pc ? '%' : '' }),
+      yaxis: { visible: false, range: [-1, 1] },
+    }), CFG);
+    title.textContent = `${cap(m.label)}, every country` + (st.region ? ` in ${REGION_LABEL[st.region]}` : '');
+    src.textContent = m.poolSrc || '';
+  }
+
+  else if (mode === 'lorenz') {
+    const lz = chain.slice().reverse().find(f => f.mode === 'lorenz').lorenz;
+    const traces = lz.isos.map(iso => {
+      const c = BY_ISO[iso].latest;
+      const b50 = c.bottom50_wealth_share, t10 = c.top10_wealth_share, t1 = c.top1_wealth_share;
+      const px = [0, 50, 90, 99, 100];
+      const py = [0, b50 * 100, (1 - t10) * 100, (1 - t1) * 100, 100];
+      return {
+        type: 'scatter', mode: 'lines', name: BY_ISO[iso].name,
+        x: px, y: py, line: { color: assignColor(iso), width: 2.2 },
+        hovertemplate: BY_ISO[iso].name + ': bottom %{x:.0f}% hold %{y:.1f}%<extra></extra>',
+      };
+    });
+    traces.push({
+      type: 'scatter', mode: 'lines', name: 'Perfect equality',
+      x: [0, 100], y: [0, 100], line: { color: '#c3c2b7', width: 1.5, dash: 'dot' },
+      hoverinfo: 'skip', showlegend: false,
+    });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      showlegend: traces.filter(t => t.showlegend !== false).length >= 2,
+      legend: { orientation: 'h', y: 1.1, font: { size: 11 } },
+      margin: { t: 8, r: 12, b: 44, l: 48 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: 'Share of population', font: { size: 12 } }, ticksuffix: '%', range: [0, 100] }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: 'Share of wealth', font: { size: 12 } }, ticksuffix: '%', range: [0, 100] }),
+    }), CFG);
+    title.textContent = 'Wealth Lorenz curve' + (lz.isos.length === 1 ? `, ${BY_ISO[lz.isos[0]].name}` : '');
+    src.textContent = 'Source: WID. Anchored at the bottom 50%, top 10%, and top 1% shares. The further the curve bows from the diagonal, the more concentrated.';
+  }
+
   else {
     const lineFacts = chain.filter(f => f.mode === 'lines');
     const metric = lineFacts.slice().reverse().map(f => f.metricUsed).find(Boolean) || 'wealth_gini';
@@ -1191,24 +1481,36 @@ function drawChart() {
 }
 
 /* ── chips: follow-ups track the conversation ──────────────────────── */
-const START_CHIPS = ['least equal', 'income inequality', 'life expectancy in France', 'highest CO2 per person', 'biggest risers since 2000'];
+const START_CHIPS = ['life expectancy against inequality', 'least equal', 'poverty across inequality tiers', 'income inequality', 'highest CO2 per person'];
+// what an aspect scatters against, and what an inequality metric scatters onto
+const AGAINST = { wealth_gini: 'life expectancy against inequality', income_gini: 'poverty against inequality',
+  life_exp: 'against inequality', co2_pc: 'against inequality', poverty_rate: 'against inequality',
+  median_income: 'against inequality', gdp_pc: 'against inequality',
+  top1_wealth_share: 'life expectancy against inequality', top10_wealth_share: 'life expectancy against inequality',
+  bottom50_wealth_share: 'life expectancy against inequality' };
 const CROSS_CHIP = { wealth_gini: 'income inequality', income_gini: 'life expectancy',
-  life_exp: 'CO2 per person', co2_pc: 'wealth inequality' };
+  life_exp: 'CO2 per person', co2_pc: 'poverty', poverty_rate: 'median income',
+  median_income: 'life expectancy', gdp_pc: 'life expectancy' };
 
 function updateChips() {
   const el = document.getElementById('chips');
   let list;
   const cross = CROSS_CHIP[ctx.metric] || 'income inequality';
+  const against = AGAINST[ctx.metric] || 'against inequality';
   if (!chain.length) list = START_CHIPS;
   else {
     const last = chain[chain.length - 1];
-    if (last.kind === 'rank') list = ['over time', 'compared to whom', 'the other extreme', cross];
+    if (last.kind === 'correlate') list = ['across inequality tiers', 'compared to whom', 'over time', cross];
+    else if (last.kind === 'tiers') list = [against, 'over time', 'least equal', cross];
+    else if (last.mode === 'scatter') list = ['across inequality tiers', 'compared to whom', cross];
+    else if (last.kind === 'rank') list = [against, 'over time', 'the other extreme', cross];
     else if (last.kind === 'delta_rank') list = ['over time', 'compared to whom', 'biggest fallers', cross];
-    else if (last.kind === 'threshold') list = ['over time', 'compared to whom', 'vs the average', cross];
+    else if (last.kind === 'threshold') list = [against, 'over time', 'compared to whom', cross];
     else if (last.mode === 'us') list = ['bottom 50% share', 'top 10% share', 'least equal', 'income inequality'];
-    else if (last.kind === 'time') list = ['vs the average', 'since 2000', 'compared to whom', cross];
-    else if (last.kind === 'world') list = ['most unequal', 'least equal', 'over time', cross];
-    else list = ['over time', 'compared to whom', 'vs the average', cross];
+    else if (last.kind === 'time') list = ['vs the average', against, 'compared to whom', cross];
+    else if (last.kind === 'world') list = [against, 'most unequal', 'least equal', cross];
+    else if (last.mode === 'lorenz') list = [against, 'compared to whom', cross];
+    else list = [against, 'over time', 'compared to whom', cross];
   }
   el.innerHTML = list.map(e => `<button type="button" class="chip">${e}</button>`).join('');
   el.querySelectorAll('.chip').forEach(b =>
@@ -1270,8 +1572,10 @@ function fillCoverage() {
   };
   cov('wealth_gini', 'cov-wealth');
   cov('income_gini', 'cov-income');
+  cov('median_income', 'cov-median');
   cov('life_exp', 'cov-life');
   cov('co2_pc', 'cov-co2');
+  cov('poverty_rate', 'cov-poverty');
 }
 
 function boot() {
@@ -1337,14 +1641,19 @@ function toSeries(dict) {
   return out;
 }
 
+const opt = url => loadJson(url).catch(() => ({}));   // modules that may not exist yet load empty
 Promise.all([
   loadJson('data/wealth_latest.json'),
   loadJson('data/wealth_timeseries.json'),
   loadJson('data/us_longrun.json'),
-  loadJson('data/income_gini.json'),
-  loadJson('data/life_expectancy.json'),
-  loadJson('data/co2_per_capita.json'),
-]).then(([latest, ts, us, income, life, co2]) => {
+  opt('data/income_gini.json'),
+  opt('data/life_expectancy.json'),
+  opt('data/co2_per_capita.json'),
+  opt('data/poverty_rate.json'),
+  opt('data/median_income.json'),
+  opt('data/gdp_pc.json'),
+  opt('data/life_satisfaction.json'),
+]).then(([latest, ts, us, income, life, co2, pov, medinc, gdp, sat]) => {
   LATEST = latest; US = us;
   for (const r of latest) BY_ISO[r.geo_id] = { name: r.geo_name, latest: r };
   const wg = {};
@@ -1355,6 +1664,16 @@ Promise.all([
   SERIES.income_gini = toSeries(income);
   SERIES.life_exp = toSeries(life);
   SERIES.co2_pc = toSeries(co2);
+  SERIES.poverty_rate = toSeries(pov);
+  SERIES.median_income = toSeries(medinc);
+  SERIES.gdp_pc = toSeries(gdp);
+  if (sat && Object.keys(sat).length) {
+    SERIES.life_satisfaction = toSeries(sat);
+    META.life_satisfaction = { label: 'life satisfaction', topic: 'wellbeing', series: true,
+      fmt: v => v == null ? 'n/a' : v.toFixed(1), fmtD: v => v == null ? 'n/a' : v.toFixed(1), hover: '%{y:.1f}',
+      lineSrc: 'Source: World Happiness Report, Cantril ladder (0 to 10), via Our World in Data.',
+      poolSrc: 'Source: World Happiness Report via OWID, latest year per country.' };
+  }
 
   buildIndex();
   boot();
