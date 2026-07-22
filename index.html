@@ -678,7 +678,7 @@ function poolOf(metric) {
   return (poolCache[metric] = pool);
 }
 function rankedPool(metric, dir, region) {
-  return poolOf(metric).filter(r => inRegion(r.geo_id, region)).slice()
+  return poolOf(metric).filter(r => inScope(r.geo_id, region)).slice()
     .sort((a, b) => dir === 'low' ? a.val - b.val : b.val - a.val);
 }
 function rankOf(iso, metric) {
@@ -690,12 +690,12 @@ function seriesOf(metric, iso) { return (SERIES[metric] || {})[iso] || []; }
 
 const medianCache = {};
 function medianSeriesOf(metric, region) {
-  const key = metric + '|' + (region || 'world');
+  const key = metric + '|' + (region || 'world') + '|' + (medianCache.gen || 0);
   if (medianCache[key]) return medianCache[key];
   const byYear = {};
   const s = SERIES[metric] || {};
   for (const iso in s) {
-    if (!inRegion(iso, region)) continue;
+    if (!inScope(iso, region)) continue;
     for (const p of s[iso]) (byYear[p.year] = byYear[p.year] || []).push(p.v);
   }
   const min = region ? 5 : 10;
@@ -706,11 +706,27 @@ function medianSeriesOf(metric, region) {
 }
 
 /* ── conversation context ──────────────────────────────────────────── */
-const ctx = { lastIso: null, metric: 'wealth_gini', lastRankDir: null, lastRegion: null, lastAspect: null };
+const ctx = { lastIso: null, metric: 'wealth_gini', lastRankDir: null, lastRegion: null,
+  lastAspect: null, pool: null, lastQuery: null };
 function focusIsos() {
   const set = [];
   chain.forEach(f => (f.isos || []).forEach(i => { if (!set.includes(i)) set.push(i); }));
   return set;
+}
+
+/* ── Pool: the ambient "who counts as everyone" condition (the AMONG move) ── */
+// ctx.pool = { label, metric, dir } → a tercile of some metric; null = all countries.
+let POOL_SET = null;   // Set of allowed isos, or null for all
+function computePool() {
+  if (!ctx.pool) { POOL_SET = null; medianCache.gen = (medianCache.gen || 0) + 1; return; }
+  const pool = poolOf(ctx.pool.metric).slice().sort((a, b) => b.val - a.val);
+  const n = pool.length, cut = Math.floor(n / 3);
+  const keep = ctx.pool.dir === 'high' ? pool.slice(0, cut) : pool.slice(n - cut);
+  POOL_SET = new Set(keep.map(r => r.geo_id));
+  medianCache.gen = (medianCache.gen || 0) + 1;   // pool change invalidates cached medians
+}
+function inScope(iso, region) {
+  return inRegion(iso, region) && (POOL_SET === null || POOL_SET.has(iso));
 }
 
 /* ── parsing ───────────────────────────────────────────────────────── */
@@ -753,6 +769,22 @@ function parse(raw) {
   const metrics = detectMetrics(r);
   const metric = metrics.length ? metrics[0] : null;
   if (metrics.includes('PENDING')) return { kind: 'pending' };
+
+  // BREAK: who defies the current relationship
+  if (/\bbreaks? the pattern\b|\bbreaks? the trend\b|\boutliers?\b|\boff the (trend|line|pattern)\b|\bexceptions?\b|\bdefy\w*\b|\bover[- ]?perform\w*\b|\bunder[- ]?perform\w*\b|\bbeat the (trend|pattern)\b|\bpunch\w* above\b/.test(r))
+    return { kind: 'break', metrics };
+
+  // AMONG: change the pool. "among rich countries", "all countries" (region is handled above)
+  if (/\ball countries\b|\beveryone\b|\bwhole world\b|\bdrop the (filter|condition|pool)\b|\bunrestrict\w*\b|\bworldwide\b/.test(r) && !isos.length)
+    return { kind: 'among', pool: null };
+  {
+    const cue = /\bamong\b|\bonly\b|\brestrict\w*\b|\bjust the\b|\bconditional\b/.test(r);
+    const rich = /\brich(er|est)?\b|\bhigh[- ]?income\b|\bwealthy\b|\bdeveloped\b|\baffluent\b/.test(r);
+    const poor = /\bpoor(er|est)?\b|\blow[- ]?income\b|\bdeveloping\b/.test(r);
+    if (cue && (rich || poor) && !isos.length)
+      return { kind: 'among', pool: { label: rich ? 'richer countries' : 'poorer countries',
+        metric: 'gdp_pc', dir: rich ? 'high' : 'low' }, region };
+  }
 
   // correlate: relate two measures across countries
   const wantsCorr = /\bagainst\b|\bvs\b|\bversus\b|\bcorrelat\w*\b|\brelationship\b|\brelate[sd]?\b|\btrack[s]?\b|\btied to\b|\blinked to\b|\bpredict\w*\b/.test(r) && !isos.length;
@@ -849,11 +881,24 @@ function latestValOf(metric, iso) {
 function pairedPoints(xMetric, yMetric, region) {
   const out = [];
   for (const iso in BY_ISO) {
-    if (!inRegion(iso, region)) continue;
+    if (!inScope(iso, region)) continue;
     const xv = latestValOf(xMetric, iso), yv = latestValOf(yMetric, iso);
     if (xv && yv) out.push({ iso, name: BY_ISO[iso].name, x: xv.val, y: yv.val, xy: yv.year });
   }
   return out;
+}
+// robust line: Theil-Sen slope (median pairwise) + median intercept. Outliers can't define their own baseline.
+function theilSen(pts) {
+  const n = pts.length; if (n < 3) return null;
+  const slopes = [];
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const dx = pts[j].x - pts[i].x;
+    if (dx !== 0) slopes.push((pts[j].y - pts[i].y) / dx);
+  }
+  if (!slopes.length) return null;
+  const slope = medianOf(slopes);
+  const intercept = medianOf(pts.map(p => p.y - slope * p.x));
+  return { slope, intercept };
 }
 function pearson(pts) {
   const n = pts.length; if (n < 3) return null;
@@ -881,6 +926,7 @@ function terciles(lensMetric, region) {
 /* ── answering ─────────────────────────────────────────────────────── */
 let factSeq = 0;
 const chain = [];
+function poolNote() { return ctx.pool ? ` <em>among ${ctx.pool.label}</em>` : ''; }
 
 function answer(q) {
   const p = parse(q);
@@ -916,12 +962,63 @@ function answer(q) {
     f.text = t;
   }
 
+  else if (p.kind === 'break') {
+    // fit the current relationship, name who sits furthest from the robust line
+    let x, y;
+    const lastSc = chain.slice().reverse().find(ff => ff.scatter);
+    if (lastSc) { x = lastSc.scatter.x; y = lastSc.scatter.y; }
+    else { x = isIneq(ctx.metric) ? ctx.metric : 'wealth_gini'; y = ctx.lastAspect; }
+    const aspNamed = p.metrics.find(m => !isIneq(m) && META[m].series);
+    if (aspNamed) y = aspNamed;
+    if (!y) { showNotice('Hold a measure against inequality first, then ask who breaks the pattern.'); return null; }
+    const mx = META[x], my = META[y];
+    const pts = pairedPoints(x, y, null);
+    const fit = theilSen(pts);
+    if (!fit || pts.length < 8) return miss();
+    for (const pt of pts) pt.resid = pt.y - (fit.slope * pt.x + fit.intercept);
+    const sorted = pts.slice().sort((a, b) => b.resid - a.resid);
+    const over = sorted.slice(0, 2), under = sorted.slice(-2).reverse();
+    ctx.metric = x; if (!isIneq(y)) ctx.lastAspect = y;
+    const focus = focusIsos().filter(i => pts.some(pt => pt.iso === i));
+    const labelIsos = [...over, ...under].map(p => p.iso);
+    if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
+    f.mode = 'scatter';
+    f.scatter = { x, y, pts, r: pearson(pts), region: null, focus, fit, labelIsos };
+    const say = a => `${esc(a.name)} <strong>${my.fmtD(Math.abs(a.resid))}</strong> ${a.resid >= 0 ? 'above' : 'below'}`;
+    let t = `Against ${mx.label}, the countries furthest off the line: ` +
+      `${say(over[0])} and ${say(over[1])} what their inequality predicts on ${my.label}; ` +
+      `${say(under[0])} and ${say(under[1])}.`;
+    if (focus.length === 1) {
+      const pt = pts.find(x => x.iso === focus[0]);
+      t += ` ${esc(pt.name)} sits <strong>${my.fmtD(Math.abs(pt.resid))}</strong> ${pt.resid >= 0 ? 'above' : 'below'} the line.`;
+    }
+    f.text = t;
+  }
+
+  else if (p.kind === 'among') {
+    ctx.pool = p.pool; computePool();
+    if (!ctx.lastQuery) {
+      const label = p.pool ? p.pool.label : 'all countries';
+      f.kind = 'poolset'; f.mode = chain.length ? chain[chain.length - 1].mode : 'lines';
+      f.text = `Pool set to <strong>${label}</strong>` +
+        (POOL_SET ? ` (${POOL_SET.size} countries).` : '.') + ' Ask something to see it applied.';
+      f.noChart = true;
+      return f;
+    }
+    const inner = answer(ctx.lastQuery);   // re-run the last real question inside the new pool
+    if (!inner) { ctx.pool = null; computePool(); return null; }
+    inner.id = f.id; inner.query = q;      // this chain line represents the AMONG move
+    const label = p.pool ? p.pool.label : 'all countries';
+    if (!/among /i.test(inner.text)) inner.text = inner.text.replace(/\s*$/, '') + ` <em>among ${label}</em>`;
+    return inner;
+  }
+
   else if (p.kind === 'tiers') {
     const my = META[p.aspect], ml = META[p.lens];
     const { hi, lo } = terciles(p.lens, p.region);
     const groups = { high: [], mid: [], low: [] };
     for (const iso in BY_ISO) {
-      if (!inRegion(iso, p.region)) continue;
+      if (!inScope(iso, p.region)) continue;
       const lv = latestValOf(p.lens, iso), av = latestValOf(p.aspect, iso);
       if (!lv || !av) continue;
       const g = lv.val >= hi ? 'high' : lv.val <= lo ? 'low' : 'mid';
@@ -1024,7 +1121,7 @@ function answer(q) {
     const pool = [];
     const s = SERIES[key] || {};
     for (const iso in s) {
-      if (!inRegion(iso, p.region) || !BY_ISO[iso]) continue;
+      if (!inScope(iso, p.region) || !BY_ISO[iso]) continue;
       const pts = s[iso];
       if (!pts.length) continue;
       const from = pts.find(d => d.year >= p.year) || pts[0];
@@ -1204,9 +1301,12 @@ function answer(q) {
 /* ── session ───────────────────────────────────────────────────────── */
 function ask(q) {
   hideNotice();
+  const isAmong = /\bamong\b|\ball countries\b|\beveryone\b|\bonly (rich|poor|the)\b|\brestrict\b|\bdrop the (filter|condition|pool)\b/.test(norm(q));
   const f = answer(q);
   if (!f) return;
   if (META[ctx.metric] && META[ctx.metric].series && !isIneq(ctx.metric)) ctx.lastAspect = ctx.metric;
+  if (ctx.pool && !/among /i.test(f.text)) f.text = f.text.replace(/\s*$/, '') + poolNote();
+  if (!isAmong) ctx.lastQuery = q;   // AMONG re-runs this; never re-runs itself
   const lineIsos = new Set(chain.filter(x => x.mode === 'lines').flatMap(x => x.isos));
   f.isos.forEach(i => lineIsos.add(i));
   if (f.mode === 'lines' && lineIsos.size > 8) {
@@ -1256,7 +1356,8 @@ const BASE_LAYOUT = {
 const CFG = { responsive: true, displayModeBar: false };
 
 function drawChart() {
-  const mode = chain[chain.length - 1].mode;
+  const drawable = chain.slice().reverse().find(f => !f.noChart) || chain[chain.length - 1];
+  const mode = drawable.mode;
   const el = document.getElementById('chart');
   const title = document.getElementById('chart-title');
   const src = document.getElementById('chart-src');
@@ -1326,10 +1427,11 @@ function drawChart() {
   else if (mode === 'scatter') {
     const sc = chain.slice().reverse().find(f => f.mode === 'scatter').scatter;
     const mx = META[sc.x], my = META[sc.y];
-    const focusSet = new Set(sc.focus);
-    const bg = sc.pts.filter(p => !focusSet.has(p.iso));
-    const fg = sc.pts.filter(p => focusSet.has(p.iso));
     const scale = (m, v) => m.fmt === pc ? v * 100 : v;
+    const labelSet = new Set([...(sc.labelIsos || []), ...sc.focus]);
+    const focusSet = new Set(sc.focus);
+    const bg = sc.pts.filter(p => !labelSet.has(p.iso));
+    const named = sc.pts.filter(p => labelSet.has(p.iso));
     const mk = pts => ({ x: pts.map(p => scale(mx, p.x)), y: pts.map(p => scale(my, p.y)),
       text: pts.map(p => p.name), customdata: pts.map(p => [mx.fmt(p.x), my.fmt(p.y)]) });
     const traces = [{
@@ -1337,9 +1439,18 @@ function drawChart() {
       marker: { color: '#c9d3e0', size: 7 },
       hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
     }];
-    if (fg.length) traces.push({
-      type: 'scatter', mode: 'markers+text', ...mk(fg),
-      marker: { color: '#eb6834', size: 11, line: { color: '#fff', width: 1.5 } },
+    if (sc.fit) {   // the robust line, drawn across the x-range
+      const xs = sc.pts.map(p => p.x), lo = Math.min(...xs), hi = Math.max(...xs);
+      traces.push({
+        type: 'scatter', mode: 'lines', showlegend: false, hoverinfo: 'skip',
+        x: [scale(mx, lo), scale(mx, hi)],
+        y: [scale(my, sc.fit.slope * lo + sc.fit.intercept), scale(my, sc.fit.slope * hi + sc.fit.intercept)],
+        line: { color: '#98a4b8', width: 1.5, dash: 'dash' },
+      });
+    }
+    if (named.length) traces.push({
+      type: 'scatter', mode: 'markers+text', ...mk(named),
+      marker: { color: named.map(p => focusSet.has(p.iso) ? '#eb6834' : '#2a78d6'), size: 11, line: { color: '#fff', width: 1.5 } },
       textposition: 'top center', textfont: { size: 11, color: '#1a2744' },
       hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
     });
@@ -1350,9 +1461,10 @@ function drawChart() {
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: my.label, font: { size: 12 } },
         ticksuffix: my.fmt === pc ? '%' : '' }),
     }), CFG);
-    title.textContent = `${cap(my.label)} against ${mx.label}` +
-      (sc.region ? ` in ${REGION_LABEL[sc.region]}` : '');
-    src.textContent = `Each dot is a country at its latest overlapping year. ${(mx.poolSrc || '').replace(/^Source: /, 'Inequality: ')} ${(my.poolSrc || '').replace(/^Source: /, 'Aspect: ')}`;
+    title.textContent = (sc.fit ? `Who breaks the pattern: ${my.label} against ${mx.label}` :
+      `${cap(my.label)} against ${mx.label}`) + (sc.region ? ` in ${REGION_LABEL[sc.region]}` : '');
+    src.textContent = (sc.fit ? 'Dashed line is a robust (Theil-Sen) fit; labelled countries sit furthest from it. ' : '') +
+      `Each dot is a country at its latest overlapping year. ${(mx.poolSrc || '').replace(/^Source: /, 'Inequality: ')} ${(my.poolSrc || '').replace(/^Source: /, 'Aspect: ')}`;
   }
 
   else if (mode === 'tiers') {
@@ -1528,20 +1640,22 @@ function updateChips() {
   let list;
   const cross = CROSS_CHIP[ctx.metric] || 'income inequality';
   const against = AGAINST[ctx.metric] || 'against inequality';
+  const among = ctx.pool ? 'all countries' : 'among richer countries';
   if (!chain.length) list = START_CHIPS;
   else {
     const last = chain[chain.length - 1];
-    if (last.kind === 'correlate') list = ['across inequality tiers', 'compared to whom', 'over time', cross];
-    else if (last.kind === 'tiers') list = [against, 'over time', 'least equal', cross];
-    else if (last.mode === 'scatter') list = ['across inequality tiers', 'compared to whom', cross];
-    else if (last.kind === 'rank') list = [against, 'over time', 'the other extreme', cross];
+    if (last.kind === 'break') list = ['across inequality tiers', among, 'compared to whom', cross];
+    else if (last.kind === 'correlate') list = ['who breaks the pattern', 'across inequality tiers', among, cross];
+    else if (last.kind === 'tiers') list = ['who breaks the pattern', against, among, cross];
+    else if (last.mode === 'scatter') list = ['who breaks the pattern', 'across inequality tiers', among, cross];
+    else if (last.kind === 'rank') list = [against, 'over time', 'the other extreme', among];
     else if (last.kind === 'delta_rank') list = ['over time', 'compared to whom', 'biggest fallers', cross];
     else if (last.kind === 'threshold') list = [against, 'over time', 'compared to whom', cross];
     else if (last.mode === 'us') list = ['bottom 50% share', 'top 10% share', 'least equal', 'income inequality'];
     else if (last.kind === 'time') list = ['vs the average', against, 'compared to whom', cross];
     else if (last.kind === 'world') list = [against, 'most unequal', 'least equal', cross];
     else if (last.mode === 'lorenz') list = [against, 'compared to whom', cross];
-    else list = [against, 'over time', 'compared to whom', cross];
+    else list = [against, 'over time', 'compared to whom', among];
   }
   el.innerHTML = list.map(e => `<button type="button" class="chip">${e}</button>`).join('');
   el.querySelectorAll('.chip').forEach(b =>
@@ -1627,7 +1741,8 @@ function boot() {
   });
   document.getElementById('clear').addEventListener('click', () => {
     chain.length = 0; ctx.lastIso = null; ctx.metric = 'wealth_gini';
-    ctx.lastRankDir = null; ctx.lastRegion = null;
+    ctx.lastRankDir = null; ctx.lastRegion = null; ctx.lastAspect = null;
+    ctx.pool = null; ctx.lastQuery = null; computePool();
     render();
   });
   document.getElementById('share').addEventListener('click', () => {
