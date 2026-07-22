@@ -79,9 +79,14 @@ METRICS = {
     "us_subprime":       (["subprime", "subprime_share", "share_subprime"], 3, True),
     "us_debt_collections": (["debt_in_collections", "collections_share", "debt_collections"], 3, True),
 }
-POP_COLS = ["pop2018", "population", "county_pop2018", "cty_pop2018", "pop", "count_pop2018"]
-FIPS_COLS = ["county", "cty", "fips", "countyfips", "county_fips", "geoid", "geo_id", "cty_fips"]
-NAME_COLS = ["county_name", "countyname", "cty_name", "name", "czname"]
+POP_COLS = ["pop2018", "population", "county_pop2018", "cty_pop2018", "pop", "count_pop2018", "cty_pop2000"]
+# a full 5-digit county FIPS in one column
+FULL_FIPS_COLS = ["fips", "countyfips", "county_fips", "cty_fips", "geoid", "geo_id", "fips5",
+                  "fips_code", "fipscode", "cty", "cnty_fips", "countyfp5"]
+# a 2-digit state code + a 3-digit within-state county code (e.g. Opportunity Insights county_outcomes)
+STATE_COLS = ["state", "statefp", "statefips", "st_fips", "statefips2010", "statecode"]
+COUNTY_COLS = ["county", "countyfp", "county_code", "cofips", "countycode"]
+NAME_COLS = ["county_name", "countyname", "cty_name", "czname", "name"]
 
 
 def norm_header(cols):
@@ -95,11 +100,36 @@ def find_col(hdr, options):
     return None
 
 
+def digits(v):
+    return str(v).strip().replace('"', "").split(".")[0]
+
+
 def fips5(v):
-    v = str(v).strip().replace('"', "").split(".")[0]
+    v = digits(v)
     if not v.isdigit():
         return None
     return v.zfill(5)[:5] if len(v) <= 5 else None
+
+
+def resolve_fips(rec, cmap):
+    """Return a 5-digit county FIPS from a row, trying a full column first, then state+county."""
+    full = cmap.get("full")
+    if full:
+        f = fips5(rec.get(full, ""))
+        if f and f[:2] in STATE_FIPS:
+            return f
+    st, cty = cmap.get("state"), cmap.get("county")
+    if st and cty:                                   # 2-digit state + 3-digit county (OI county_outcomes)
+        s, c = digits(rec.get(st, "")), digits(rec.get(cty, ""))
+        if s.isdigit() and c.isdigit() and len(s) <= 2 and len(c) <= 3:
+            f = s.zfill(2) + c.zfill(3)
+            if f[:2] in STATE_FIPS:
+                return f
+    if cty:                                          # a lone county column that already holds a full 5-digit FIPS
+        f = fips5(rec.get(cty, ""))
+        if f and f[:2] in STATE_FIPS and len(digits(rec.get(cty, ""))) >= 4:
+            return f
+    return None
 
 
 def scan_csvs():
@@ -141,13 +171,17 @@ def main():
             print(f"  skip {os.path.basename(path)}: {e}")
             continue
         hdr = norm_header(header)
-        fips_col = find_col(hdr, FIPS_COLS)
-        if not fips_col:
-            report.append((os.path.basename(path), "no FIPS column, skipped", 0, []))
-            fh.close()
-            continue
+        cmap = {"full": find_col(hdr, FULL_FIPS_COLS),
+                "state": find_col(hdr, STATE_COLS),
+                "county": find_col(hdr, COUNTY_COLS)}
         present = {mid: find_col(hdr, opts) for mid, (opts, _, _) in METRICS.items()}
         present = {mid: col for mid, col in present.items() if col}
+        has_geo = cmap["full"] or cmap["county"]
+        if not has_geo or not present:
+            why = "no FIPS column" if not has_geo else "no known metric columns"
+            report.append((os.path.basename(path), why + f" — header: {', '.join(header[:16])}", 0, []))
+            fh.close()
+            continue
         pop_col = find_col(hdr, POP_COLS)
         name_col = find_col(hdr, NAME_COLS)
         rows = 0
@@ -155,8 +189,8 @@ def main():
             if not row or len(row) < len(header):
                 continue
             rec = dict(zip(header, row))
-            fips = fips5(rec.get(fips_col, ""))
-            if not fips or fips[:2] not in STATE_FIPS:
+            fips = resolve_fips(rec, cmap)
+            if not fips:
                 continue
             rows += 1
             for mid, col in present.items():
@@ -173,7 +207,7 @@ def main():
                     pass
             if name_col and fips not in names:
                 nm = rec.get(name_col, "").strip()
-                if nm:
+                if nm and not nm.isdigit():
                     st = STATE_ABBR.get(fips[:2], "")
                     names[fips] = f"{nm}, {st}" if st and st not in nm else nm
         fh.close()

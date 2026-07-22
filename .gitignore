@@ -5,3 +5,4 @@ data/raw_us/
 # Python bytecode
 __pycache__/
 *.pyc
+us_raw/
