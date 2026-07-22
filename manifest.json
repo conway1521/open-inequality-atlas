@@ -6,7 +6,7 @@
       "label": "GDP per person",
       "topic": "income",
       "file": "data/gdp_pc.json",
-      "countries": 162,
+      "countries": 164,
       "year_min": 1950,
       "year_max": 2022,
       "source": "OWID / Global Carbon Budget"
@@ -16,7 +16,7 @@
       "label": "income Gini",
       "topic": "income",
       "file": "data/income_gini.json",
-      "countries": 164,
+      "countries": 165,
       "year_min": 1967,
       "year_max": 2021,
       "source": "World Bank PIP via OWID"
@@ -26,7 +26,7 @@
       "label": "median income",
       "topic": "income",
       "file": "data/median_income.json",
-      "countries": 163,
+      "countries": 165,
       "year_min": 1967,
       "year_max": 2021,
       "source": "World Bank PIP via OWID"
@@ -46,7 +46,7 @@
       "label": "CO2 per person",
       "topic": "wellbeing",
       "file": "data/co2_per_capita.json",
-      "countries": 205,
+      "countries": 213,
       "year_min": 1950,
       "year_max": 2024,
       "source": "Global Carbon Budget via OWID"
@@ -56,17 +56,27 @@
       "label": "life expectancy",
       "topic": "wellbeing",
       "file": "data/life_expectancy.json",
-      "countries": 210,
+      "countries": 226,
       "year_min": 1950,
       "year_max": 2019,
       "source": "UN WPP, Clio Infra, Riley via OWID"
+    },
+    {
+      "id": "life_satisfaction",
+      "label": "life satisfaction",
+      "topic": "wellbeing",
+      "file": "data/life_satisfaction.json",
+      "countries": 164,
+      "year_min": 2005,
+      "year_max": 2022,
+      "source": "World Happiness Report via OWID"
     },
     {
       "id": "poverty_rate",
       "label": "poverty rate",
       "topic": "wellbeing",
       "file": "data/poverty_rate.json",
-      "countries": 163,
+      "countries": 165,
       "year_min": 1967,
       "year_max": 2021,
       "source": "World Bank PIP via OWID"

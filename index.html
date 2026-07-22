@@ -390,10 +390,10 @@ footer a { color: inherit; }
         <p class="try" data-qs="most poverty;poverty against inequality;highest CO2 per person"></p>
       </div>
       <div class="block">
-        <h2>Subjective wellbeing</h2>
-        <p>Life satisfaction (the Cantril ladder) is on the way. The page reads
-        <code>data/life_satisfaction.json</code> the moment the pipeline drops
-        it in, same shape as the other modules.</p>
+        <h2>Life satisfaction</h2>
+        <p>The Cantril ladder, 0 to 10, from the Gallup World Poll behind the
+        World Happiness Report. <span id="cov-sat"></span></p>
+        <p class="try" data-qs="life satisfaction against inequality;happiest countries;life satisfaction in France over time"></p>
       </div>
     </div>
   </div>
@@ -497,11 +497,11 @@ function assignColor(key) {
 
 /* ── regions ───────────────────────────────────────────────────────── */
 const REGION_DEF = {
-  europe:  'AND AUT BEL BGR BIH BLR CHE CYP CZE DEU DNK ESP EST FIN FRA GBR GGY GIB GRC HRV HUN IMN IRL ISL ITA JEY LIE LTU LUX LVA MCO MDA MKD MLT MNE NLD NOR POL PRT ROU RUS SMR SRB SVK SVN SWE UKR',
-  africa:  'AGO BDI BEN BFA BWA CAF CIV CMR COD COG COM CPV DJI DZA EGY ERI ETH GAB GHA GIN GMB GNB GNQ KEN LBR LBY LSO MAR MDG MLI MOZ MRT MUS MWI NER NGA RWA SDN SEN SLE SOM SSD STP SWZ SYC TCD TGO TUN TZA UGA ZAF ZMB ZWE',
+  europe:  'ALB AND AUT BEL BGR BIH BLR CHE CYP CZE DEU DNK ESP EST FIN FRA FRO GBR GGY GIB GRC HRV HUN IMN IRL ISL ITA JEY LIE LTU LUX LVA MCO MDA MKD MLT MNE NLD NOR POL PRT ROU RUS SMR SRB SVK SVN SWE UKR XKX',
+  africa:  'AGO BDI BEN BFA BWA CAF CIV CMR COD COG COM CPV DJI DZA EGY ERI ESH ETH GAB GHA GIN GMB GNB GNQ KEN LBR LBY LSO MAR MDG MLI MOZ MRT MUS MWI MYT NAM NER NGA REU RWA SDN SEN SHN SLE SOM SSD STP SWZ SYC TCD TGO TUN TZA UGA ZAF ZMB ZWE',
   asia:    'AFG ARE ARM AZE BGD BHR BRN BTN CHN GEO HKG IDN IND IRN IRQ ISR JOR JPN KAZ KGZ KHM KOR KWT LAO LBN LKA MAC MDV MMR MNG MYS NPL OMN PAK PHL PRK PSE QAT SAU SGP SYR THA TJK TKM TLS TUR TWN UZB VNM YEM',
-  oceania: 'AUS FJI FSM KIR MHL NCL NRU NZL PLW PNG PYF SLB TON TUV VUT WSM',
-  latam:   'ABW AIA ARG ATG BES BHS BLZ BOL BRA BRB CHL COL CRI CUB CUW CYM DMA DOM ECU GRD GTM GUY HND HTI JAM KNA LCA MEX MSR NIC PAN PER PRI PRY SLV SUR SXM TCA TTO URY VCT VEN VGB',
+  oceania: 'ASM AUS COK FJI FSM GUM KIR MHL MNP NCL NIU NRU NZL PLW PNG PYF SLB TKL TON TUV VUT WLF WSM',
+  latam:   'ABW AIA ARG ATG BES BHS BLZ BOL BRA BRB CHL COL CRI CUB CUW CYM DMA DOM ECU GLP GRD GTM GUF GUY HND HTI JAM KNA LCA MAF MEX MSR MTQ NIC PAN PER PRI PRY SLV SPM SUR SXM TCA TTO URY VCT VEN VGB',
   northam: 'BMU CAN GRL USA',
   mideast: 'ARE BHR EGY IRN IRQ ISR JOR KWT LBN OMN PSE QAT SAU SYR TUR YEM',
 };
@@ -549,14 +549,24 @@ function norm(s) {
 
 function buildIndex() {
   const seen = new Set();
-  for (const row of LATEST) {
-    const n = norm(row.geo_name);
-    if (!seen.has(n)) { NAME_INDEX.push({ norm: n, iso: row.geo_id }); seen.add(n); }
+  for (const iso in BY_ISO) {
+    const n = norm(BY_ISO[iso].name);
+    if (n && !seen.has(n)) { NAME_INDEX.push({ norm: n, iso }); seen.add(n); }
   }
   for (const [alias, iso] of Object.entries(ALIASES)) {
     if (BY_ISO[iso] && !seen.has(alias)) { NAME_INDEX.push({ norm: alias, iso }); seen.add(alias); }
   }
   NAME_INDEX.sort((a, b) => b.norm.length - a.norm.length);
+}
+
+// which series metrics a country actually has, in a sensible priority order
+const METRIC_PRIORITY = ['wealth_gini', 'income_gini', 'life_exp', 'life_satisfaction',
+  'poverty_rate', 'median_income', 'gdp_pc', 'co2_pc'];
+function firstMetricFor(iso) {
+  for (const m of METRIC_PRIORITY) {
+    if (latestValOf(m, iso)) return m;
+  }
+  return null;
 }
 
 function findCountries(text) {
@@ -624,6 +634,12 @@ const META = {
     lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. Share below $2.15 a day (2017 PPP).',
     poolSrc: 'Source: World Bank PIP via OWID. Share below the international poverty line, latest survey per country.',
   },
+  life_satisfaction: {
+    label: 'life satisfaction', topic: 'wellbeing', series: true, file: 'data/life_satisfaction.json',
+    fmt: v => v == null ? 'n/a' : v.toFixed(2), fmtD: v => v == null ? 'n/a' : v.toFixed(2), hover: '%{y:.2f}',
+    lineSrc: 'Source: World Happiness Report, Cantril ladder from 0 to 10, Gallup World Poll. Panel 2005 to 2022.',
+    poolSrc: 'Source: World Happiness Report, Cantril ladder (0 to 10), latest year per country.',
+  },
   median_income: {
     label: 'median income', topic: 'income', series: true, file: 'data/median_income.json',
     fmt: usdDay, fmtD: usdDay, hover: '$%{y:.1f}/day',
@@ -690,7 +706,7 @@ function medianSeriesOf(metric, region) {
 }
 
 /* ── conversation context ──────────────────────────────────────────── */
-const ctx = { lastIso: null, metric: 'wealth_gini', lastRankDir: null, lastRegion: null };
+const ctx = { lastIso: null, metric: 'wealth_gini', lastRankDir: null, lastRegion: null, lastAspect: null };
 function focusIsos() {
   const set = [];
   chain.forEach(f => (f.isos || []).forEach(i => { if (!set.includes(i)) set.push(i); }));
@@ -714,7 +730,8 @@ function detectMetrics(r) {
   // bare "income"/"wealth" only if no more specific income/wealth metric already matched
   if (!found.some(k => META[k].topic === 'income') && /\bincome\b|\bearnings\b|\bwages?\b/.test(r)) found.push('income_gini');
   if (!found.some(k => k === 'wealth_gini' || META[k].snap) && /\bwealth\b/.test(r)) found.push('wealth_gini');
-  if (/\bhappiness\b|\bwell\s?being\b|\blife satisfaction\b|\bsatisfaction\b|\bladder\b/.test(r)) found.push('PENDING');
+  push(/\bhappiness\b|\bhappy\b|\blife satisfaction\b|\bsatisfaction\b|\bcantril\b|\bladder\b/, 'life_satisfaction');
+  if (/\bwell\s?being\b/.test(r) && !found.length) found.push('life_satisfaction');
   if (/\bgini\b/.test(r) && !found.length) found.push(META[ctx.metric].giniFam ? ctx.metric : 'wealth_gini');
   return found;
 }
@@ -742,7 +759,8 @@ function parse(raw) {
   const wantsTiers = /\btiers?\b|\bbands?\b|\bterciles?\b|\bquartiles?\b|\bgroup(ed|s)?\b|\bhigh (vs|versus|and) low\b|\bunequal (vs|versus|and)\b/.test(r);
   if (wantsTiers) {
     const aspect = metrics.find(m => !isIneq(m) && META[m].series) ||
-      (META[ctx.metric].series && !isIneq(ctx.metric) ? ctx.metric : 'life_exp');
+      (META[ctx.metric].series && !isIneq(ctx.metric) ? ctx.metric : null) ||
+      ctx.lastAspect || 'life_exp';
     const lens = metrics.find(isIneq) || 'wealth_gini';
     return { kind: 'tiers', aspect, lens, region: region };
   }
@@ -767,6 +785,14 @@ function parse(raw) {
   if ((most && hasUnequal) || (least && hasEqual) || /\bhighest\b|\bworst\b/.test(r)) rankDir = 'high';
   if ((most && hasEqual) || (least && hasUnequal) || /\blowest\b/.test(r)) rankDir = 'low';
   if (!rankDir && (most || least) && !isos.length) rankDir = most ? 'high' : 'low';
+
+  // metric-specific superlatives ("happiest", "healthiest", "greenest")
+  const SUPER = [
+    [/\bhappiest\b/, 'life_satisfaction', 'high'], [/\bunhappiest\b|\bsaddest\b|\bleast happy\b/, 'life_satisfaction', 'low'],
+    [/\bhealthiest\b|\blongest[- ]liv\w*\b/, 'life_exp', 'high'], [/\bunhealthiest\b|\bshortest[- ]liv\w*\b/, 'life_exp', 'low'],
+    [/\bgreenest\b|\bcleanest\b|\blowest emitters?\b/, 'co2_pc', 'low'], [/\bdirtiest\b|\bmost polluting\b|\bbiggest emitters?\b/, 'co2_pc', 'high'],
+  ];
+  for (const [re, mk, dir] of SUPER) if (re.test(r) && !isos.length) return { kind: 'rank', dir, region, metric: mk };
 
   const riser = /\brisers?\b|\brisen\b|\bincreas\w*\b|\bclimb\w*\b|\bgrown\b|\bworsen\w*\b|\bjump\w*\b/.test(r);
   const faller = /\bfallers?\b|\bfallen\b|\bdrop\w*\b|\bdeclin\w*\b|\bdecreas\w*\b|\bimprov\w*\b/.test(r);
@@ -875,7 +901,7 @@ function answer(q) {
     const pts = pairedPoints(p.x, p.y, p.region);
     const r = pearson(pts);
     if (!pts.length || r == null) return miss();
-    ctx.metric = p.x;
+    ctx.metric = p.x; if (!isIneq(p.y)) ctx.lastAspect = p.y;
     const focus = focusIsos().filter(i => pts.some(pt => pt.iso === i));
     if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
     f.mode = 'scatter';
@@ -902,6 +928,7 @@ function answer(q) {
       groups[g].push(av.val);
     }
     if (!groups.high.length || !groups.low.length) return miss();
+    if (!isIneq(p.aspect)) ctx.lastAspect = p.aspect;
     const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
     const mh = mean(groups.high), mm = mean(groups.mid), mlo = mean(groups.low);
     ctx.metric = p.lens;
@@ -945,15 +972,18 @@ function answer(q) {
   }
 
   else if (p.kind === 'profile') {
-    const key = ctx.metric.startsWith('top') || ctx.metric.startsWith('bottom') ? ctx.metric : ctx.metric;
-    const m = META[key];
     const c = BY_ISO[p.iso]; if (!c) return miss();
+    let key = ctx.metric;
+    if (!latestValOf(key, p.iso)) key = firstMetricFor(p.iso);   // fall back to what this country has
+    if (!key) { showNotice(`No data yet for ${esc(c.name)} in this atlas.`); return null; }
+    ctx.metric = key;
+    const m = META[key];
     const lv = latestValOf(key, p.iso); if (!lv) return miss();
     const rk = rankOf(p.iso, key);
     f.isos = [p.iso]; ctx.lastIso = p.iso; f.metricUsed = m.series ? key : 'wealth_gini';
     const rankBit = m.giniFam ? `${ord(rk.rank)} most unequal of ${rk.of}` : `${ord(rk.rank)} of ${rk.of}`;
     f.text = `<strong>${esc(c.name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> in ${lv.year}, ${rankBit}.`;
-    if (key === 'wealth_gini' && c.latest.top1_wealth_share != null)
+    if (key === 'wealth_gini' && c.latest && c.latest.top1_wealth_share != null)
       f.text += ` The top 1% hold <strong>${pc(c.latest.top1_wealth_share)}</strong>.`;
     if (!m.series) f.mode = 'bars', f.bar = barFor(key, p.iso);
   }
@@ -1176,6 +1206,7 @@ function ask(q) {
   hideNotice();
   const f = answer(q);
   if (!f) return;
+  if (META[ctx.metric] && META[ctx.metric].series && !isIneq(ctx.metric)) ctx.lastAspect = ctx.metric;
   const lineIsos = new Set(chain.filter(x => x.mode === 'lines').flatMap(x => x.isos));
   f.isos.forEach(i => lineIsos.add(i));
   if (f.mode === 'lines' && lineIsos.size > 8) {
@@ -1481,16 +1512,16 @@ function drawChart() {
 }
 
 /* ── chips: follow-ups track the conversation ──────────────────────── */
-const START_CHIPS = ['life expectancy against inequality', 'least equal', 'poverty across inequality tiers', 'income inequality', 'highest CO2 per person'];
+const START_CHIPS = ['life satisfaction against inequality', 'life expectancy across inequality tiers', 'least equal', 'poverty against inequality', 'income inequality'];
 // what an aspect scatters against, and what an inequality metric scatters onto
-const AGAINST = { wealth_gini: 'life expectancy against inequality', income_gini: 'poverty against inequality',
+const AGAINST = { wealth_gini: 'life satisfaction against inequality', income_gini: 'poverty against inequality',
   life_exp: 'against inequality', co2_pc: 'against inequality', poverty_rate: 'against inequality',
-  median_income: 'against inequality', gdp_pc: 'against inequality',
-  top1_wealth_share: 'life expectancy against inequality', top10_wealth_share: 'life expectancy against inequality',
-  bottom50_wealth_share: 'life expectancy against inequality' };
-const CROSS_CHIP = { wealth_gini: 'income inequality', income_gini: 'life expectancy',
-  life_exp: 'CO2 per person', co2_pc: 'poverty', poverty_rate: 'median income',
-  median_income: 'life expectancy', gdp_pc: 'life expectancy' };
+  median_income: 'against inequality', gdp_pc: 'against inequality', life_satisfaction: 'against inequality',
+  top1_wealth_share: 'life satisfaction against inequality', top10_wealth_share: 'life satisfaction against inequality',
+  bottom50_wealth_share: 'life satisfaction against inequality' };
+const CROSS_CHIP = { wealth_gini: 'income inequality', income_gini: 'poverty',
+  life_exp: 'life satisfaction', co2_pc: 'life satisfaction', poverty_rate: 'life satisfaction',
+  median_income: 'life expectancy', gdp_pc: 'life satisfaction', life_satisfaction: 'life expectancy' };
 
 function updateChips() {
   const el = document.getElementById('chips');
@@ -1576,6 +1607,7 @@ function fillCoverage() {
   cov('life_exp', 'cov-life');
   cov('co2_pc', 'cov-co2');
   cov('poverty_rate', 'cov-poverty');
+  cov('life_satisfaction', 'cov-sat');
 }
 
 function boot() {
@@ -1646,6 +1678,7 @@ Promise.all([
   loadJson('data/wealth_latest.json'),
   loadJson('data/wealth_timeseries.json'),
   loadJson('data/us_longrun.json'),
+  opt('data/geo_names.json'),
   opt('data/income_gini.json'),
   opt('data/life_expectancy.json'),
   opt('data/co2_per_capita.json'),
@@ -1653,9 +1686,15 @@ Promise.all([
   opt('data/median_income.json'),
   opt('data/gdp_pc.json'),
   opt('data/life_satisfaction.json'),
-]).then(([latest, ts, us, income, life, co2, pov, medinc, gdp, sat]) => {
+]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat]) => {
   LATEST = latest; US = us;
-  for (const r of latest) BY_ISO[r.geo_id] = { name: r.geo_name, latest: r };
+  // spine is the union of every country any module knows, named from geo_names
+  const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
+  for (const iso in names) BY_ISO[iso] = { name: names[iso], latest: null };
+  for (const r of latest) {
+    if (!BY_ISO[r.geo_id]) BY_ISO[r.geo_id] = { name: r.geo_name, latest: null };
+    BY_ISO[r.geo_id].latest = r;
+  }
   const wg = {};
   for (const r of ts) if (BY_ISO[r.geo_id] && r.wealth_gini != null)
     (wg[r.geo_id] = wg[r.geo_id] || []).push({ year: r.year, v: r.wealth_gini });
@@ -1667,13 +1706,7 @@ Promise.all([
   SERIES.poverty_rate = toSeries(pov);
   SERIES.median_income = toSeries(medinc);
   SERIES.gdp_pc = toSeries(gdp);
-  if (sat && Object.keys(sat).length) {
-    SERIES.life_satisfaction = toSeries(sat);
-    META.life_satisfaction = { label: 'life satisfaction', topic: 'wellbeing', series: true,
-      fmt: v => v == null ? 'n/a' : v.toFixed(1), fmtD: v => v == null ? 'n/a' : v.toFixed(1), hover: '%{y:.1f}',
-      lineSrc: 'Source: World Happiness Report, Cantril ladder (0 to 10), via Our World in Data.',
-      poolSrc: 'Source: World Happiness Report via OWID, latest year per country.' };
-  }
+  if (sat && Object.keys(sat).length) SERIES.life_satisfaction = toSeries(sat);
 
   buildIndex();
   boot();
