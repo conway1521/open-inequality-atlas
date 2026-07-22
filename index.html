@@ -101,6 +101,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 28px; }
   letter-spacing: 0.07em; color: var(--ink-3); width: 118px; flex-shrink: 0;
 }
 .help-v { display: flex; flex-wrap: wrap; gap: 6px; }
+.help-intro { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
 .help-foot { font-size: 12px; color: var(--ink-3); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
 @media (max-width: 540px) { .help-row { flex-direction: column; gap: 4px; } .help-k { width: auto; } }
 
@@ -144,6 +145,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 28px; }
 #facts li .n { font-family: var(--mono); font-size: 11px; color: var(--ink-3); flex-shrink: 0; width: 18px; }
 #facts li .t { flex: 1; color: var(--ink-2); }
 #facts li .t strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+#facts li .t em { font-style: normal; color: var(--ink-3); }
+.upd { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--accent); border: 1px solid #c9d9ec; border-radius: 4px; padding: 0 4px; margin-left: 4px; vertical-align: 1px; }
 #facts li .x {
   font-family: var(--mono); background: none; border: none; cursor: pointer;
   color: var(--ink-3); font-size: 13px; padding: 0 2px; flex-shrink: 0;
@@ -156,6 +160,22 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 28px; }
   border: 1px solid var(--border); border-radius: 12px;
   padding: 18px 18px 8px;
 }
+.facets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; align-items: center; }
+.facets:empty { display: none; }
+.facet-lead { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); margin-right: 2px; }
+.facet {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px;
+}
+.facet .k { color: var(--ink-3); }
+.facet.lens { border-color: #c9d9ec; }
+.facet.filter { background: #fff5ef; border-color: #f2d3c1; }
+.facet button {
+  font-family: var(--mono); background: none; border: none; cursor: pointer;
+  color: var(--ink-3); font-size: 12px; padding: 0; line-height: 1;
+}
+.facet button:hover { color: var(--ink); }
 .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
 #chart { width: 100%; height: 380px; }
 .chart-src {
@@ -278,14 +298,15 @@ footer a { color: inherit; }
       </form>
       <div class="chips" id="chips"></div>
       <div class="help" id="help" hidden>
-        <div class="help-row"><span class="help-k">Hold against inequality</span><span class="help-v" data-qs="life expectancy against inequality;poverty against inequality;median income against inequality"></span></div>
-        <div class="help-row"><span class="help-k">Or by tier</span><span class="help-v" data-qs="life expectancy across inequality tiers;CO2 across inequality tiers"></span></div>
-        <div class="help-row"><span class="help-k">Start with a place</span><span class="help-v" data-qs="France;the United States;Brazil in 2000"></span></div>
-        <div class="help-row"><span class="help-k">Or an extreme</span><span class="help-v" data-qs="least equal;highest life expectancy;most poverty"></span></div>
-        <div class="help-row"><span class="help-k">Then slice</span><span class="help-v" data-qs="over time;compared to whom;vs the average;the other extreme"></span></div>
-        <div class="help-row"><span class="help-k">Switch measure</span><span class="help-v" data-qs="income inequality;life expectancy;poverty;CO2 per person"></span></div>
-        <div class="help-row"><span class="help-k">Or a region</span><span class="help-v" data-qs="Africa average;least equal in Latin America"></span></div>
-        <p class="help-foot">Answers stack into a chain. Remove any line with its &times;, or clear and start again.</p>
+        <p class="help-intro">Seven moves. Start with any one, then chain them: each answer keeps its place and the chart follows.</p>
+        <div class="help-row"><span class="help-k">Place</span><span class="help-v" data-qs="France;France vs Germany;the United States"></span></div>
+        <div class="help-row"><span class="help-k">Rank</span><span class="help-v" data-qs="least equal;happiest countries;most poverty;biggest risers since 2000"></span></div>
+        <div class="help-row"><span class="help-k">Trace</span><span class="help-v" data-qs="over time;since 2000;Brazil in 2000"></span></div>
+        <div class="help-row"><span class="help-k">Hold against</span><span class="help-v" data-qs="life satisfaction against inequality;poverty against inequality;France's path against life expectancy"></span></div>
+        <div class="help-row"><span class="help-k">Split</span><span class="help-v" data-qs="life expectancy across inequality tiers;CO2 across inequality tiers"></span></div>
+        <div class="help-row"><span class="help-k">Break</span><span class="help-v" data-qs="who breaks the pattern"></span></div>
+        <div class="help-row"><span class="help-k">Among</span><span class="help-v" data-qs="among richer countries;least equal in Europe;all countries"></span></div>
+        <p class="help-foot">Answers stack into a chain. Remove any line with its &times; and the rest re-runs; the cell above the chart shows where you are.</p>
       </div>
       <div class="notice" id="notice" hidden></div>
     </section>
@@ -300,6 +321,7 @@ footer a { color: inherit; }
       </div>
       <ol id="facts"></ol>
       <div class="chart-card">
+        <div class="facets" id="facets"></div>
         <div class="chart-title" id="chart-title"></div>
         <div id="chart"></div>
         <p class="chart-src" id="chart-src"></p>
@@ -690,7 +712,7 @@ function seriesOf(metric, iso) { return (SERIES[metric] || {})[iso] || []; }
 
 const medianCache = {};
 function medianSeriesOf(metric, region) {
-  const key = metric + '|' + (region || 'world') + '|' + (medianCache.gen || 0);
+  const key = metric + '|' + (region || 'world') + '|' + (ctx.region || '') + '|' + (medianCache.gen || 0);
   if (medianCache[key]) return medianCache[key];
   const byYear = {};
   const s = SERIES[metric] || {};
@@ -707,7 +729,8 @@ function medianSeriesOf(metric, region) {
 
 /* ── conversation context ──────────────────────────────────────────── */
 const ctx = { lastIso: null, metric: 'wealth_gini', lastRankDir: null, lastRegion: null,
-  lastAspect: null, pool: null, lastQuery: null };
+  lastAspect: null, pool: null, lastQuery: null, region: null };
+function setRegion(r) { if (r !== ctx.region) { ctx.region = r; medianCache.gen = (medianCache.gen || 0) + 1; } }
 function focusIsos() {
   const set = [];
   chain.forEach(f => (f.isos || []).forEach(i => { if (!set.includes(i)) set.push(i); }));
@@ -726,7 +749,7 @@ function computePool() {
   medianCache.gen = (medianCache.gen || 0) + 1;   // pool change invalidates cached medians
 }
 function inScope(iso, region) {
-  return inRegion(iso, region) && (POOL_SET === null || POOL_SET.has(iso));
+  return inRegion(iso, region) && inRegion(iso, ctx.region) && (POOL_SET === null || POOL_SET.has(iso));
 }
 
 /* ── parsing ───────────────────────────────────────────────────────── */
@@ -784,6 +807,16 @@ function parse(raw) {
     if (cue && (rich || poor) && !isos.length)
       return { kind: 'among', pool: { label: rich ? 'richer countries' : 'poorer countries',
         metric: 'gdp_pc', dir: rich ? 'high' : 'low' }, region };
+  }
+
+  // PATH: one place's journey through lens x aspect space over the years
+  if (/\bpath\b|\btrajectory\b|\bjourney\b|\bhas travell?ed\b/.test(r)) {
+    const iso = isos[0] || ctx.lastIso;
+    if (iso) {
+      const y = metrics.find(m => !isIneq(m) && META[m].series) || ctx.lastAspect || 'life_exp';
+      const x = metrics.find(isIneq) || (isIneq(ctx.metric) ? ctx.metric : 'wealth_gini');
+      return { kind: 'path', iso, x, y };
+    }
   }
 
   // correlate: relate two measures across countries
@@ -940,6 +973,8 @@ function answer(q) {
     return null;
   }
 
+  if (p.region) setRegion(p.region);   // a named region becomes the standing geography
+
   let f = { id: ++factSeq, query: q, kind: p.kind, isos: [], mode: 'lines', bar: null, metric: null, marker: null };
 
   if (p.kind === 'correlate') {
@@ -995,8 +1030,23 @@ function answer(q) {
     f.text = t;
   }
 
+  else if (p.kind === 'path') {
+    const mx = META[p.x], my = META[p.y];
+    const sx = seriesOf(p.x, p.iso), sy = seriesOf(p.y, p.iso);
+    const yv = {}; for (const d of sy) yv[d.year] = d.v;
+    const pts = sx.filter(d => yv[d.year] != null).map(d => ({ year: d.year, x: d.v, y: yv[d.year] }));
+    if (pts.length < 3) return miss();
+    ctx.metric = p.x; ctx.lastAspect = p.y; ctx.lastIso = p.iso; f.isos = [p.iso];
+    f.mode = 'path'; f.path = { iso: p.iso, x: p.x, y: p.y, pts };
+    const a = pts[0], z = pts[pts.length - 1];
+    f.text = `<strong>${esc(BY_ISO[p.iso].name)}</strong>'s path, ${a.year} to ${z.year}: as ${mx.label} went ` +
+      `<strong>${mx.fmt(a.x)}</strong> to <strong>${mx.fmt(z.x)}</strong>, ${my.label} went ` +
+      `<strong>${my.fmt(a.y)}</strong> to <strong>${my.fmt(z.y)}</strong>.`;
+  }
+
   else if (p.kind === 'among') {
     ctx.pool = p.pool; computePool();
+    if (p.pool === null) setRegion(null);   // "all countries" also drops any region
     if (!ctx.lastQuery) {
       const label = p.pool ? p.pool.label : 'all countries';
       f.kind = 'poolset'; f.mode = chain.length ? chain[chain.length - 1].mode : 'lines';
@@ -1299,14 +1349,31 @@ function answer(q) {
 }
 
 /* ── session ───────────────────────────────────────────────────────── */
-function ask(q) {
-  hideNotice();
+// answer + the standing-context annotations, shared by ask() and recomputeChain()
+function runQuery(q) {
   const isAmong = /\bamong\b|\ball countries\b|\beveryone\b|\bonly (rich|poor|the)\b|\brestrict\b|\bdrop the (filter|condition|pool)\b/.test(norm(q));
   const f = answer(q);
-  if (!f) return;
+  if (!f) return null;
   if (META[ctx.metric] && META[ctx.metric].series && !isIneq(ctx.metric)) ctx.lastAspect = ctx.metric;
+  if (ctx.region && !f.noChart) {
+    const rl = REGION_LABEL[ctx.region];
+    if (!f.text.includes(rl)) f.text = f.text.replace(/\s*$/, '') + ` <em>in ${rl}</em>`;
+  }
   if (ctx.pool && !/among /i.test(f.text)) f.text = f.text.replace(/\s*$/, '') + poolNote();
   if (!isAmong) ctx.lastQuery = q;   // AMONG re-runs this; never re-runs itself
+  return f;
+}
+
+function resetCtx() {
+  ctx.lastIso = null; ctx.metric = 'wealth_gini'; ctx.lastRankDir = null; ctx.lastRegion = null;
+  ctx.lastAspect = null; ctx.pool = null; ctx.lastQuery = null; ctx.region = null; computePool();
+}
+
+function ask(q) {
+  hideNotice();
+  chain.forEach(f => { f.changed = false; });   // clear stale badges on any new move
+  const f = runQuery(q);
+  if (!f) return;
   const lineIsos = new Set(chain.filter(x => x.mode === 'lines').flatMap(x => x.isos));
   f.isos.forEach(i => lineIsos.add(i));
   if (f.mode === 'lines' && lineIsos.size > 8) {
@@ -1318,9 +1385,25 @@ function ask(q) {
   document.getElementById('q').value = '';
 }
 
+// re-run the whole chain from its queries on a fresh context; flag lines whose answer shifted
+function recomputeChain() {
+  const items = chain.map(f => ({ id: f.id, query: f.query, oldText: f.text }));
+  resetCtx();
+  chain.length = 0;
+  for (const it of items) {
+    const nf = runQuery(it.query);
+    if (!nf) continue;                    // query no longer resolves under new state: drop it
+    nf.id = it.id;
+    nf.changed = nf.text !== it.oldText;
+    chain.push(nf);
+  }
+}
+
 function removeFact(id) {
   const i = chain.findIndex(f => f.id === id);
-  if (i !== -1) chain.splice(i, 1);
+  if (i === -1) return;
+  chain.splice(i, 1);
+  recomputeChain();                       // deletion may change later answers; re-run and mark them
   render();
 }
 
@@ -1335,12 +1418,33 @@ function render() {
   }
   session.hidden = false;
   list.innerHTML = chain.map((f, i) =>
-    `<li><span class="n">${i + 1}</span><span class="t">${f.text}</span>` +
+    `<li><span class="n">${i + 1}</span><span class="t">${f.text}` +
+    `${f.changed ? ' <span class="upd">updated</span>' : ''}</span>` +
     `<button class="x" data-id="${f.id}" title="remove">&times;</button></li>`).join('');
   list.querySelectorAll('.x').forEach(b =>
     b.addEventListener('click', () => removeFact(Number(b.dataset.id))));
+  renderStrip();
   drawChart();
   history.replaceState(null, '', '#' + chain.map(f => encodeURIComponent(f.query)).join('|'));
+}
+
+// the facet strip: the current cube cell, made visible and (for filters) clearable
+function renderStrip() {
+  const el = document.getElementById('facets');
+  if (!el) return;
+  const chips = [];
+  const m = META[ctx.metric];
+  if (m) chips.push(`<span class="facet"><span class="k">measure</span> ${m.label}</span>`);
+  if (ctx.lastAspect && ctx.lastAspect !== ctx.metric)
+    chips.push(`<span class="facet lens"><span class="k">against</span> ${META[ctx.lastAspect].label}</span>`);
+  if (ctx.region)
+    chips.push(`<span class="facet filter"><span class="k">in</span> ${REGION_LABEL[ctx.region]} <button data-clear="1" title="all countries">&times;</button></span>`);
+  if (ctx.pool)
+    chips.push(`<span class="facet filter"><span class="k">among</span> ${ctx.pool.label} <button data-clear="1" title="all countries">&times;</button></span>`);
+  el.innerHTML = chips.length > 1 || ctx.region || ctx.pool
+    ? `<span class="facet-lead">cell</span>` + chips.join('') : '';
+  el.querySelectorAll('button[data-clear]').forEach(b =>
+    b.addEventListener('click', () => ask('all countries')));
 }
 
 /* ── chart ─────────────────────────────────────────────────────────── */
@@ -1465,6 +1569,32 @@ function drawChart() {
       `${cap(my.label)} against ${mx.label}`) + (sc.region ? ` in ${REGION_LABEL[sc.region]}` : '');
     src.textContent = (sc.fit ? 'Dashed line is a robust (Theil-Sen) fit; labelled countries sit furthest from it. ' : '') +
       `Each dot is a country at its latest overlapping year. ${(mx.poolSrc || '').replace(/^Source: /, 'Inequality: ')} ${(my.poolSrc || '').replace(/^Source: /, 'Aspect: ')}`;
+  }
+
+  else if (mode === 'path') {
+    const pa = chain.slice().reverse().find(f => f.mode === 'path').path;
+    const mx = META[pa.x], my = META[pa.y];
+    const scale = (m, v) => m.fmt === pc ? v * 100 : v;
+    const pts = pa.pts;
+    const xs = pts.map(p => scale(mx, p.x)), ys = pts.map(p => scale(my, p.y));
+    const traces = [{
+      type: 'scatter', mode: 'lines+markers',
+      x: xs, y: ys, text: pts.map(p => p.year),
+      line: { color: '#c9d3e0', width: 1.5 },
+      marker: { size: 8, color: pts.map((_, i) => i), colorscale: [[0, '#cde2fb'], [1, '#0d366b']], line: { color: '#fff', width: 1 } },
+      hovertemplate: '%{text}<br>' + mx.label + ': %{x}<br>' + my.label + ': %{y}<extra></extra>',
+    }];
+    const ann = [[0, 'start'], [pts.length - 1, 'latest']].map(([i]) => ({
+      x: xs[i], y: ys[i], text: '' + pts[i].year, showarrow: false,
+      yshift: 12, font: { size: 11, color: '#1a2744' },
+    }));
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 16, b: 44, l: 56 }, annotations: ann,
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: mx.label, font: { size: 12 } }, ticksuffix: mx.fmt === pc ? '%' : '' }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' }),
+    }), CFG);
+    title.textContent = `${BY_ISO[pa.iso].name}: ${my.label} against ${mx.label} over time`;
+    src.textContent = `The path runs light (earliest) to dark (latest). ${(mx.lineSrc || '').replace(/^Source: /, mx.label + ': ')}`;
   }
 
   else if (mode === 'tiers') {
@@ -1644,8 +1774,10 @@ function updateChips() {
   if (!chain.length) list = START_CHIPS;
   else {
     const last = chain[chain.length - 1];
+    const pathChip = ctx.lastIso && ctx.lastAspect ? `${BY_ISO[ctx.lastIso].name}'s path` : null;
     if (last.kind === 'break') list = ['across inequality tiers', among, 'compared to whom', cross];
-    else if (last.kind === 'correlate') list = ['who breaks the pattern', 'across inequality tiers', among, cross];
+    else if (last.kind === 'path') list = ['who breaks the pattern', 'across inequality tiers', among, cross];
+    else if (last.kind === 'correlate') list = ['who breaks the pattern', 'across inequality tiers', pathChip || among, cross].filter(Boolean);
     else if (last.kind === 'tiers') list = ['who breaks the pattern', against, among, cross];
     else if (last.mode === 'scatter') list = ['who breaks the pattern', 'across inequality tiers', among, cross];
     else if (last.kind === 'rank') list = [against, 'over time', 'the other extreme', among];
@@ -1740,9 +1872,7 @@ function boot() {
     if (v) { setHelp(false); ask(v); }
   });
   document.getElementById('clear').addEventListener('click', () => {
-    chain.length = 0; ctx.lastIso = null; ctx.metric = 'wealth_gini';
-    ctx.lastRankDir = null; ctx.lastRegion = null; ctx.lastAspect = null;
-    ctx.pool = null; ctx.lastQuery = null; computePool();
+    chain.length = 0; resetCtx();
     render();
   });
   document.getElementById('share').addEventListener('click', () => {
@@ -1773,7 +1903,7 @@ function boot() {
 
   if (location.hash.length > 1) {
     location.hash.slice(1).split('|').slice(0, 12)
-      .map(decodeURIComponent).forEach(q => { const f = answer(q); if (f) chain.push(f); });
+      .map(decodeURIComponent).forEach(q => { const f = runQuery(q); if (f) chain.push(f); });
     if (chain.length) render();
   }
 }
