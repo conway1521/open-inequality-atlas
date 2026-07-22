@@ -301,15 +301,12 @@ footer a { color: inherit; }
       </form>
       <div class="chips" id="chips"></div>
       <div class="help" id="help" hidden>
-        <p class="help-intro">Seven moves. Start with any one, then chain them: each answer keeps its place and the chart follows.</p>
-        <div class="help-row"><span class="help-k">Place</span><span class="help-v" data-qs="France;France vs Germany;the United States"></span></div>
-        <div class="help-row"><span class="help-k">Rank</span><span class="help-v" data-qs="least equal;happiest countries;most poverty;biggest risers since 2000"></span></div>
-        <div class="help-row"><span class="help-k">Trace</span><span class="help-v" data-qs="over time;since 2000;Brazil in 2000"></span></div>
-        <div class="help-row"><span class="help-k">Hold against</span><span class="help-v" data-qs="life satisfaction against inequality;poverty against inequality;France's path against life expectancy"></span></div>
-        <div class="help-row"><span class="help-k">Split</span><span class="help-v" data-qs="life expectancy across inequality tiers;CO2 across inequality tiers"></span></div>
-        <div class="help-row"><span class="help-k">Break</span><span class="help-v" data-qs="who breaks the pattern"></span></div>
-        <div class="help-row"><span class="help-k">Among</span><span class="help-v" data-qs="among richer countries;least equal in Europe;all countries"></span></div>
-        <p class="help-foot">Answers stack into a chain. Remove any line with its &times; and the rest re-runs; the cell above the chart shows where you are.</p>
+        <p class="help-intro">The argument runs in two steps. First, see how the two inequalities split apart. Then take everyday measures and see which gap they track.</p>
+        <div class="help-row"><span class="help-k">The two gaps</span><span class="help-v" data-qs="wealth vs income in the US;wealth vs income in France"></span></div>
+        <div class="help-row"><span class="help-k">What each touches</span><span class="help-v" data-qs="life expectancy and inequality;life satisfaction and inequality;poverty and inequality;median income and inequality"></span></div>
+        <div class="help-row"><span class="help-k">A single place</span><span class="help-v" data-qs="France;Brazil in 2000;happiest countries"></span></div>
+        <div class="help-row"><span class="help-k">Or zoom in</span><span class="help-v" data-qs="the United States"></span></div>
+        <p class="help-foot">Each answer stays; the chain builds a case. Ask freely too: rank, over time, who breaks the pattern, among richer countries. Remove any line with its &times; and the rest re-runs.</p>
       </div>
       <div class="notice" id="notice" hidden></div>
     </section>
@@ -908,19 +905,15 @@ function parse(raw) {
     const lens = metrics.find(isIneq) || 'wealth_gini';
     return { kind: 'tiers', aspect, lens, region: region };
   }
-  if (wantsCorr) {
-    let x, y;
-    const ineqNamed = metrics.find(isIneq);
-    const aspectNamed = metrics.find(m => !isIneq(m) && META[m].series);
-    if (metrics.length >= 2) {
-      x = metrics.find(isIneq) || (META[metrics[0]].series ? metrics[0] : 'wealth_gini');
-      y = metrics.find(m => m !== x && META[m].series) || metrics.find(m => m !== x) || 'life_exp';
-    } else {
-      x = ineqNamed || (isIneq(ctx.metric) ? ctx.metric : 'wealth_gini');
-      y = aspectNamed || (META[ctx.metric].series && ctx.metric !== x ? ctx.metric : 'life_exp');
-      if (x === y) y = x === 'wealth_gini' ? 'life_exp' : 'wealth_gini';
-    }
-    return { kind: 'correlate', x, y, region };
+  const aspectHere = metrics.find(m => !isIneq(m) && META[m].series);
+  const ineqWord = /\binequality\b|\bunequal\b|\bgini\b|\bconcentrat\w*\b/.test(r);
+  if (wantsCorr || (aspectHere && ineqWord)) {
+    const y = aspectHere || (META[ctx.metric].series && !isIneq(ctx.metric) ? ctx.metric : ctx.lastAspect) || 'life_exp';
+    const wealthOnly = /\bwealth (inequality|gini|concentration)\b/.test(r) && !/\bincome\b/.test(r);
+    const incomeOnly = /\bincome (inequality|gini)\b/.test(r) && !/\bwealth\b/.test(r);
+    if (wealthOnly) return { kind: 'correlate', x: 'wealth_gini', y, region };
+    if (incomeOnly) return { kind: 'correlate', x: 'income_gini', y, region };
+    return { kind: 'contrast', y, region };   // default: pit wealth against income and name the winner
   }
 
   const hasEqual = /\bequal\b/.test(r), hasUnequal = /\bunequal\b|\binequality\b/.test(r);
@@ -1065,7 +1058,38 @@ function answer(q) {
 
   let f = { id: ++factSeq, query: q, kind: p.kind, isos: [], mode: 'lines', bar: null, metric: null, marker: null };
 
-  if (p.kind === 'correlate') {
+  if (p.kind === 'contrast') {
+    const y = p.y, my = META[y];
+    const wPts = [], iPts = [];
+    for (const iso in BY_ISO) {
+      if (!inScope(iso, p.region)) continue;
+      const yv = latestValOf(y, iso), wv = latestValOf('wealth_gini', iso), iv = latestValOf('income_gini', iso);
+      if (yv && wv) wPts.push({ iso, name: BY_ISO[iso].name, x: wv.val, y: yv.val });
+      if (yv && iv) iPts.push({ iso, name: BY_ISO[iso].name, x: iv.val, y: yv.val });
+    }
+    const rW = pearson(wPts), rI = pearson(iPts);
+    if (rW == null && rI == null) return miss();
+    ctx.metric = 'wealth_gini'; ctx.lastAspect = y;
+    const focus = focusIsos().filter(i => wPts.some(p2 => p2.iso === i) || iPts.some(p2 => p2.iso === i));
+    if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
+    f.mode = 'contrast';
+    f.contrast = { y, wPts, iPts, rW, rI, focus, region: p.region };
+    const aW = Math.abs(rW || 0), aI = Math.abs(rI || 0);
+    const wealthWins = aW >= aI;
+    const win = wealthWins ? 'wealth' : 'income', winR = wealthWins ? rW : rI, other = wealthWins ? rI : rW;
+    const gap = Math.abs(aW - aI);
+    const closeness = gap < 0.05 ? 'about as closely as' : gap < 0.12 ? 'a little more closely than' : 'more closely than';
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    let t = `Across ${wPts.length} countries${where}, ${my.label} tracks <strong>${win} inequality</strong> ` +
+      `${closeness} ${wealthWins ? 'income' : 'wealth'} inequality (r = <strong>${winR.toFixed(2)}</strong> vs ${other.toFixed(2)}).`;
+    // keep the wealth thread honest: income is the familiar cross-country link, but it is the gap that stopped growing
+    t += wealthWins
+      ? ' And wealth is the gap still climbing.'
+      : ' Income is the familiar cross-country link, but it is the gap that has stopped widening; wealth keeps climbing, and shows up closer to the ground.';
+    f.text = t;
+  }
+
+  else if (p.kind === 'correlate') {
     const mx = META[p.x], my = META[p.y];
     const pts = pairedPoints(p.x, p.y, p.region);
     const r = pearson(pts);
@@ -1681,6 +1705,34 @@ function drawChart() {
       `Each dot is a country at its latest overlapping year. ${(mx.poolSrc || '').replace(/^Source: /, 'Inequality: ')} ${(my.poolSrc || '').replace(/^Source: /, 'Aspect: ')}`;
   }
 
+  else if (mode === 'contrast') {
+    const c = chain.slice().reverse().find(f => f.mode === 'contrast').contrast;
+    const my = META[c.y], scy = v => my.fmt === pc ? v * 100 : v;
+    const foc = new Set(c.focus);
+    const panel = (pts, xaxis, color) => {
+      const bg = pts.filter(p => !foc.has(p.iso)), fg = pts.filter(p => foc.has(p.iso));
+      const mk = (a, hl) => ({ type: 'scatter', mode: hl ? 'markers+text' : 'markers', xaxis, yaxis: 'y',
+        x: a.map(p => p.x), y: a.map(p => scy(p.y)), text: a.map(p => hl ? p.name : ''),
+        customdata: a.map(p => p.name), textposition: 'top center', textfont: { size: 10, color: '#1a2744' },
+        marker: { color: hl ? '#eb6834' : color, size: hl ? 10 : 6, opacity: hl ? 1 : 0.55, line: hl ? { color: '#fff', width: 1.5 } : {} },
+        hovertemplate: '%{customdata}<br>%{x:.2f} · ' + my.label + ' %{y}<extra></extra>', showlegend: false });
+      return fg.length ? [mk(bg, false), mk(fg, true)] : [mk(bg, false)];
+    };
+    const traces = [...panel(c.wPts, 'x', '#2a78d6'), ...panel(c.iPts, 'x2', '#98a4b8')];
+    const rTxt = (r, dom) => ({ x: dom, y: 1.06, xref: 'paper', yref: 'paper', xanchor: 'center',
+      text: r == null ? '' : `r = ${r.toFixed(2)}`, showarrow: false, font: { size: 12, color: '#1a2744' } });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 24, r: 10, b: 42, l: 52 },
+      annotations: [rTxt(c.rW, 0.23), rTxt(c.rI, 0.80)],
+      xaxis: { domain: [0, 0.46], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'wealth Gini', font: { size: 12 } } },
+      xaxis2: { domain: [0.54, 1], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'income Gini', font: { size: 12 } } },
+      yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' },
+    }), CFG);
+    title.textContent = `${cap(my.label)}: wealth inequality or income?` + (c.region ? ` (${REGION_LABEL[c.region]})` : '');
+    src.textContent = `Same measure against each inequality, one country per dot. The tighter cloud is the stronger link. ` +
+      `Wealth: WID. Income: World Bank PIP. ${my.poolSrc ? my.poolSrc.replace(/^Source: /, my.label[0].toUpperCase() + my.label.slice(1) + ': ') : ''}`;
+  }
+
   else if (mode === 'divergence') {
     const dv = chain.slice().reverse().find(f => f.mode === 'divergence').diverge;
     const w = dv.w, inc = dv.inc, base = dv.base;
@@ -1892,45 +1944,37 @@ function drawChart() {
 }
 
 /* ── chips: follow-ups track the conversation ──────────────────────── */
-const START_CHIPS = ['wealth vs income in the US', 'least equal on wealth', 'life satisfaction against inequality', 'who breaks the pattern', 'happiest countries'];
-// what an aspect scatters against, and what an inequality metric scatters onto
-const AGAINST = { wealth_gini: 'life satisfaction against inequality', income_gini: 'poverty against inequality',
-  life_exp: 'against inequality', co2_pc: 'against inequality', poverty_rate: 'against inequality',
-  median_income: 'against inequality', gdp_pc: 'against inequality', life_satisfaction: 'against inequality',
-  top1_wealth_share: 'life satisfaction against inequality', top10_wealth_share: 'life satisfaction against inequality',
-  bottom50_wealth_share: 'life satisfaction against inequality' };
-const CROSS_CHIP = { wealth_gini: 'income inequality', income_gini: 'poverty',
-  life_exp: 'life satisfaction', co2_pc: 'life satisfaction', poverty_rate: 'life satisfaction',
-  median_income: 'life expectancy', gdp_pc: 'life satisfaction', life_satisfaction: 'life expectancy' };
+// the guided argument: the divergence, then everyday measures against the two inequalities
+const ASPECT_CHIP = { life_exp: 'life expectancy and inequality', life_satisfaction: 'life satisfaction and inequality',
+  poverty_rate: 'poverty and inequality', median_income: 'median income and inequality' };
+const START_CHIPS = ['wealth vs income in the US', 'life expectancy and inequality', 'life satisfaction and inequality', 'poverty and inequality'];
 
 function updateChips() {
   const el = document.getElementById('chips');
   let list;
-  const cross = CROSS_CHIP[ctx.metric] || 'income inequality';
-  const against = AGAINST[ctx.metric] || 'against inequality';
-  const among = ctx.pool ? 'all countries' : 'among richer countries';
+  const avail = Object.keys(ASPECT_CHIP).filter(k => SERIES[k]);
+  const otherAspects = cur => avail.filter(k => k !== cur).map(k => ASPECT_CHIP[k]);
   if (!chain.length) list = START_CHIPS;
   else {
     const last = chain[chain.length - 1];
-    const pathChip = ctx.lastIso && ctx.lastAspect ? `${BY_ISO[ctx.lastIso].name}'s path` : null;
-    if (last.kind === 'divergence') list = ['life satisfaction against inequality', 'least equal on wealth', 'who breaks the pattern', 'over time'];
-    else if (last.kind === 'break') list = ['across inequality tiers', among, 'compared to whom', cross];
-    else if (last.kind === 'path') list = ['who breaks the pattern', 'across inequality tiers', among, cross];
-    else if (last.kind === 'correlate') list = ['who breaks the pattern', 'across inequality tiers', pathChip || among, cross].filter(Boolean);
-    else if (last.kind === 'tiers') list = ['who breaks the pattern', against, among, cross];
-    else if (last.mode === 'scatter') list = ['who breaks the pattern', 'across inequality tiers', among, cross];
-    else if (last.kind === 'rank') list = [against, 'over time', 'the other extreme', among];
-    else if (last.kind === 'delta_rank') list = ['over time', 'compared to whom', 'biggest fallers', cross];
-    else if (last.kind === 'threshold') list = [against, 'over time', 'compared to whom', cross];
-    else if (last.mode === 'us') list = ['bottom 50% share', 'top 10% share', 'least equal', 'income inequality'];
-    else if (last.kind === 'time') list = ['vs the average', against, 'compared to whom', cross];
-    else if (last.kind === 'world') list = [against, 'most unequal', 'least equal', cross];
-    else if (last.mode === 'lorenz') list = [against, 'compared to whom', cross];
-    else list = [against, 'over time', 'compared to whom', among];
+    if (last.kind === 'divergence')
+      list = ['life expectancy and inequality', 'life satisfaction and inequality', 'poverty and inequality'];
+    else if (last.kind === 'contrast') {
+      const overTime = ctx.lastIso ? `${BY_ISO[ctx.lastIso].name} over time` : 'wealth vs income in France';
+      list = [...otherAspects(ctx.lastAspect).slice(0, 2), overTime, 'the United States'];
+    }
+    else if (last.kind === 'divergence' || last.mode === 'divergence')
+      list = otherAspects(null).slice(0, 3).concat(['the United States']);
+    else if (last.kind === 'time')
+      list = [...otherAspects(ctx.lastAspect).slice(0, 2), 'wealth vs income in the US', 'the United States'];
+    else
+      list = ['wealth vs income in the US', ...otherAspects(ctx.lastAspect).slice(0, 2), 'the United States'];
   }
   el.innerHTML = list.map(e => `<button type="button" class="chip">${e}</button>`).join('');
-  el.querySelectorAll('.chip').forEach(b =>
-    b.addEventListener('click', () => ask(b.textContent)));
+  el.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
+    if (/\bunited states\b|\bus up close\b/i.test(b.textContent)) setView('us');
+    else ask(b.textContent);
+  }));
 }
 
 /* ── notices, views, wiring ────────────────────────────────────────── */
@@ -2297,7 +2341,11 @@ function boot() {
     v.innerHTML = v.dataset.qs.split(';')
       .map(q => `<button type="button" class="chip">${q}</button>`).join('');
     v.querySelectorAll('.chip').forEach(b =>
-      b.addEventListener('click', () => { setHelp(false); setView('ask'); ask(b.textContent); }));
+      b.addEventListener('click', () => {
+        setHelp(false);
+        if (/\bunited states\b/i.test(b.textContent)) { setView('us'); return; }
+        setView('ask'); ask(b.textContent);
+      }));
   });
   document.getElementById('helpbtn').addEventListener('click', () =>
     setHelp(document.getElementById('help').hidden));
