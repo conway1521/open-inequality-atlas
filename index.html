@@ -2089,9 +2089,29 @@ function usAnswer(q) {
   const lens = mets.find(m => m === 'us_income_gini' || m === 'us_house_value') ||
     (/\bwealth\b|\bhome|\bhous|\bproperty\b/.test(r) ? 'us_house_value' : usCtx.lens);
   const metric = mets.find(m => m !== lens) || (mets[0] !== lens ? mets[0] : null) || usCtx.metric;
+  const wealthLens = /\bhome values?\b|\bhous\w*\b|\bproperty\b/.test(r) && !/\bincome\b/.test(r);
+  const incomeLens = /\bincome (inequality|gini)\b/.test(r) && !/\bwealth|home|hous|property\b/.test(r);
+  const wantContrast = metric && !fips.length && !brk && !tiers &&
+    (/\bwealth or income\b|\bwhich (matters|explains|is it)\b|\band inequality\b|\bvs\.? income\b/.test(r) ||
+      (against && !wealthLens && !incomeLens));
   const f = { id: ++usSeq, query: q };
 
-  if (brk) {
+  if (wantContrast) {
+    const y = metric, xw = 'us_house_value', xi = 'us_income_gini';
+    const wPts = usPaired(xw, y), iPts = usPaired(xi, y);
+    const rW = pearson(wPts), rI = pearson(iPts);
+    if ((rW == null && rI == null) || (wPts.length < 12 && iPts.length < 12)) return usMiss();
+    usCtx.metric = y;
+    const aW = Math.abs(rW || 0), aI = Math.abs(rI || 0), wealthWins = aW >= aI;
+    const win = wealthWins ? 'housing wealth' : 'income inequality', lose = wealthWins ? 'income inequality' : 'housing wealth';
+    const winR = wealthWins ? rW : rI, other = wealthWins ? rI : rW;
+    const gap = Math.abs(aW - aI), closeness = gap < 0.05 ? 'about as closely as' : gap < 0.12 ? 'a little more closely than' : 'more closely than';
+    f.mode = 'uscontrast'; f.uc = { y, wPts, iPts, rW, rI };
+    f.text = `Across ${Math.max(wPts.length, iPts.length)} counties, ${usLabel[y]} tracks <strong>${win}</strong> ` +
+      `${closeness} ${lose} (r = <strong>${winR.toFixed(2)}</strong> vs ${other.toFixed(2)}).`;
+    if (wealthWins && Math.abs(rW) >= 0.15) f.text += ' Housing is the sharper divider, the way the national average could not show.';
+  }
+  else if (brk) {
     const y = metric, x = (lens === y ? usLensDefault() : lens);
     const pts = usPaired(x, y);
     const fit = theilSen(pts);
@@ -2128,8 +2148,8 @@ function usAnswer(q) {
     f.text = `Counties in the top third by ${usLabel[x]} average <strong>${fmt(mh)}</strong> on ${usLabel[y]}; ` +
       `the bottom third <strong>${fmt(ml)}</strong>.`;
   }
-  else if (against && metric) {
-    const y = metric, x = (lens === y ? usLensDefault() : lens);
+  else if ((against || wealthLens || incomeLens) && metric) {
+    const y = metric, x = incomeLens ? 'us_income_gini' : (lens === y ? usLensDefault() : lens);
     const pts = usPaired(x, y);
     if (pts.length < 12) return usMiss();
     const rr = pearson(pts);
@@ -2169,16 +2189,18 @@ function usAnswer(q) {
 function usChips() {
   const el = document.getElementById('us-chips');
   const av = usAvail();
+  const aspects = ['us_mobility', 'us_le_gap', 'us_life_exp', 'us_econ_conn'].filter(m => av.includes(m));
+  const contrast = m => `${usLabel[m]}: wealth or income?`;
   let list;
   if (!usChain.length) {
-    list = ['mobility against home values', 'the rich-poor life gap against home values',
-      'highest upward mobility', 'who breaks the pattern'].filter((c, i) => i < 4);
+    list = aspects.slice(0, 3).map(contrast).concat(['who breaks the pattern']);
   } else {
     const last = usChain[usChain.length - 1];
-    if (last.mode === 'usscatter') list = ['who breaks the pattern', `${usLabel[usCtx.metric]} across ${usLabel[usCtx.lens]} tiers`, `highest ${usLabel[usCtx.metric]}`];
-    else if (last.mode === 'ustiers') list = ['who breaks the pattern', `${usLabel[usCtx.metric]} against home values`, `highest ${usLabel[usCtx.metric]}`];
-    else if (last.mode === 'usbars') list = [`${usLabel[usCtx.metric]} against home values`, `${usLabel[usCtx.metric]} across income inequality tiers`, 'who breaks the pattern'];
-    else list = ['mobility against home values', 'the rich-poor life gap against home values', 'highest upward mobility'];
+    const others = aspects.filter(m => m !== usCtx.metric).slice(0, 2).map(contrast);
+    if (last.mode === 'uscontrast') list = ['who breaks the pattern', `${usLabel[usCtx.metric]} across income inequality tiers`, ...others];
+    else if (last.mode === 'usscatter') list = ['who breaks the pattern', `${usLabel[usCtx.metric]} across income inequality tiers`, ...others];
+    else if (last.mode === 'ustiers') list = ['who breaks the pattern', contrast(usCtx.metric), ...others];
+    else list = [contrast(usCtx.metric), ...others, 'who breaks the pattern'];
   }
   el.innerHTML = list.map(c => `<button type="button" class="chip">${c}</button>`).join('');
   el.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => usAsk(b.textContent)));
@@ -2195,9 +2217,10 @@ function usRender() {
     `<button class="x" data-id="${f.id}" title="remove">&times;</button></li>`).join('');
   list.querySelectorAll('.x').forEach(b => b.addEventListener('click', () => usRemove(Number(b.dataset.id))));
   const el = document.getElementById('us-facets');
+  const lastMode = usChain[usChain.length - 1].mode;
   el.innerHTML = `<span class="facet-lead">cell</span><span class="facet"><span class="k">measure</span> ${usLabel[usCtx.metric]}</span>` +
-    (usChain[usChain.length - 1].mode === 'usscatter' || usChain[usChain.length - 1].mode === 'ustiers'
-      ? `<span class="facet lens"><span class="k">against</span> ${usLabel[usCtx.lens]}</span>` : '') +
+    (lastMode === 'uscontrast' ? `<span class="facet lens"><span class="k">against</span> wealth vs income</span>`
+      : (lastMode === 'usscatter' || lastMode === 'ustiers') ? `<span class="facet lens"><span class="k">against</span> ${usLabel[usCtx.lens]}</span>` : '') +
     `<span class="facet"><span class="k">geography</span> US counties</span>`;
   usDrawChart();
 }
@@ -2260,6 +2283,25 @@ function usDrawChart() {
     }), CFG);
     title.textContent = (sc.fit ? `Who breaks the pattern: ` : '') + `${cap(usLabel[sc.y])} against ${usLabel[sc.x]}, by county`;
     src.textContent = (sc.fit ? 'Dashed line is a robust (Theil-Sen) fit; labelled counties sit furthest from it. ' : '') + src.textContent;
+  }
+  else if (f.mode === 'uscontrast') {
+    const uc = f.uc, fy = usFmtOf(uc.y);
+    const panel = (pts, xaxis, color) => [{ type: 'scatter', mode: 'markers', xaxis, yaxis: 'y',
+      x: pts.map(p => p.x), y: pts.map(p => p.y), customdata: pts.map(p => usName(p.fips)),
+      marker: { color, size: 4, opacity: 0.45 }, showlegend: false,
+      hovertemplate: '%{customdata}<br>%{x} · ' + usLabel[uc.y] + ' %{y}<extra></extra>' }];
+    const traces = [...panel(uc.wPts, 'x', '#2a78d6'), ...panel(uc.iPts, 'x2', '#98a4b8')];
+    const rTxt = (r, dom) => ({ x: dom, y: 1.06, xref: 'paper', yref: 'paper', xanchor: 'center',
+      text: r == null ? '' : `r = ${r.toFixed(2)}`, showarrow: false, font: { size: 12, color: '#1a2744' } });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 24, r: 10, b: 42, l: 58 },
+      annotations: [rTxt(uc.rW, 0.23), rTxt(uc.rI, 0.80)],
+      xaxis: { domain: [0, 0.46], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'home value', font: { size: 12 } } },
+      xaxis2: { domain: [0.54, 1], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'income Gini', font: { size: 12 } } },
+      yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: usLabel[uc.y], font: { size: 12 } } },
+    }), CFG);
+    title.textContent = `${cap(usLabel[uc.y])}: housing wealth or income inequality?`;
+    src.textContent = 'Each county against local home value and against local income inequality. The tighter cloud is the stronger link. Source: Opportunity Insights, county covariates.';
   }
 }
 
