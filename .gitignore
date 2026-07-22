@@ -1,3 +1,7 @@
 
 # raw US source CSVs (uploaded, processed into us_*.json; never committed)
 data/raw_us/
+
+# Python bytecode
+__pycache__/
+*.pyc
