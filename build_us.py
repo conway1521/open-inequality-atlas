@@ -19,9 +19,16 @@ Outputs (only these get committed; the raw CSVs stay out of the repo):
 
 Run: python3 build_us.py
 """
-import csv, json, glob, os, sys
+import csv, json, glob, gzip, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def open_csv(path):
+    """Open a .csv or .csv.gz transparently. Gzip lets county files clear GitHub's 100 MB limit."""
+    if path.endswith(".gz"):
+        return gzip.open(path, mode="rt", encoding="utf-8", errors="replace", newline="")
+    return open(path, newline="", encoding="utf-8", errors="replace")
 SCAN_DIRS = [
     "/root/.claude/uploads",
     os.path.join(HERE, "data", "raw_us"),
@@ -98,7 +105,7 @@ def fips5(v):
 def scan_csvs():
     seen, files = set(), []
     for d in SCAN_DIRS:
-        for p in glob.glob(os.path.join(d, "**", "*.csv"), recursive=True):
+        for p in glob.glob(os.path.join(d, "**", "*.csv"), recursive=True) + glob.glob(os.path.join(d, "**", "*.csv.gz"), recursive=True):
             rp = os.path.realpath(p)
             # skip our own outputs and the wealth data dir
             if "/data/" in p and "raw_us" not in p:
@@ -127,7 +134,7 @@ def main():
 
     for path in files:
         try:
-            fh = open(path, newline="", encoding="utf-8", errors="replace")
+            fh = open_csv(path)
             rdr = csv.reader(fh)
             header = next(rdr)
         except Exception as e:
