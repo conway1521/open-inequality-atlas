@@ -720,6 +720,18 @@ const META = {
     lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. Share below $2.15 a day (2017 PPP).',
     poolSrc: 'Source: World Bank PIP via OWID. Share below the international poverty line, latest survey per country.',
   },
+  wealth_top1: {
+    label: 'wealth concentration', topic: 'wealth', series: true, file: 'data/wealth_top1.json',
+    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    lineSrc: 'Source: WID. Share of household net wealth held by the top 1%.',
+    poolSrc: 'Source: WID, top 1% wealth share, latest year per country.',
+  },
+  wealth_bottom50: {
+    label: 'bottom 50% wealth share', topic: 'wealth', series: true, file: 'data/wealth_bottom50.json',
+    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    lineSrc: 'Source: WID. Share of household net wealth held by the bottom 50%.',
+    poolSrc: 'Source: WID, bottom 50% wealth share, latest year per country.',
+  },
   life_satisfaction: {
     label: 'life satisfaction', topic: 'wellbeing', series: true, file: 'data/life_satisfaction.json',
     fmt: v => v == null ? 'n/a' : v.toFixed(2), fmtD: v => v == null ? 'n/a' : v.toFixed(2), hover: '%{y:.2f}',
@@ -1055,28 +1067,32 @@ function answer(q) {
 
   if (p.kind === 'contrast') {
     const y = p.y, my = META[y];
+    // wealth axis is the top 1% share (concentration), not the debt-inflated Gini
+    const wealthLens = SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini';
     const wPts = [], iPts = [];
     for (const iso in BY_ISO) {
       if (!inScope(iso, p.region)) continue;
-      const yv = latestValOf(y, iso), wv = latestValOf('wealth_gini', iso), iv = latestValOf('income_gini', iso);
+      const yv = latestValOf(y, iso), wv = latestValOf(wealthLens, iso), iv = latestValOf('income_gini', iso);
       if (yv && wv) wPts.push({ iso, name: BY_ISO[iso].name, x: wv.val, y: yv.val });
       if (yv && iv) iPts.push({ iso, name: BY_ISO[iso].name, x: iv.val, y: yv.val });
     }
     const rW = pearson(wPts), rI = pearson(iPts);
     if (rW == null && rI == null) return miss();
-    ctx.metric = 'wealth_gini'; ctx.lastAspect = y;
+    ctx.metric = wealthLens; ctx.lastAspect = y;
     const focus = focusIsos().filter(i => wPts.some(p2 => p2.iso === i) || iPts.some(p2 => p2.iso === i));
     if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
     f.mode = 'contrast';
-    f.contrast = { y, wPts, iPts, rW, rI, focus, region: p.region };
+    f.contrast = { y, wPts, iPts, rW, rI, focus, region: p.region, wealthLens };
     const aW = Math.abs(rW || 0), aI = Math.abs(rI || 0);
     const wealthWins = aW >= aI;
-    const win = wealthWins ? 'wealth' : 'income', winR = wealthWins ? rW : rI, other = wealthWins ? rI : rW;
+    const wealthLabel = wealthLens === 'wealth_top1' ? 'wealth concentration' : 'wealth inequality';
+    const winLabel = wealthWins ? wealthLabel : 'income inequality', loseLabel = wealthWins ? 'income inequality' : wealthLabel;
+    const winR = wealthWins ? rW : rI, other = wealthWins ? rI : rW;
     const gap = Math.abs(aW - aI);
     const closeness = gap < 0.05 ? 'about as closely as' : gap < 0.12 ? 'a little more closely than' : 'more closely than';
     const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
-    f.text = `Across ${wPts.length} countries${where}, ${my.label} tracks <strong>${win} inequality</strong> ` +
-      `${closeness} ${wealthWins ? 'income' : 'wealth'} inequality: r = <strong>${winR.toFixed(2)}</strong> against ${other.toFixed(2)}.`;
+    f.text = `Across ${wPts.length} countries${where}, ${my.label} tracks <strong>${winLabel}</strong> ` +
+      `${closeness} ${loseLabel}: r = <strong>${winR.toFixed(2)}</strong> against ${other.toFixed(2)}.`;
   }
 
   else if (p.kind === 'correlate') {
@@ -1697,28 +1713,30 @@ function drawChart() {
   else if (mode === 'contrast') {
     const c = chain.slice().reverse().find(f => f.mode === 'contrast').contrast;
     const my = META[c.y], scy = v => my.fmt === pc ? v * 100 : v;
+    const wPctAxis = c.wealthLens === 'wealth_top1';   // top 1% share plots as a percent
     const foc = new Set(c.focus);
-    const panel = (pts, xaxis, color) => {
+    const panel = (pts, xaxis, color, sx) => {
       const bg = pts.filter(p => !foc.has(p.iso)), fg = pts.filter(p => foc.has(p.iso));
       const mk = (a, hl) => ({ type: 'scatter', mode: hl ? 'markers+text' : 'markers', xaxis, yaxis: 'y',
-        x: a.map(p => p.x), y: a.map(p => scy(p.y)), text: a.map(p => hl ? p.name : ''),
+        x: a.map(p => sx(p.x)), y: a.map(p => scy(p.y)), text: a.map(p => hl ? p.name : ''),
         customdata: a.map(p => p.name), textposition: 'top center', textfont: { size: 10, color: '#1a2744' },
         marker: { color: hl ? '#eb6834' : color, size: hl ? 10 : 6, opacity: hl ? 1 : 0.55, line: hl ? { color: '#fff', width: 1.5 } : {} },
         hovertemplate: '%{customdata}<br>%{x:.2f} · ' + my.label + ' %{y}<extra></extra>', showlegend: false });
       return fg.length ? [mk(bg, false), mk(fg, true)] : [mk(bg, false)];
     };
-    const traces = [...panel(c.wPts, 'x', '#2a78d6'), ...panel(c.iPts, 'x2', '#98a4b8')];
+    const traces = [...panel(c.wPts, 'x', '#2a78d6', wPctAxis ? (v => v * 100) : (v => v)), ...panel(c.iPts, 'x2', '#98a4b8', v => v)];
     const rTxt = (r, dom) => ({ x: dom, y: 1.06, xref: 'paper', yref: 'paper', xanchor: 'center',
       text: r == null ? '' : `r = ${r.toFixed(2)}`, showarrow: false, font: { size: 12, color: '#1a2744' } });
+    const wLabel = wPctAxis ? 'top 1% wealth share' : 'wealth Gini';
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
       margin: { t: 24, r: 10, b: 42, l: 52 },
       annotations: [rTxt(c.rW, 0.23), rTxt(c.rI, 0.80)],
-      xaxis: { domain: [0, 0.46], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'wealth Gini', font: { size: 12 } } },
+      xaxis: { domain: [0, 0.46], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', ticksuffix: wPctAxis ? '%' : '', title: { text: wLabel, font: { size: 12 } } },
       xaxis2: { domain: [0.54, 1], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'income Gini', font: { size: 12 } } },
       yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' },
     }), CFG);
-    title.textContent = `${cap(my.label)}: wealth inequality or income?` + (c.region ? ` (${REGION_LABEL[c.region]})` : '');
-    src.textContent = `One country per dot, the same measure against each inequality. Wealth Gini: WID. Income Gini: World Bank PIP.`;
+    title.textContent = `${cap(my.label)}: ${wPctAxis ? 'wealth concentration' : 'wealth inequality'} or income?` + (c.region ? ` (${REGION_LABEL[c.region]})` : '');
+    src.textContent = `One country per dot, the same measure against each gap. ${wPctAxis ? 'Top 1% wealth share' : 'Wealth Gini'}: WID. Income Gini: World Bank PIP.`;
   }
 
   else if (mode === 'divergence') {
@@ -2444,11 +2462,13 @@ Promise.all([
   opt('data/median_income.json'),
   opt('data/gdp_pc.json'),
   opt('data/life_satisfaction.json'),
+  opt('data/wealth_top1.json'),
+  opt('data/wealth_bottom50.json'),
   opt('data/us_county.json'),
   opt('data/us_state.json'),
   opt('data/us_names.json'),
   opt('data/us_manifest.json'),
-]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, usCounty, usState, usNames, usManifest]) => {
+]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50, usCounty, usState, usNames, usManifest]) => {
   LATEST = latest; US = us;
   // spine is the union of every country any module knows, named from geo_names
   const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
@@ -2469,6 +2489,8 @@ Promise.all([
   SERIES.median_income = toSeries(medinc);
   SERIES.gdp_pc = toSeries(gdp);
   if (sat && Object.keys(sat).length) SERIES.life_satisfaction = toSeries(sat);
+  if (wtop1 && Object.keys(wtop1).length) SERIES.wealth_top1 = toSeries(wtop1);
+  if (wbot50 && Object.keys(wbot50).length) SERIES.wealth_bottom50 = toSeries(wbot50);
   if (usCounty && Object.keys(usCounty).length) { US_COUNTY = usCounty; US_STATE = usState; US_NAMES = usNames; US_MANIFEST = usManifest; }
 
   buildIndex();

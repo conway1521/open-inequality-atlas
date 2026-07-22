@@ -32,6 +32,26 @@
       "source": "World Bank PIP via OWID"
     },
     {
+      "id": "wealth_bottom50",
+      "label": "bottom 50% wealth share",
+      "topic": "wealth",
+      "file": "data/wealth_bottom50.json",
+      "countries": 213,
+      "year_min": 1990,
+      "year_max": 2024,
+      "source": "WID"
+    },
+    {
+      "id": "wealth_top1",
+      "label": "top 1% wealth share",
+      "topic": "wealth",
+      "file": "data/wealth_top1.json",
+      "countries": 213,
+      "year_min": 1990,
+      "year_max": 2024,
+      "source": "WID"
+    },
+    {
       "id": "wealth_gini",
       "label": "wealth Gini",
       "topic": "wealth",

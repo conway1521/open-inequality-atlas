@@ -14,6 +14,10 @@ import json, glob, os
 MODULES = {
     "wealth_timeseries": {"metric": "wealth_gini", "label": "wealth Gini", "topic": "wealth",
         "field": "wealth_gini", "source": "WID"},
+    "wealth_top1":      {"metric": "wealth_top1",     "label": "top 1% wealth share",    "topic": "wealth",
+        "source": "WID"},
+    "wealth_bottom50":  {"metric": "wealth_bottom50", "label": "bottom 50% wealth share", "topic": "wealth",
+        "source": "WID"},
     "income_gini":   {"metric": "income_gini",   "label": "income Gini",     "topic": "income",
         "source": "World Bank PIP via OWID"},
     "median_income": {"metric": "median_income", "label": "median income",   "topic": "income",
