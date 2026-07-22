@@ -283,16 +283,18 @@ footer a { color: inherit; }
 
   <div id="view-ask" class="wrap">
     <section class="ask">
-      <h1>How life goes where wealth concentrates.</h1>
+      <h1>How does inequality affect life?</h1>
       <p class="sub">
-        Health, poverty, income, and emissions across 213 countries and
-        territories, held up against how unequal each one is. Ask a short
-        question, then hold it against inequality; answers chain, and you can
-        switch measure mid-thread.
+        Inequality is called the defining problem of the age. Measured by
+        income, the gap has barely moved in a generation. The one that keeps
+        widening is wealth: the richest 1% of Americans held a fifth of it in
+        1991 and hold nearly a third now. This atlas takes wealth concentration
+        as the thing to explain, and asks what it does to ordinary life, country
+        by country and, next, county by county.
       </p>
       <form class="askbox" id="ask-form">
         <input id="q" type="text" autocomplete="off" spellcheck="false"
-               placeholder="life expectancy against inequality">
+               placeholder="wealth vs income in the US">
         <button type="button" class="qmark" id="helpbtn" aria-label="What can I ask">?</button>
         <span class="slash">/</span>
       </form>
@@ -332,10 +334,11 @@ footer a { color: inherit; }
   <div id="view-wealth" class="wrap db" hidden>
     <h1>Wealth</h1>
     <p class="sub">
-      Wealth accumulates where income merely flows, so it concentrates harder:
-      the same country often shows a wealth Gini twenty points above its income
-      Gini. This is the atlas core, harmonized from five source families with
-      every row tagged for comparability.
+      This is the gap that keeps widening, and the core of the atlas. Wealth
+      accumulates where income only flows, so it concentrates harder: the same
+      country often shows a wealth Gini twenty points above its income Gini, and
+      the distance has grown. Harmonized from five source families with every
+      row tagged for comparability.
     </p>
     <div class="grid3">
       <div class="block">
@@ -362,9 +365,10 @@ footer a { color: inherit; }
   <div id="view-income" class="wrap db" hidden>
     <h1>Income</h1>
     <p class="sub">
-      The income side of the same question. Chaining the two Ginis shows where
-      high pay coexists with modest fortunes and where old wealth outlives the
-      income statistics that produced it.
+      The gap that stabilized. In many rich economies the income Gini rose
+      through the 1980s and 1990s and has drifted sideways since, even as wealth
+      kept concentrating. That contrast is the point: ask for the divergence in
+      any country to see the two gaps on one chart.
     </p>
     <div class="grid3">
       <div class="block">
@@ -372,7 +376,7 @@ footer a { color: inherit; }
         <p>World Bank Poverty and Inequality Platform, national survey rows:
         income where surveys measure it, consumption where they measure that
         instead. <span id="cov-income"></span></p>
-        <p class="try" data-qs="income inequality;least equal on income;income in Brazil over time"></p>
+        <p class="try" data-qs="wealth vs income in the US;wealth vs income in France;least equal on income"></p>
       </div>
       <div class="block">
         <h2>Median income and GDP</h2>
@@ -393,9 +397,11 @@ footer a { color: inherit; }
   <div id="view-wellbeing" class="wrap db" hidden>
     <h1>Wellbeing</h1>
     <p class="sub">
-      How long people live and what their economies burn, next to how unequal
-      they are. Chain a wealth question into life expectancy or emissions and
-      the atlas keeps your countries in focus while the measure changes.
+      What the wealth gap touches. How long people live, how satisfied they say
+      they are, what their economies burn, next to how concentrated wealth is.
+      At the country average the link is often weak, which is where the real
+      question begins, not ends: the bite shows up closer to the ground. A United
+      States deep-dive by county, built on Opportunity Insights data, is the next tab.
     </p>
     <div class="grid3">
       <div class="block">
@@ -809,6 +815,13 @@ function parse(raw) {
         metric: 'gdp_pc', dir: rich ? 'high' : 'low' }, region };
   }
 
+  // DIVERGENCE: the two inequalities pulling apart over time (the spine of the atlas)
+  const bothIneq = metrics.includes('wealth_gini') && metrics.includes('income_gini');
+  if (bothIneq || /\bdivergence\b|\btwo inequalit\w*\b|\bwealth (and|vs\.?|versus) income\b|\bincome (and|vs\.?|versus) wealth\b/.test(r)) {
+    const iso = isos[0] || (ctx.lastIso && ctx.lastIso !== 'reg' ? ctx.lastIso : null) || 'USA';
+    return { kind: 'divergence', iso };
+  }
+
   // PATH: one place's journey through lens x aspect space over the years
   if (/\bpath\b|\btrajectory\b|\bjourney\b|\bhas travell?ed\b/.test(r)) {
     const iso = isos[0] || ctx.lastIso;
@@ -920,6 +933,15 @@ function pairedPoints(xMetric, yMetric, region) {
   }
   return out;
 }
+// the wealth-concentration series for a country: the US gets the DFA top-1% share (the sharper gauge), others the WID wealth Gini
+function wealthConc(iso) {
+  if (iso === 'USA' && US) {
+    const s = US.filter(r => r.top1_share != null).map(r => ({ year: r.year, v: r.top1_share }));
+    return { series: s, label: 'top 1% wealth share', fmt: pc };
+  }
+  return { series: seriesOf('wealth_gini', iso), label: 'wealth Gini', fmt: g2 };
+}
+
 // robust line: Theil-Sen slope (median pairwise) + median intercept. Outliers can't define their own baseline.
 function theilSen(pts) {
   const n = pts.length; if (n < 3) return null;
@@ -1028,6 +1050,28 @@ function answer(q) {
       t += ` ${esc(pt.name)} sits <strong>${my.fmtD(Math.abs(pt.resid))}</strong> ${pt.resid >= 0 ? 'above' : 'below'} the line.`;
     }
     f.text = t;
+  }
+
+  else if (p.kind === 'divergence') {
+    const iso = p.iso;
+    const w = wealthConc(iso), inc = seriesOf('income_gini', iso);
+    if (!w.series.length || inc.length < 2) {
+      const alt = iso === 'USA' ? '' : ' Try the United States, where both series are long.';
+      showNotice(`Not enough overlapping wealth and income data for ${esc(BY_ISO[iso] ? BY_ISO[iso].name : iso)}.${alt}`);
+      return null;
+    }
+    const wFirst = w.series[0], wEnd = w.series[w.series.length - 1];
+    const iFirst = inc[0], iEnd = inc[inc.length - 1];
+    // shared indexing origin: the first income year at or after wealth starts (income is the sparser series)
+    const base = (inc.find(d => d.year >= wFirst.year) || iFirst).year;
+    const wPct = Math.round((wEnd.v / wFirst.v - 1) * 100), iPct = Math.round((iEnd.v / iFirst.v - 1) * 100);
+    ctx.metric = 'wealth_gini'; ctx.lastIso = iso; f.isos = [iso];
+    f.mode = 'divergence'; f.diverge = { iso, w, inc, base };
+    f.text = `<strong>${esc(BY_ISO[iso] ? BY_ISO[iso].name : iso)}</strong>: ${w.label} rose from ` +
+      `<strong>${w.fmt(wFirst.v)}</strong> in ${wFirst.year} to <strong>${w.fmt(wEnd.v)}</strong> ` +
+      `(${wPct >= 0 ? '+' : ''}${wPct}%); income Gini went <strong>${g2(iFirst.v)}</strong> in ${iFirst.year} ` +
+      `to <strong>${g2(iEnd.v)}</strong> (${iPct >= 0 ? '+' : ''}${iPct}%). ` +
+      `The wealth gap moved ${Math.abs(wPct) > Math.abs(iPct) * 1.5 ? 'far more' : 'differently'}.`;
   }
 
   else if (p.kind === 'path') {
@@ -1571,6 +1615,34 @@ function drawChart() {
       `Each dot is a country at its latest overlapping year. ${(mx.poolSrc || '').replace(/^Source: /, 'Inequality: ')} ${(my.poolSrc || '').replace(/^Source: /, 'Aspect: ')}`;
   }
 
+  else if (mode === 'divergence') {
+    const dv = chain.slice().reverse().find(f => f.mode === 'divergence').diverge;
+    const w = dv.w, inc = dv.inc, base = dv.base;
+    const wBase = (w.series.find(d => d.year >= base) || {}).v;
+    const iMap = {}; for (const d of inc) iMap[d.year] = d.v;
+    const iBase = iMap[base] || (inc.find(d => d.year >= base) || {}).v;
+    const wLine = w.series.filter(d => d.year >= base);
+    const iLine = inc.filter(d => d.year >= base);
+    const traces = [
+      { type: 'scatter', mode: 'lines', name: cap(w.label),
+        x: wLine.map(d => d.year), y: wLine.map(d => d.v / wBase * 100),
+        line: { color: SLOTS[0], width: 2.4 },
+        hovertemplate: cap(w.label) + ' %{y:.0f} (base ' + base + ' = 100)<extra></extra>' },
+      { type: 'scatter', mode: 'lines', name: 'Income Gini',
+        x: iLine.map(d => d.year), y: iLine.map(d => d.v / iBase * 100),
+        line: { color: '#98a4b8', width: 2.4 },
+        hovertemplate: 'Income Gini %{y:.0f} (base ' + base + ' = 100)<extra></extra>' },
+    ];
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      showlegend: true, legend: { orientation: 'h', y: 1.1, font: { size: 11 } },
+      margin: { t: 8, r: 16, b: 40, l: 48 },
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: `indexed to ${base} = 100`, font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = `${BY_ISO[dv.iso] ? BY_ISO[dv.iso].name : dv.iso}: the two inequalities since ${base}`;
+    src.textContent = `Both series indexed to ${base} = 100 to compare how far each has moved. ` +
+      (dv.iso === 'USA' ? 'Wealth: Fed Distributional Financial Accounts. Income: World Bank PIP.' : 'Wealth: WID. Income: World Bank PIP.') + ' via OWID.';
+  }
+
   else if (mode === 'path') {
     const pa = chain.slice().reverse().find(f => f.mode === 'path').path;
     const mx = META[pa.x], my = META[pa.y];
@@ -1754,7 +1826,7 @@ function drawChart() {
 }
 
 /* ── chips: follow-ups track the conversation ──────────────────────── */
-const START_CHIPS = ['life satisfaction against inequality', 'life expectancy across inequality tiers', 'least equal', 'poverty against inequality', 'income inequality'];
+const START_CHIPS = ['wealth vs income in the US', 'least equal on wealth', 'life satisfaction against inequality', 'who breaks the pattern', 'happiest countries'];
 // what an aspect scatters against, and what an inequality metric scatters onto
 const AGAINST = { wealth_gini: 'life satisfaction against inequality', income_gini: 'poverty against inequality',
   life_exp: 'against inequality', co2_pc: 'against inequality', poverty_rate: 'against inequality',
@@ -1775,7 +1847,8 @@ function updateChips() {
   else {
     const last = chain[chain.length - 1];
     const pathChip = ctx.lastIso && ctx.lastAspect ? `${BY_ISO[ctx.lastIso].name}'s path` : null;
-    if (last.kind === 'break') list = ['across inequality tiers', among, 'compared to whom', cross];
+    if (last.kind === 'divergence') list = ['life satisfaction against inequality', 'least equal on wealth', 'who breaks the pattern', 'over time'];
+    else if (last.kind === 'break') list = ['across inequality tiers', among, 'compared to whom', cross];
     else if (last.kind === 'path') list = ['who breaks the pattern', 'across inequality tiers', among, cross];
     else if (last.kind === 'correlate') list = ['who breaks the pattern', 'across inequality tiers', pathChip || among, cross].filter(Boolean);
     else if (last.kind === 'tiers') list = ['who breaks the pattern', against, among, cross];
