@@ -270,6 +270,7 @@ footer a { color: inherit; }
       <button class="tab" data-view="wealth">Wealth</button>
       <button class="tab" data-view="income">Income</button>
       <button class="tab" data-view="wellbeing">Wellbeing</button>
+      <button class="tab" data-view="us">United States</button>
       <button class="tab" data-view="db">Database</button>
     </nav>
     <div class="top-links">
@@ -423,6 +424,60 @@ footer a { color: inherit; }
         World Happiness Report. <span id="cov-sat"></span></p>
         <p class="try" data-qs="life satisfaction against inequality;happiest countries;life satisfaction in France over time"></p>
       </div>
+    </div>
+  </div>
+
+  <div id="view-us" class="wrap db" hidden>
+    <h1>The United States, up close</h1>
+    <p class="sub">
+      Across countries the wealth gap's link to everyday life looks weak, because
+      the national average hides who carries it. Drop to the county and it
+      sharpens: hold local mobility, connection, and health against how
+      concentrated the neighbourhood's wealth is. Here wealth is measured the way
+      people feel it, in housing: who owns, and what a home is worth.
+    </p>
+
+    <div class="grid3">
+      <div class="block">
+        <h2>The local wealth signal</h2>
+        <p>No county has a wealth Gini, so housing stands in for it: homeownership
+        rate and median home value, alongside the county income Gini as the
+        inequality lens.</p>
+      </div>
+      <div class="block">
+        <h2>What it touches</h2>
+        <p>Upward mobility for a child raised poor, economic connectedness across
+        class, cohesion, poverty, single-parent share, and where available life
+        expectancy and financial distress.</p>
+      </div>
+      <div class="block">
+        <h2>Sources</h2>
+        <p>Opportunity Insights (the Opportunity Atlas and the Social Capital
+        Atlas with Meta) and the county covariates. County and state level, public
+        and privacy-protected.</p>
+        <p><a href="https://opportunityinsights.org/data/" target="_blank" rel="noopener" style="color:var(--accent)">opportunityinsights.org/data</a></p>
+      </div>
+    </div>
+
+    <div class="data-row" id="us-status">
+      <h2>Coverage</h2>
+      <div id="us-coverage">
+        <p class="meta">The county and state data are not loaded yet. Once the
+        Opportunity Insights and Social Capital files are processed into
+        <code>us_county.json</code>, this fills with the measures found and their
+        county counts, and the state table below comes alive.</p>
+      </div>
+    </div>
+
+    <div class="table-card" id="us-table-card" hidden>
+      <div class="table-head">
+        <h2>By state</h2>
+        <input id="us-filter" type="text" placeholder="Filter states" autocomplete="off">
+      </div>
+      <div class="tscroll">
+        <table id="us-table"><thead></thead><tbody></tbody></table>
+      </div>
+      <p class="tnote">Population-weighted from county values. The county-level view, with the map and the seven moves, opens from here once the data lands.</p>
     </div>
   </div>
 
@@ -1874,7 +1929,74 @@ function showNotice(html) {
 }
 function hideNotice() { document.getElementById('notice').hidden = true; }
 
-const VIEWS = ['ask', 'wealth', 'income', 'wellbeing', 'db'];
+const VIEWS = ['ask', 'wealth', 'income', 'wellbeing', 'us', 'db'];
+
+/* ── US county/state tier (loads if the processed files are present) ── */
+let US_STATE = null, US_NAMES = null, US_MANIFEST = null;
+const pctFrac = v => v == null ? '' : (v * 100).toFixed(0) + '%';
+const usd = v => v == null ? '' : '$' + Math.round(v).toLocaleString('en-US');
+const rank2 = v => v == null ? '' : v.toFixed(2);
+const US_META = {
+  us_mobility:      { label: 'Upward mobility', fmt: rank2 },
+  us_econ_conn:     { label: 'Economic connectedness', fmt: rank2 },
+  us_cohesion:      { label: 'Cohesion', fmt: rank2 },
+  us_volunteering:  { label: 'Volunteering', fmt: pctFrac },
+  us_homeownership: { label: 'Homeownership', fmt: pctFrac },
+  us_house_value:   { label: 'Median home value', fmt: usd },
+  us_income_gini:   { label: 'Income Gini', fmt: rank2 },
+  us_median_income: { label: 'Median income', fmt: usd },
+  us_poverty:       { label: 'Poverty rate', fmt: pctFrac },
+  us_single_parent: { label: 'Single-parent share', fmt: pctFrac },
+  us_college:       { label: 'College share', fmt: pctFrac },
+  us_life_exp:      { label: 'Life expectancy', fmt: v => v == null ? '' : v.toFixed(1) },
+  us_incarceration: { label: 'Incarceration', fmt: rank2 },
+  us_teen_birth:    { label: 'Teen births', fmt: rank2 },
+  us_subprime:      { label: 'Subprime share', fmt: pctFrac },
+  us_debt_collections: { label: 'Debt in collections', fmt: pctFrac },
+};
+
+const usSort = { key: null, dir: 'desc' };
+function renderUS() {
+  const cov = document.getElementById('us-coverage');
+  const card = document.getElementById('us-table-card');
+  if (!US_MANIFEST || !US_STATE) { if (card) card.hidden = true; return; }
+  const mets = US_MANIFEST.metrics.filter(m => US_META[m.id] && US_STATE[m.id]);
+  if (!mets.length) { if (card) card.hidden = true; return; }
+  cov.innerHTML = `<p class="meta">${US_MANIFEST.counties_total.toLocaleString('en-US')} counties. ` +
+    `${mets.length} measures loaded:</p><div class="facets">` +
+    mets.map(m => `<span class="facet"><span class="k">${US_META[m.id].label}</span> ${m.counties}</span>`).join('') +
+    `</div>`;
+  card.hidden = false;
+  if (!usSort.key) usSort.key = mets[0].id;
+  const states = Object.keys(US_NAMES || {}).filter(k => k.length === 2);
+  const head = document.querySelector('#us-table thead');
+  head.innerHTML = '<tr><th data-k="name">State</th>' +
+    mets.map(m => `<th data-k="${m.id}">${US_META[m.id].label} <span class="dir"></span></th>`).join('') + '</tr>';
+  head.querySelectorAll('th[data-k]').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    if (usSort.key === k) usSort.dir = usSort.dir === 'asc' ? 'desc' : 'asc';
+    else { usSort.key = k; usSort.dir = k === 'name' ? 'asc' : 'desc'; }
+    drawUSTable(mets, states);
+  }));
+  document.getElementById('us-filter').oninput = () => drawUSTable(mets, states);
+  drawUSTable(mets, states);
+}
+function drawUSTable(mets, states) {
+  const q = norm(document.getElementById('us-filter').value || '');
+  let rows = states.filter(st => !q || norm(US_NAMES[st]).includes(q));
+  const k = usSort.key;
+  rows.sort((a, b) => {
+    if (k === 'name') return usSort.dir === 'asc' ? US_NAMES[a].localeCompare(US_NAMES[b]) : US_NAMES[b].localeCompare(US_NAMES[a]);
+    const x = (US_STATE[k] || {})[a], y = (US_STATE[k] || {})[b];
+    if (x == null) return 1; if (y == null) return -1;
+    return usSort.dir === 'asc' ? x - y : y - x;
+  });
+  document.querySelector('#us-table tbody').innerHTML = rows.map(st =>
+    `<tr><td>${esc(US_NAMES[st])}</td>` +
+    mets.map(m => `<td>${US_META[m.id].fmt((US_STATE[m.id] || {})[st])}</td>`).join('') + '</tr>').join('');
+  document.querySelectorAll('#us-table thead th').forEach(th =>
+    th.querySelector('.dir') && (th.querySelector('.dir').textContent = th.dataset.k === k ? (usSort.dir === 'asc' ? '↑' : '↓') : ''));
+}
 function setView(name) {
   for (const v of VIEWS) {
     document.getElementById('view-' + v).hidden = v !== name;
@@ -1973,6 +2095,7 @@ function boot() {
   });
   renderTable();
   fillCoverage();
+  renderUS();
 
   if (location.hash.length > 1) {
     location.hash.slice(1).split('|').slice(0, 12)
@@ -2004,7 +2127,10 @@ Promise.all([
   opt('data/median_income.json'),
   opt('data/gdp_pc.json'),
   opt('data/life_satisfaction.json'),
-]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat]) => {
+  opt('data/us_state.json'),
+  opt('data/us_names.json'),
+  opt('data/us_manifest.json'),
+]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, usState, usNames, usManifest]) => {
   LATEST = latest; US = us;
   // spine is the union of every country any module knows, named from geo_names
   const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
@@ -2025,6 +2151,7 @@ Promise.all([
   SERIES.median_income = toSeries(medinc);
   SERIES.gdp_pc = toSeries(gdp);
   if (sat && Object.keys(sat).length) SERIES.life_satisfaction = toSeries(sat);
+  if (usState && Object.keys(usState).length) { US_STATE = usState; US_NAMES = usNames; US_MANIFEST = usManifest; }
 
   buildIndex();
   boot();
