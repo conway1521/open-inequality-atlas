@@ -81,6 +81,28 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 28px; }
   border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
   background: var(--bg); pointer-events: none;
 }
+.qmark {
+  position: absolute; right: 44px; top: 50%; transform: translateY(-50%);
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  border: 1px solid var(--border); border-radius: 100px;
+  width: 22px; height: 22px; line-height: 1;
+  background: var(--bg); cursor: pointer;
+}
+.qmark:hover, .qmark.on { color: var(--ink); border-color: var(--ink-3); }
+
+.help {
+  max-width: 640px; margin-top: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px 10px;
+}
+.help-row { display: flex; gap: 12px; align-items: baseline; padding: 5px 0; }
+.help-k {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--ink-3); width: 118px; flex-shrink: 0;
+}
+.help-v { display: flex; flex-wrap: wrap; gap: 6px; }
+.help-foot { font-size: 12px; color: var(--ink-3); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+@media (max-width: 540px) { .help-row { flex-direction: column; gap: 4px; } .help-k { width: auto; } }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; max-width: 640px; }
 .chip {
@@ -245,9 +267,19 @@ footer a { color: inherit; }
       <form class="askbox" id="ask-form">
         <input id="q" type="text" autocomplete="off" spellcheck="false"
                placeholder="least equal">
+        <button type="button" class="qmark" id="helpbtn" aria-label="What can I ask">?</button>
         <span class="slash">/</span>
       </form>
       <div class="chips" id="chips"></div>
+      <div class="help" id="help" hidden>
+        <div class="help-row"><span class="help-k">Start with a place</span><span class="help-v" data-qs="France;Brazil in 2000;the United States"></span></div>
+        <div class="help-row"><span class="help-k">Or an extreme</span><span class="help-v" data-qs="least equal;most unequal in Europe;above 0.85"></span></div>
+        <div class="help-row"><span class="help-k">Or movement</span><span class="help-v" data-qs="biggest risers since 2000;biggest fallers"></span></div>
+        <div class="help-row"><span class="help-k">Then slice</span><span class="help-v" data-qs="over time;compared to whom;vs the average;the other extreme"></span></div>
+        <div class="help-row"><span class="help-k">Switch measure</span><span class="help-v" data-qs="top 1% share;top 10% share;bottom 50% share"></span></div>
+        <div class="help-row"><span class="help-k">Or a region</span><span class="help-v" data-qs="Africa average;least equal in Latin America"></span></div>
+        <p class="help-foot">Answers stack into a chain. Remove any line with its &times;, or clear and start again.</p>
+      </div>
       <div class="notice" id="notice" hidden></div>
     </section>
 
@@ -383,10 +415,37 @@ const ALIASES = {
 };
 let NAME_INDEX = [];
 
+/* ── regions ───────────────────────────────────────────────────────── */
+const REGION_DEF = {
+  europe:  'AND AUT BEL BGR BIH BLR CHE CYP CZE DEU DNK ESP EST FIN FRA GBR GGY GIB GRC HRV HUN IMN IRL ISL ITA JEY LIE LTU LUX LVA MCO MDA MKD MLT MNE NLD NOR POL PRT ROU RUS SMR SRB SVK SVN SWE UKR',
+  africa:  'AGO BDI BEN BFA BWA CAF CIV CMR COD COG COM CPV DJI DZA EGY ERI ETH GAB GHA GIN GMB GNB GNQ KEN LBR LBY LSO MAR MDG MLI MOZ MRT MUS MWI NER NGA RWA SDN SEN SLE SOM SSD STP SWZ SYC TCD TGO TUN TZA UGA ZAF ZMB ZWE',
+  asia:    'AFG ARE ARM AZE BGD BHR BRN BTN CHN GEO HKG IDN IND IRN IRQ ISR JOR JPN KAZ KGZ KHM KOR KWT LAO LBN LKA MAC MDV MMR MNG MYS NPL OMN PAK PHL PRK PSE QAT SAU SGP SYR THA TJK TKM TLS TUR TWN UZB VNM YEM',
+  oceania: 'AUS FJI FSM KIR MHL NCL NRU NZL PLW PNG PYF SLB TON TUV VUT WSM',
+  latam:   'ABW AIA ARG ATG BES BHS BLZ BOL BRA BRB CHL COL CRI CUB CUW CYM DMA DOM ECU GRD GTM GUY HND HTI JAM KNA LCA MEX MSR NIC PAN PER PRI PRY SLV SUR SXM TCA TTO URY VCT VEN VGB',
+  northam: 'BMU CAN GRL USA',
+  mideast: 'ARE BHR EGY IRN IRQ ISR JOR KWT LBN OMN PSE QAT SAU SYR TUR YEM',
+};
+REGION_DEF.americas = REGION_DEF.latam + ' ' + REGION_DEF.northam;
+const REGION_SET = {};
+for (const k in REGION_DEF) REGION_SET[k] = new Set(REGION_DEF[k].split(' '));
+const REGION_TOKENS = [
+  [/\blatin america(n)?\b|\bsouth america(n)?\b|\bcaribbean\b|\blatam\b/, 'latam', 'Latin America'],
+  [/\bnorth america(n)?\b/, 'northam', 'North America'],
+  [/\bthe americas\b|\bamericas\b/, 'americas', 'the Americas'],
+  [/\bmiddle east(ern)?\b|\bmideast\b/, 'mideast', 'the Middle East'],
+  [/\beurope(an)?\b/, 'europe', 'Europe'],
+  [/\bafrica(n)?\b/, 'africa', 'Africa'],
+  [/\basia(n)?\b/, 'asia', 'Asia'],
+  [/\boceania\b|\bpacific\b/, 'oceania', 'Oceania'],
+];
+const REGION_LABEL = {};
+for (const [, k, label] of REGION_TOKENS) REGION_LABEL[k] = label;
+function inRegion(iso, region) { return !region || REGION_SET[region].has(iso); }
+
 function norm(s) {
   return s.toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9%]+/g, ' ')
+    .replace(/[^a-z0-9%.]+/g, ' ')
     .replace(/\s+/g, ' ').trim();
 }
 
@@ -427,8 +486,8 @@ function ord(n) {
 }
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function rankedPool(key, dir) {
-  return LATEST.filter(r => r[key] != null).slice()
+function rankedPool(key, dir, region) {
+  return LATEST.filter(r => r[key] != null && inRegion(r.geo_id, region)).slice()
     .sort((a, b) => dir === 'low' ? a[key] - b[key] : b[key] - a[key]);
 }
 function rankOf(iso, key) {
@@ -444,7 +503,7 @@ const METRICS = {
   top10_wealth_share:   { label: 'top 10% share', fmt: pc, us: 'top10_share' },
   bottom50_wealth_share:{ label: 'bottom 50% share', fmt: pc, us: 'bottom50_share' },
 };
-const ctx = { lastIso: null, metric: 'wealth_gini', lastRankDir: null };
+const ctx = { lastIso: null, metric: 'wealth_gini', lastRankDir: null, lastRegion: null };
 function focusIsos() {
   const set = [];
   chain.forEach(f => (f.isos || []).forEach(i => { if (!set.includes(i)) set.push(i); }));
@@ -461,7 +520,12 @@ function detectMetric(r) {
 }
 
 function parse(raw) {
-  const { isos, residual: r } = findCountries(raw);
+  let text = norm(raw);
+  let region = null;
+  for (const [re, key] of REGION_TOKENS) {
+    if (re.test(text)) { region = key; text = text.replace(re, ' '); break; }
+  }
+  const { isos, residual: r } = findCountries(text);
   const years = (r.match(/\b(?:19|20)\d{2}\b/g) || []).map(Number).filter(y => y >= 1989 && y <= 2025);
   const metric = detectMetric(r);
 
@@ -472,20 +536,30 @@ function parse(raw) {
   if ((most && hasEqual) || (least && hasUnequal) || /\blowest\b/.test(r)) rankDir = 'low';
   if (!rankDir && (most || least) && !isos.length) rankDir = most ? 'high' : 'low';
 
+  const riser = /\brisers?\b|\brisen\b|\bincreas\w*\b|\bclimb\w*\b|\bgrown\b|\bworsen\w*\b|\bjump\w*\b/.test(r);
+  const faller = /\bfallers?\b|\bfallen\b|\bdrop\w*\b|\bdeclin\w*\b|\bdecreas\w*\b|\bimprov\w*\b/.test(r);
+  const th = r.match(/\b(above|over|below|under)\s+(0?\.\d+)/);
+
   if (/\bother (end|extreme|side)\b|\bopposite\b|\bflip\b/.test(r))
-    return { kind: 'rank', dir: ctx.lastRankDir === 'high' ? 'low' : 'high' };
-  if (rankDir && isos.length === 0) return { kind: 'rank', dir: rankDir };
+    return { kind: 'rank', dir: ctx.lastRankDir === 'high' ? 'low' : 'high', region: region || ctx.lastRegion };
+  if ((riser || faller) && isos.length === 0)
+    return { kind: 'delta_rank', dir: riser ? 'up' : 'down', year: years[0] || 1995, region };
+  if (th)
+    return { kind: 'threshold', op: (th[1] === 'above' || th[1] === 'over') ? 'above' : 'below',
+             val: parseFloat(th[2]), region };
+  if (rankDir && isos.length === 0) return { kind: 'rank', dir: rankDir, region };
   if (/\bcompared to (whom|what|who)\b|^\s*compared\s*$|\bneighbou?rs\b/.test(r))
     return { kind: 'context' };
   if (/\baverage\b|\bworld\b|\bmedian\b|\btypical\b|\boverall\b/.test(r) && isos.length === 0)
-    return { kind: 'world' };
+    return { kind: 'world', region };
   if (/\bover time\b|\btrend\b|\bhistory\b|\bevolution\b/.test(r) || (/\bsince\b/.test(r) && years.length))
-    return { kind: 'time', isos, year: years[0] || null };
+    return { kind: 'time', isos, year: years[0] || null, region };
   if (metric && !isos.length && !ctx.lastIso) return { kind: 'us_shares', metric };
   if (metric) return { kind: 'metric', metric, isos };
   if (isos.length >= 2) return { kind: 'compare', isos: isos.slice(0, 4) };
   if (isos.length === 1 && years.length) return { kind: 'point', iso: isos[0], year: years[0] };
   if (isos.length === 1) return { kind: 'profile', iso: isos[0] };
+  if (region) return { kind: 'world', region };
   return { kind: 'unknown' };
 }
 
@@ -523,15 +597,60 @@ function answer(q) {
 
   else if (p.kind === 'rank') {
     const key = ctx.metric;
-    const pool = rankedPool(key, p.dir);
+    const pool = rankedPool(key, p.dir, p.region);
+    if (!pool.length) return miss();
     const top = pool.slice(0, 10);
     const fmt = METRICS[key].fmt, label = METRICS[key].label;
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
     const three = top.slice(0, 3).map(r => `${esc(r.geo_name)} <strong>${fmt(r[key])}</strong>`).join(', ');
-    ctx.lastRankDir = p.dir; ctx.lastIso = top[0].geo_id;
+    ctx.lastRankDir = p.dir; ctx.lastIso = top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
     f.isos = [top[0].geo_id];
     f.mode = 'bars';
-    f.bar = { key, dir: p.dir, rows: top, highlight: null };
-    f.text = `${p.dir === 'high' ? 'Highest' : 'Lowest'} ${label}, latest year: ${three}.`;
+    f.bar = { key, dir: p.dir, rows: top, highlight: null, note: where };
+    f.text = `${p.dir === 'high' ? 'Highest' : 'Lowest'} ${label}${where}, latest year: ${three}.`;
+  }
+
+  else if (p.kind === 'delta_rank') {
+    const pool = [];
+    for (const iso in BY_ISO) {
+      if (!inRegion(iso, p.region)) continue;
+      const s = BY_ISO[iso].series;
+      if (!s.length) continue;
+      const from = s.find(d => d.year >= p.year) || s[0];
+      const to = s[s.length - 1];
+      if (to.year - from.year < 10) continue;
+      pool.push({ geo_id: iso, geo_name: BY_ISO[iso].name, val: to.gini - from.gini, from, to });
+    }
+    if (!pool.length) return miss();
+    pool.sort((a, b) => p.dir === 'up' ? b.val - a.val : a.val - b.val);
+    const top = pool.slice(0, 10);
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    const rose = pool.filter(x => x.val > 0).length, fell = pool.filter(x => x.val < 0).length;
+    const three = top.slice(0, 3).map(x =>
+      `${esc(x.geo_name)} ${x.val >= 0 ? '+' : ''}<strong>${g3(x.val)}</strong>`).join(', ');
+    ctx.lastIso = top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
+    f.isos = [top[0].geo_id];
+    f.mode = 'bars';
+    f.bar = { key: 'delta', dir: p.dir, rows: top, highlight: null,
+              note: `${where}, wealth Gini since ${p.year}` };
+    f.text = `Biggest ${p.dir === 'up' ? 'rises' : 'falls'} in wealth Gini${where} since ${p.year}: ${three}. ` +
+      `Overall ${rose} rose and ${fell} fell.`;
+  }
+
+  else if (p.kind === 'threshold') {
+    const key = ctx.metric, m = METRICS[key];
+    const pool = rankedPool(key, p.op === 'above' ? 'high' : 'low', p.region);
+    if (!pool.length) return miss();
+    const val = m.isGini ? p.val : (p.val > 1 ? p.val / 100 : p.val);
+    const hits = pool.filter(r => p.op === 'above' ? r[key] >= val : r[key] <= val);
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    ctx.lastRegion = p.region || ctx.lastRegion;
+    if (hits.length) { ctx.lastIso = hits[0].geo_id; f.isos = [hits[0].geo_id]; }
+    f.mode = 'bars';
+    f.bar = { key, dir: p.op === 'above' ? 'high' : 'low', rows: hits.slice(0, 10), highlight: null, note: where };
+    const three = hits.slice(0, 3).map(r => `${esc(r.geo_name)} <strong>${m.fmt(r[key])}</strong>`).join(', ');
+    f.text = `<strong>${hits.length}</strong> of ${pool.length} countries${where} are ${p.op} ${p.val} on ${m.label}` +
+      (three ? `: ${three}` : '') + (hits.length > 3 ? ', and more in the chart.' : '.');
   }
 
   else if (p.kind === 'context') {
@@ -553,22 +672,38 @@ function answer(q) {
   }
 
   else if (p.kind === 'world') {
-    const last = WORLD_MEDIAN[WORLD_MEDIAN.length - 1];
-    f.world = true;
+    const regLabel = p.region ? REGION_LABEL[p.region] : '';
+    const label = p.region ? `${regLabel[0].toUpperCase()}${regLabel.slice(1)} median` : 'World median';
+    const pool = rankedPool('wealth_gini', 'high', p.region);
+    if (!pool.length) return miss();
+    const med = medianOf(pool.map(r => r.wealth_gini));
+    if (p.region) { f.regionKey = p.region; ctx.lastRegion = p.region; } else f.world = true;
     const foc = ctx.lastIso && BY_ISO[ctx.lastIso];
-    if (foc && foc.latest.wealth_gini != null) {
-      const d = foc.latest.wealth_gini - last.gini;
+    if (foc && foc.latest.wealth_gini != null && !pool.every(r => r.geo_id === ctx.lastIso)) {
+      const d = foc.latest.wealth_gini - med;
       f.isos = [ctx.lastIso];
-      f.text = `World median wealth Gini: <strong>${g2(last.gini)}</strong> (${last.year}). ` +
+      f.text = `${label} wealth Gini: <strong>${g2(med)}</strong> (${foc.latest.year}). ` +
         `${esc(foc.name)} is <strong>${g3(Math.abs(d))}</strong> ${d >= 0 ? 'above' : 'below'} it.`;
     } else {
-      f.text = `World median wealth Gini: <strong>${g2(last.gini)}</strong> in ${last.year}, ` +
-        `across ${LATEST.filter(r => r.wealth_gini != null).length} countries and territories.`;
+      f.text = `${label} wealth Gini: <strong>${g2(med)}</strong>, ` +
+        `across ${pool.length} countries and territories.`;
     }
   }
 
   else if (p.kind === 'time') {
     const isos = p.isos.length ? p.isos : focusIsos().length ? focusIsos() : (ctx.lastIso ? [ctx.lastIso] : []);
+    const reg = p.region || (!isos.length ? ctx.lastRegion : null);
+    if (!isos.length && reg) {
+      const series = regionMedianSeries(reg);
+      if (!series.length) return miss();
+      const from = p.year ? (series.find(d => d.year >= p.year) || series[0]) : series[0];
+      const to = series[series.length - 1];
+      const d = to.gini - from.gini;
+      f.regionKey = reg; f.fromYear = p.year || null; ctx.lastRegion = reg;
+      f.text = `${REGION_LABEL[reg]} median over time: <strong>${g2(from.gini)}</strong> in ${from.year} to ` +
+        `<strong>${g2(to.gini)}</strong> in ${to.year}, ${d >= 0 ? '+' : ''}<strong>${g3(d)}</strong>.`;
+      return f;
+    }
     if (!isos.length) { showNotice('Ask about a country first, then "over time".'); return null; }
     f.isos = isos.slice(0, 8); ctx.lastIso = f.isos[f.isos.length - 1];
     f.fromYear = p.year || null;
@@ -638,6 +773,20 @@ function medianOf(arr) {
   return v[Math.floor(v.length / 2)];
 }
 
+const regionSeriesCache = {};
+function regionMedianSeries(reg) {
+  if (regionSeriesCache[reg]) return regionSeriesCache[reg];
+  const byYear = {};
+  for (const r of TS) {
+    if (r.wealth_gini == null || !inRegion(r.geo_id, reg)) continue;
+    (byYear[r.year] = byYear[r.year] || []).push(r.wealth_gini);
+  }
+  const out = Object.keys(byYear).map(Number).sort((a, b) => a - b)
+    .filter(y => byYear[y].length >= 5)
+    .map(y => ({ year: y, gini: medianOf(byYear[y]) }));
+  return (regionSeriesCache[reg] = out);
+}
+
 /* ── session ───────────────────────────────────────────────────────── */
 function ask(q) {
   hideNotice();
@@ -700,24 +849,33 @@ function drawChart() {
   if (mode === 'bars') {
     const bar = chain.slice().reverse().find(f => f.mode === 'bars').bar;
     const rows = bar.rows.slice().reverse();
-    const m = METRICS[bar.key];
-    const vals = rows.map(r => m.isGini ? r[bar.key] : r[bar.key] * 100);
+    const isDelta = bar.key === 'delta';
+    const m = isDelta ? null : METRICS[bar.key];
+    const vals = rows.map(r => isDelta ? r.val : (m.isGini ? r[bar.key] : r[bar.key] * 100));
+    const labels = vals.map(v => isDelta ? (v >= 0 ? '+' : '') + v.toFixed(3)
+      : (m.isGini ? v.toFixed(2) : v.toFixed(1) + '%'));
     Plotly.react(el, [{
       type: 'bar', orientation: 'h',
       y: rows.map(r => r.geo_name),
       x: vals,
       marker: { color: rows.map(r => r.geo_id === bar.highlight ? '#eb6834' : '#2a78d6') },
-      text: vals.map(v => m.isGini ? v.toFixed(2) : v.toFixed(1) + '%'),
+      text: labels,
       textposition: 'outside', textfont: { size: 11, color: '#555555' },
       hovertemplate: '%{y}: %{x:.3f}<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, {
-      margin: { t: 8, r: 48, b: 36, l: 150 },
-      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, m.isGini ? { range: [0, 1.05] } : { ticksuffix: '%' }),
+      margin: { t: 8, r: 56, b: 36, l: 150 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis,
+        isDelta ? {} : (m.isGini ? { range: [0, 1.05] } : { ticksuffix: '%' })),
       bargap: 0.35,
     }), CFG);
     const hl = bar.highlight && BY_ISO[bar.highlight];
-    title.textContent = `${m.label[0].toUpperCase() + m.label.slice(1)}, latest year` + (hl ? `, around ${hl.name}` : '');
-    src.textContent = 'Source: WID, latest available year per country. Shares are of household net wealth.';
+    if (isDelta) {
+      title.textContent = `${bar.dir === 'up' ? 'Biggest rises' : 'Biggest falls'}${bar.note || ''}`;
+      src.textContent = 'Source: WID. Change in wealth Gini between the first year at or after the start year and the latest year.';
+    } else {
+      title.textContent = `${m.label[0].toUpperCase() + m.label.slice(1)}${bar.note || ''}, latest year` + (hl ? `, around ${hl.name}` : '');
+      src.textContent = 'Source: WID, latest available year per country. Shares are of household net wealth.';
+    }
   }
 
   else if (mode === 'us') {
@@ -769,6 +927,19 @@ function drawChart() {
       line: { color: '#999999', width: 2, dash: 'dash' },
       hovertemplate: 'World median: %{y:.3f}<extra></extra>',
     });
+    const regs = [];
+    chain.forEach(f => { if (f.regionKey && !regs.includes(f.regionKey)) regs.push(f.regionKey); });
+    for (const reg of regs) {
+      const s = regionMedianSeries(reg);
+      if (!s.length) continue;
+      const name = `${REGION_LABEL[reg]} median`;
+      traces.push({
+        type: 'scatter', mode: 'lines', name,
+        x: s.map(d => d.year), y: s.map(d => d.gini),
+        line: { color: assignColor('reg:' + reg), width: 2, dash: 'dash' },
+        hovertemplate: name + ': %{y:.3f}<extra></extra>',
+      });
+    }
     for (const m of chain.filter(f => f.marker).map(f => f.marker)) {
       const c = BY_ISO[m.iso];
       const at = c.series.find(d => d.year === m.year);
@@ -802,7 +973,7 @@ function drawChart() {
 }
 
 /* ── chips: follow-ups track the conversation ──────────────────────── */
-const START_CHIPS = ['least equal', 'most unequal', 'the United States', 'top 1% share', 'world average'];
+const START_CHIPS = ['least equal', 'most unequal in Europe', 'biggest risers since 2000', 'top 1% share', 'the United States'];
 
 function updateChips() {
   const el = document.getElementById('chips');
@@ -812,6 +983,8 @@ function updateChips() {
     const last = chain[chain.length - 1];
     const metricChip = ctx.metric === 'top1_wealth_share' ? 'top 10% share' : 'top 1% share';
     if (last.kind === 'rank') list = ['over time', 'compared to whom', 'the other extreme', metricChip];
+    else if (last.kind === 'delta_rank') list = ['over time', 'compared to whom', 'biggest fallers', 'least equal'];
+    else if (last.kind === 'threshold') list = ['over time', 'compared to whom', 'vs the average', metricChip];
     else if (last.mode === 'us') list = ['bottom 50% share', 'top 10% share', 'least equal', 'world average'];
     else if (last.kind === 'time') list = ['vs the average', 'since 2000', 'compared to whom', metricChip];
     else if (last.kind === 'world') list = ['most unequal', 'least equal', 'over time'];
@@ -859,15 +1032,29 @@ function renderTable() {
   });
 }
 
+function setHelp(open) {
+  document.getElementById('help').hidden = !open;
+  document.getElementById('helpbtn').classList.toggle('on', open);
+}
+
 function boot() {
   updateChips();
+  document.querySelectorAll('.help-v').forEach(v => {
+    v.innerHTML = v.dataset.qs.split(';')
+      .map(q => `<button type="button" class="chip">${q}</button>`).join('');
+    v.querySelectorAll('.chip').forEach(b =>
+      b.addEventListener('click', () => { setHelp(false); ask(b.textContent); }));
+  });
+  document.getElementById('helpbtn').addEventListener('click', () =>
+    setHelp(document.getElementById('help').hidden));
   document.getElementById('ask-form').addEventListener('submit', e => {
     e.preventDefault();
     const v = document.getElementById('q').value.trim();
-    if (v) ask(v);
+    if (v) { setHelp(false); ask(v); }
   });
   document.getElementById('clear').addEventListener('click', () => {
-    chain.length = 0; ctx.lastIso = null; ctx.metric = 'wealth_gini'; ctx.lastRankDir = null;
+    chain.length = 0; ctx.lastIso = null; ctx.metric = 'wealth_gini';
+    ctx.lastRankDir = null; ctx.lastRegion = null;
     render();
   });
   document.getElementById('share').addEventListener('click', () => {
