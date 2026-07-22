@@ -74,18 +74,27 @@ METRICS = {
     "us_single_parent":  (["singleparent_share2010", "single_mom_share2010", "singleparent_share2000"], 3, True),
     "us_college":        (["frac_coll_plus2010", "frac_coll_plus2000", "share_college"], 3, False),
     "us_life_exp":       (["le_agg", "life_expectancy", "le_raceadj"], 1, False),
+    "us_le_gap":         ([], 1, True),   # derived: top-quartile minus bottom-quartile life expectancy
     "us_incarceration":  (["jail2010", "incarceration_rate", "incar"], 4, True),
     "us_teen_birth":     (["teenbrth", "teen_birth", "teenbirth_rate"], 3, True),
     "us_subprime":       (["subprime", "subprime_share", "share_subprime"], 3, True),
     "us_debt_collections": (["debt_in_collections", "collections_share", "debt_collections"], 3, True),
+    # credit files (long by kid_race x par_pctile; we keep the pooled rows)
+    "us_credit_score":   (["shrunk_xkid_vscore2020", "vscore2020"], 0, False),
+    "us_debt_card":      (["shrunk_xkid_brcbalance2020", "brcbalance2020"], 0, True),
+    "us_debt_mortgage":  (["shrunk_xkid_mtabalance2020", "mtabalance2020"], 0, False),
+    "us_debt_auto":      (["shrunk_xkid_auabalance2020", "auabalance2020"], 0, True),
+    "us_debt_student":   (["shrunk_xkid_stubalance2020", "stubalance2020"], 0, True),
+    "us_delinquency":    (["shrunk_xkid_delinq90_02020", "delinq90_02020"], 3, True),
 }
+POOLED = {"pooled", "all", "", "p", "tot", "total", "na"}   # aggregate labels in long-format files
 POP_COLS = ["pop2018", "population", "county_pop2018", "cty_pop2018", "pop", "count_pop2018", "cty_pop2000"]
 # a full 5-digit county FIPS in one column
 FULL_FIPS_COLS = ["fips", "countyfips", "county_fips", "cty_fips", "geoid", "geo_id", "fips5",
                   "fips_code", "fipscode", "cty", "cnty_fips", "countyfp5"]
 # a 2-digit state code + a 3-digit within-state county code (e.g. Opportunity Insights county_outcomes)
-STATE_COLS = ["state", "statefp", "statefips", "st_fips", "statefips2010", "statecode"]
-COUNTY_COLS = ["county", "countyfp", "county_code", "cofips", "countycode"]
+STATE_COLS = ["state", "statefp", "statefips", "st_fips", "statefips2010", "statecode", "par_state"]
+COUNTY_COLS = ["county", "countyfp", "county_code", "cofips", "countycode", "par_county"]
 NAME_COLS = ["county_name", "countyname", "cty_name", "czname", "name"]
 
 
@@ -176,19 +185,38 @@ def main():
                 "county": find_col(hdr, COUNTY_COLS)}
         present = {mid: find_col(hdr, opts) for mid, (opts, _, _) in METRICS.items()}
         present = {mid: col for mid, col in present.items() if col}
+        # life expectancy tables give it by income quartile and gender; derive a level and a rich-poor gap
+        le_lvl = [hdr[c] for c in hdr if c.startswith("le_raceadj_q") and c[-2:] in ("_f", "_m")]
+        if not le_lvl:
+            le_lvl = [hdr[c] for c in hdr if c.startswith("le_agg_q") and c[-2:] in ("_f", "_m")]
+        le_bot = [c for c in le_lvl if "_q1_" in c.lower()]
+        le_top = [c for c in le_lvl if "_q4_" in c.lower()]
         has_geo = cmap["full"] or cmap["county"]
-        if not has_geo or not present:
+        if not has_geo or not (present or le_lvl):
             why = "no FIPS column" if not has_geo else "no known metric columns"
             report.append((os.path.basename(path), why + f" — header: {', '.join(header[:16])}", 0, []))
             fh.close()
             continue
+        # long-format files (credit) carry a row per race x parent-percentile; keep only the pooled rows
+        race_col, pct_col = find_col(hdr, ["kid_race"]), find_col(hdr, ["par_pctile", "kid_pctile"])
         pop_col = find_col(hdr, POP_COLS)
         name_col = find_col(hdr, NAME_COLS)
         rows = 0
+
+        def num(x):
+            try:
+                return float(x)
+            except (ValueError, TypeError):
+                return None
+
         for row in rdr:                       # header already consumed; rdr yields data rows as lists
             if not row or len(row) < len(header):
                 continue
             rec = dict(zip(header, row))
+            if race_col and str(rec.get(race_col, "")).strip().lower() not in POOLED:
+                continue
+            if pct_col and str(rec.get(pct_col, "")).strip().lower() not in POOLED:
+                continue
             fips = resolve_fips(rec, cmap)
             if not fips:
                 continue
@@ -200,6 +228,15 @@ def main():
                         county[mid][fips] = float(v)
                     except ValueError:
                         pass
+            if le_lvl:
+                lvl = [num(rec.get(c)) for c in le_lvl]
+                lvl = [x for x in lvl if x is not None]
+                if lvl:
+                    county["us_life_exp"][fips] = sum(lvl) / len(lvl)
+                bot = [num(rec.get(c)) for c in le_bot if num(rec.get(c)) is not None]
+                top = [num(rec.get(c)) for c in le_top if num(rec.get(c)) is not None]
+                if bot and top:
+                    county.setdefault("us_le_gap", {})[fips] = sum(top) / len(top) - sum(bot) / len(bot)
             if pop_col:
                 try:
                     pop[fips] = float(rec.get(pop_col, "") or 0) or pop.get(fips, 0)
@@ -211,7 +248,8 @@ def main():
                     st = STATE_ABBR.get(fips[:2], "")
                     names[fips] = f"{nm}, {st}" if st and st not in nm else nm
         fh.close()
-        report.append((os.path.basename(path), "ok", rows, sorted(present.keys())))
+        matched = sorted(present.keys()) + (["us_life_exp", "us_le_gap"] if le_lvl else [])
+        report.append((os.path.basename(path), "ok", rows, matched))
 
     # drop metrics with no data
     county = {k: v for k, v in county.items() if v}
