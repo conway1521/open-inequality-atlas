@@ -245,8 +245,9 @@ def main():
             if name_col and fips not in names:
                 nm = rec.get(name_col, "").strip()
                 if nm and not nm.isdigit():
+                    base = nm.split(",")[0].strip()   # drop any state suffix already in the name
                     st = STATE_ABBR.get(fips[:2], "")
-                    names[fips] = f"{nm}, {st}" if st and st not in nm else nm
+                    names[fips] = f"{base}, {st}" if st else base
         fh.close()
         matched = sorted(present.keys()) + (["us_life_exp", "us_le_gap"] if le_lvl else [])
         report.append((os.path.basename(path), "ok", rows, matched))

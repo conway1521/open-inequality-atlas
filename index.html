@@ -136,23 +136,23 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 28px; }
 }
 .session-actions button:hover { color: var(--ink); }
 
-#facts { list-style: none; }
-#facts li {
+#facts, #us-facts { list-style: none; }
+#facts li, #us-facts li {
   display: flex; align-items: baseline; gap: 12px;
   padding: 10px 0; border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
-#facts li .n { font-family: var(--mono); font-size: 11px; color: var(--ink-3); flex-shrink: 0; width: 18px; }
-#facts li .t { flex: 1; color: var(--ink-2); }
-#facts li .t strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
-#facts li .t em { font-style: normal; color: var(--ink-3); }
+#facts li .n, #us-facts li .n { font-family: var(--mono); font-size: 11px; color: var(--ink-3); flex-shrink: 0; width: 18px; }
+#facts li .t, #us-facts li .t { flex: 1; color: var(--ink-2); }
+#facts li .t strong, #us-facts li .t strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+#facts li .t em, #us-facts li .t em { font-style: normal; color: var(--ink-3); }
 .upd { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--accent); border: 1px solid #c9d9ec; border-radius: 4px; padding: 0 4px; margin-left: 4px; vertical-align: 1px; }
-#facts li .x {
+#facts li .x, #us-facts li .x {
   font-family: var(--mono); background: none; border: none; cursor: pointer;
   color: var(--ink-3); font-size: 13px; padding: 0 2px; flex-shrink: 0;
 }
-#facts li .x:hover { color: var(--ink); }
+#facts li .x:hover, #us-facts li .x:hover { color: var(--ink); }
 
 .chart-card {
   margin-top: 20px;
@@ -459,25 +459,36 @@ footer a { color: inherit; }
       </div>
     </div>
 
-    <div class="data-row" id="us-status">
-      <h2>Coverage</h2>
-      <div id="us-coverage">
-        <p class="meta">The county and state data are not loaded yet. Once the
-        Opportunity Insights and Social Capital files are processed into
-        <code>us_county.json</code>, this fills with the measures found and their
-        county counts, and the state table below comes alive.</p>
+    <div id="us-loaded" hidden>
+      <form class="askbox" id="us-form" style="max-width:640px;margin-top:8px">
+        <input id="us-q" type="text" autocomplete="off" spellcheck="false" placeholder="mobility against home values">
+        <span class="slash">/</span>
+      </form>
+      <div class="chips" id="us-chips"></div>
+      <div class="notice" id="us-notice" hidden></div>
+
+      <div id="us-session" hidden>
+        <div class="session-head" style="margin-top:28px">
+          <span class="label">Your chain</span>
+          <div class="session-actions"><button id="us-clear">clear</button></div>
+        </div>
+        <ol id="us-facts"></ol>
+        <div class="chart-card">
+          <div class="facets" id="us-facets"></div>
+          <div class="chart-title" id="us-chart-title"></div>
+          <div id="us-chart" style="width:100%;height:420px"></div>
+          <p class="chart-src" id="us-chart-src"></p>
+        </div>
       </div>
+      <p class="meta" id="us-coverage" style="margin-top:20px"></p>
     </div>
 
-    <div class="table-card" id="us-table-card" hidden>
-      <div class="table-head">
-        <h2>By state</h2>
-        <input id="us-filter" type="text" placeholder="Filter states" autocomplete="off">
-      </div>
-      <div class="tscroll">
-        <table id="us-table"><thead></thead><tbody></tbody></table>
-      </div>
-      <p class="tnote">Population-weighted from county values. The county-level view, with the map and the seven moves, opens from here once the data lands.</p>
+    <div class="data-row" id="us-empty">
+      <h2>Coverage</h2>
+      <p class="meta">The county data is not loaded yet. Once the Opportunity
+      Insights and Social Capital files are processed into
+      <code>us_county.json</code>, the question box opens here and the measures
+      light up.</p>
     </div>
   </div>
 
@@ -1931,72 +1942,301 @@ function hideNotice() { document.getElementById('notice').hidden = true; }
 
 const VIEWS = ['ask', 'wealth', 'income', 'wellbeing', 'us', 'db'];
 
-/* ── US county/state tier (loads if the processed files are present) ── */
-let US_STATE = null, US_NAMES = null, US_MANIFEST = null;
-const pctFrac = v => v == null ? '' : (v * 100).toFixed(0) + '%';
-const usd = v => v == null ? '' : '$' + Math.round(v).toLocaleString('en-US');
-const rank2 = v => v == null ? '' : v.toFixed(2);
-const US_META = {
-  us_mobility:      { label: 'Upward mobility', fmt: rank2 },
-  us_econ_conn:     { label: 'Economic connectedness', fmt: rank2 },
-  us_cohesion:      { label: 'Cohesion', fmt: rank2 },
-  us_volunteering:  { label: 'Volunteering', fmt: pctFrac },
-  us_homeownership: { label: 'Homeownership', fmt: pctFrac },
-  us_house_value:   { label: 'Median home value', fmt: usd },
-  us_income_gini:   { label: 'Income Gini', fmt: rank2 },
-  us_median_income: { label: 'Median income', fmt: usd },
-  us_poverty:       { label: 'Poverty rate', fmt: pctFrac },
-  us_single_parent: { label: 'Single-parent share', fmt: pctFrac },
-  us_college:       { label: 'College share', fmt: pctFrac },
-  us_life_exp:      { label: 'Life expectancy', fmt: v => v == null ? '' : v.toFixed(1) },
-  us_incarceration: { label: 'Incarceration', fmt: rank2 },
-  us_teen_birth:    { label: 'Teen births', fmt: rank2 },
-  us_subprime:      { label: 'Subprime share', fmt: pctFrac },
-  us_debt_collections: { label: 'Debt in collections', fmt: pctFrac },
-};
+/* ── US county tier: the same ask cube, at county resolution ───────── */
+let US_COUNTY = null, US_STATE = null, US_NAMES = null, US_MANIFEST = null;
+const US_ABBR = { '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT','10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL','18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD','25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE','32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND','39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV','55':'WI','56':'WY','72':'PR' };
+const usLabel = { us_mobility:'upward mobility', us_econ_conn:'economic connectedness', us_cohesion:'cohesion', us_volunteering:'volunteering', us_homeownership:'homeownership', us_house_value:'home value', us_income_gini:'income Gini', us_median_income:'median income', us_poverty:'poverty', us_single_parent:'single-parent share', us_college:'college share', us_life_exp:'life expectancy', us_le_gap:'the rich-poor life gap', us_credit_score:'credit score', us_debt_card:'credit-card debt', us_debt_mortgage:'mortgage debt', us_debt_auto:'auto debt', us_debt_student:'student debt', us_delinquency:'delinquency' };
+const usd0v = v => '$' + Math.round(v).toLocaleString('en-US');
+const pctv = v => (v * 100).toFixed(0) + '%';
+const usFmt = { us_mobility:v=>v.toFixed(2), us_econ_conn:v=>v.toFixed(2), us_cohesion:v=>v.toFixed(2), us_volunteering:pctv, us_homeownership:pctv, us_house_value:usd0v, us_income_gini:v=>v.toFixed(2), us_median_income:usd0v, us_poverty:pctv, us_single_parent:pctv, us_college:pctv, us_life_exp:v=>v.toFixed(1)+' yrs', us_le_gap:v=>v.toFixed(1)+' yrs', us_credit_score:v=>''+Math.round(v), us_debt_card:usd0v, us_debt_mortgage:usd0v, us_debt_auto:usd0v, us_debt_student:usd0v, us_delinquency:v=>(v*100).toFixed(1)+'%' };
+const usFmtOf = m => usFmt[m] || (v => '' + v);
+const usWorse = {};   // higher_is_worse per metric, from manifest
+function usAvail() { return US_COUNTY ? Object.keys(US_COUNTY).filter(k => usLabel[k] && Object.keys(US_COUNTY[k]).length) : []; }
 
-const usSort = { key: null, dir: 'desc' };
-function renderUS() {
-  const cov = document.getElementById('us-coverage');
-  const card = document.getElementById('us-table-card');
-  if (!US_MANIFEST || !US_STATE) { if (card) card.hidden = true; return; }
-  const mets = US_MANIFEST.metrics.filter(m => US_META[m.id] && US_STATE[m.id]);
-  if (!mets.length) { if (card) card.hidden = true; return; }
-  cov.innerHTML = `<p class="meta">${US_MANIFEST.counties_total.toLocaleString('en-US')} counties. ` +
-    `${mets.length} measures loaded:</p><div class="facets">` +
-    mets.map(m => `<span class="facet"><span class="k">${US_META[m.id].label}</span> ${m.counties}</span>`).join('') +
-    `</div>`;
-  card.hidden = false;
-  if (!usSort.key) usSort.key = mets[0].id;
-  const states = Object.keys(US_NAMES || {}).filter(k => k.length === 2);
-  const head = document.querySelector('#us-table thead');
-  head.innerHTML = '<tr><th data-k="name">State</th>' +
-    mets.map(m => `<th data-k="${m.id}">${US_META[m.id].label} <span class="dir"></span></th>`).join('') + '</tr>';
-  head.querySelectorAll('th[data-k]').forEach(th => th.addEventListener('click', () => {
-    const k = th.dataset.k;
-    if (usSort.key === k) usSort.dir = usSort.dir === 'asc' ? 'desc' : 'asc';
-    else { usSort.key = k; usSort.dir = k === 'name' ? 'asc' : 'desc'; }
-    drawUSTable(mets, states);
-  }));
-  document.getElementById('us-filter').oninput = () => drawUSTable(mets, states);
-  drawUSTable(mets, states);
+let US_INDEX = [];
+function usBuildIndex() {
+  US_INDEX = [];
+  for (const f in US_NAMES) US_INDEX.push({ norm: norm(US_NAMES[f]), fips: f });
+  US_INDEX.sort((a, b) => b.norm.length - a.norm.length);
 }
-function drawUSTable(mets, states) {
-  const q = norm(document.getElementById('us-filter').value || '');
-  let rows = states.filter(st => !q || norm(US_NAMES[st]).includes(q));
-  const k = usSort.key;
-  rows.sort((a, b) => {
-    if (k === 'name') return usSort.dir === 'asc' ? US_NAMES[a].localeCompare(US_NAMES[b]) : US_NAMES[b].localeCompare(US_NAMES[a]);
-    const x = (US_STATE[k] || {})[a], y = (US_STATE[k] || {})[b];
-    if (x == null) return 1; if (y == null) return -1;
-    return usSort.dir === 'asc' ? x - y : y - x;
+function usFind(text) {
+  let t = ' ' + norm(text) + ' ';
+  const found = [];
+  for (const { norm: n, fips } of US_INDEX) {
+    if (n.length < 4) continue;
+    const needle = ' ' + n + ' ', at = t.indexOf(needle);
+    if (at !== -1) { if (!found.includes(fips)) found.push(fips); t = t.slice(0, at) + ' '.repeat(needle.length) + t.slice(at + needle.length); }
+  }
+  return { fips: found, residual: t };
+}
+
+const US_KEYWORDS = [
+  [/\bupward mobility\b|\bmobility\b|\bmove up\b|\bclimb\b/, 'us_mobility'],
+  [/\beconomic connect\w*\b|\bconnectedness\b|\bconnection\b|\bfriends?\b/, 'us_econ_conn'],
+  [/\bcohesion\b|\bclustering\b/, 'us_cohesion'],
+  [/\bvolunteer\w*\b/, 'us_volunteering'],
+  [/\bhomeowner\w*\b|\bhome ?ownership\b/, 'us_homeownership'],
+  [/\bhome values?\b|\bhouse values?\b|\bhousing\b|\bhome prices?\b|\bproperty values?\b/, 'us_house_value'],
+  [/\bthe rich[- ]poor\b|\blife gap\b|\bhealth gap\b|\brich live\w*\b|\blongevity gap\b/, 'us_le_gap'],
+  [/\blife expectancy\b|\blongevity\b|\blive longer\b/, 'us_life_exp'],
+  [/\bcredit[- ]?card debt\b|\bcard debt\b/, 'us_debt_card'],
+  [/\bcredit scores?\b|\bcredit\b/, 'us_credit_score'],
+  [/\bmortgage\w*\b/, 'us_debt_mortgage'],
+  [/\bauto loans?\b|\bcar loans?\b|\bauto debt\b/, 'us_debt_auto'],
+  [/\bstudent (loans?|debt)\b/, 'us_debt_student'],
+  [/\bdelinquen\w*\b|\bbehind on\b/, 'us_delinquency'],
+  [/\bmedian income\b/, 'us_median_income'],
+  [/\bpoverty\b|\bpoorest\b|\bpoor\b/, 'us_poverty'],
+  [/\bsingle[- ]parent\w*\b/, 'us_single_parent'],
+  [/\bcollege\b|\bdegrees?\b/, 'us_college'],
+  [/\bincome inequality\b|\bincome gini\b|\binequality\b|\bunequal\b|\bgini\b/, 'us_income_gini'],
+];
+function usDetect(r) {
+  const a = usAvail(), out = [];
+  for (const [re, id] of US_KEYWORDS) if (re.test(r) && a.includes(id) && !out.includes(id)) out.push(id);
+  return out;
+}
+function usLensDefault() { return usAvail().includes('us_house_value') ? 'us_house_value' : 'us_income_gini'; }
+
+const usHasName = f => US_NAMES[f] && !US_NAMES[f].startsWith(f);
+function usRanked(metric, dir) {
+  const m = US_COUNTY[metric] || {};
+  return Object.keys(m).filter(usHasName).map(f => ({ fips: f, v: m[f] }))
+    .sort((a, b) => dir === 'low' ? a.v - b.v : b.v - a.v);
+}
+function usPaired(x, y) {
+  const X = US_COUNTY[x] || {}, Y = US_COUNTY[y] || {}, out = [];
+  for (const f in X) if (Y[f] != null && X[f] != null && usHasName(f)) out.push({ fips: f, x: X[f], y: Y[f] });
+  return out;
+}
+const usName = f => US_NAMES[f] || f;
+
+const usCtx = { metric: 'us_mobility', lens: 'us_house_value' };
+let usSeq = 0;
+const usChain = [];
+
+function usNotice(html) { const n = document.getElementById('us-notice'); n.innerHTML = html; n.hidden = false; }
+function usHideNotice() { document.getElementById('us-notice').hidden = true; }
+
+function usAsk(q) {
+  usHideNotice();
+  const f = usAnswer(q);
+  if (!f) return;
+  usChain.push(f); usRender();
+  document.getElementById('us-q').value = '';
+}
+function usRemove(id) { const i = usChain.findIndex(f => f.id === id); if (i !== -1) usChain.splice(i, 1); usRender(); }
+
+function usAnswer(q) {
+  const r = norm(q);
+  const mets = usDetect(r);
+  const { fips } = usFind(r);
+  // a measure named but not in the loaded data
+  const namedUnavail = US_KEYWORDS.find(([re, id]) => re.test(r) && !usAvail().includes(id));
+  if (namedUnavail && !mets.length && !fips.length) {
+    usNotice(`${cap(usLabel[namedUnavail[1]])} is not in the loaded county data yet.`);
+    return null;
+  }
+  const most = /\bmost\b|\bhighest\b|\bworst\b|\bbiggest\b|\btop\b/.test(r);
+  const least = /\bleast\b|\blowest\b|\bbest\b|\bsmallest\b|\bfewest\b|\bbottom\b/.test(r);
+  const against = /\bagainst\b|\bvs\b|\bversus\b|\btrack\w*\b|\bpredict\w*\b/.test(r);
+  const tiers = /\btiers?\b|\bbands?\b|\bterciles?\b|\bthirds?\b/.test(r);
+  const brk = /\bbreaks? the (pattern|trend)\b|\boutliers?\b|\boff the (trend|line|pattern)\b|\bexceptions?\b|\bbeat\w* (the )?odds\b|\bpunch\w* above\b|\bdefy\w*\b/.test(r);
+  const lens = mets.find(m => m === 'us_income_gini' || m === 'us_house_value') ||
+    (/\bwealth\b|\bhome|\bhous|\bproperty\b/.test(r) ? 'us_house_value' : usCtx.lens);
+  const metric = mets.find(m => m !== lens) || (mets[0] !== lens ? mets[0] : null) || usCtx.metric;
+  const f = { id: ++usSeq, query: q };
+
+  if (brk) {
+    const y = metric, x = (lens === y ? usLensDefault() : lens);
+    const pts = usPaired(x, y);
+    const fit = theilSen(pts);
+    if (!fit || pts.length < 12) return usMiss();
+    for (const p of pts) p.resid = p.y - (fit.slope * p.x + fit.intercept);
+    const s = pts.slice().sort((a, b) => b.resid - a.resid);
+    const over = s.slice(0, 3), under = s.slice(-3).reverse();
+    usCtx.metric = y; usCtx.lens = x;
+    f.mode = 'usscatter'; f.sc = { x, y, pts, fit, label: [...over, ...under].map(p => p.fips) };
+    const fmt = usFmtOf(y);
+    const say = a => `${esc(usName(a.fips))} <strong>${fmt(Math.abs(a.resid))}</strong> ${a.resid >= 0 ? 'above' : 'below'}`;
+    f.text = `Against ${usLabel[x]}, the counties furthest off the line on ${usLabel[y]}: ` +
+      `${say(over[0])} and ${say(over[1])} what it predicts; ${say(under[0])} and ${say(under[1])}.`;
+  }
+  else if (tiers) {
+    const y = metric, x = (lens === y ? usLensDefault() : lens);
+    const pool = usRanked(x, 'high');
+    if (pool.length < 12) return usMiss();
+    const hi = pool[Math.floor(pool.length / 3)].v, lo = pool[Math.floor(2 * pool.length / 3)].v;
+    const g = { high: [], mid: [], low: [] };
+    for (const f2 in US_COUNTY[x]) {
+      const xv = US_COUNTY[x][f2], yv = (US_COUNTY[y] || {})[f2];
+      if (yv == null) continue;
+      (xv >= hi ? g.high : xv <= lo ? g.low : g.mid).push(yv);
+    }
+    if (!g.high.length || !g.low.length) return usMiss();
+    const mean = a => a.reduce((s2, v) => s2 + v, 0) / a.length;
+    const mh = mean(g.high), mm = mean(g.mid), ml = mean(g.low), fmt = usFmtOf(y);
+    usCtx.metric = y; usCtx.lens = x;
+    f.mode = 'ustiers'; f.tiers = { x, y, rows: [
+      { label: `Top third by ${usLabel[x]}`, v: mh, n: g.high.length },
+      { label: 'Middle third', v: mm, n: g.mid.length },
+      { label: `Bottom third`, v: ml, n: g.low.length } ] };
+    f.text = `Counties in the top third by ${usLabel[x]} average <strong>${fmt(mh)}</strong> on ${usLabel[y]}; ` +
+      `the bottom third <strong>${fmt(ml)}</strong>.`;
+  }
+  else if (against && metric) {
+    const y = metric, x = (lens === y ? usLensDefault() : lens);
+    const pts = usPaired(x, y);
+    if (pts.length < 12) return usMiss();
+    const rr = pearson(pts);
+    usCtx.metric = y; usCtx.lens = x;
+    f.mode = 'usscatter'; f.sc = { x, y, pts, r: rr, label: [] };
+    f.text = `Across ${pts.length} counties, ${usLabel[y]} ${corrClause(rr, usLabel[x])} (r = ${rr.toFixed(2)}).`;
+  }
+  else if (fips.length) {
+    const only = fips[0], isState = only.length === 2;
+    const store = isState ? US_STATE : US_COUNTY;
+    usCtx.metric = mets[0] || usCtx.metric;
+    const parts = usAvail().filter(m => (store[m] || {})[only] != null)
+      .slice(0, 6).map(m => `${usLabel[m]} <strong>${usFmtOf(m)(store[m][only])}</strong>`);
+    if (!parts.length) return usMiss();
+    f.mode = 'usbars'; f.bar = { key: usCtx.metric, dir: 'high', rows: usRanked(usCtx.metric, 'high').slice(0, 12), highlight: isState ? null : only };
+    f.text = `<strong>${esc(usName(only))}</strong>: ${parts.join(', ')}.`;
+  }
+  else if (most || least || metric) {
+    const key = metric;
+    const worse = usWorse[key];
+    const dir = least ? 'low' : most ? 'high' : (worse ? 'high' : 'high');
+    const pool = usRanked(key, dir);
+    if (!pool.length) return usMiss();
+    const top = pool.slice(0, 12), fmt = usFmtOf(key);
+    usCtx.metric = key;
+    f.mode = 'usbars'; f.bar = { key, dir, rows: top };
+    const three = top.slice(0, 3).map(p => `${esc(usName(p.fips))} <strong>${fmt(p.v)}</strong>`).join(', ');
+    f.text = `${dir === 'high' ? 'Highest' : 'Lowest'} ${usLabel[key]} by county: ${three}.`;
+  }
+  else return usMiss();
+
+  return f;
+  function usMiss() { usNotice('Try a measure ("upward mobility", "the rich-poor life gap", "credit score"), "against home values", "across home-value tiers", "who breaks the pattern", or a state.'); return null; }
+}
+
+/* ── US chips ──────────────────────────────────────────────────────── */
+function usChips() {
+  const el = document.getElementById('us-chips');
+  const av = usAvail();
+  let list;
+  if (!usChain.length) {
+    list = ['mobility against home values', 'the rich-poor life gap against home values',
+      'highest upward mobility', 'who breaks the pattern'].filter((c, i) => i < 4);
+  } else {
+    const last = usChain[usChain.length - 1];
+    if (last.mode === 'usscatter') list = ['who breaks the pattern', `${usLabel[usCtx.metric]} across ${usLabel[usCtx.lens]} tiers`, `highest ${usLabel[usCtx.metric]}`];
+    else if (last.mode === 'ustiers') list = ['who breaks the pattern', `${usLabel[usCtx.metric]} against home values`, `highest ${usLabel[usCtx.metric]}`];
+    else if (last.mode === 'usbars') list = [`${usLabel[usCtx.metric]} against home values`, `${usLabel[usCtx.metric]} across income inequality tiers`, 'who breaks the pattern'];
+    else list = ['mobility against home values', 'the rich-poor life gap against home values', 'highest upward mobility'];
+  }
+  el.innerHTML = list.map(c => `<button type="button" class="chip">${c}</button>`).join('');
+  el.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => usAsk(b.textContent)));
+}
+
+function usRender() {
+  const sess = document.getElementById('us-session');
+  const list = document.getElementById('us-facts');
+  usChips();
+  if (!usChain.length) { sess.hidden = true; return; }
+  sess.hidden = false;
+  list.innerHTML = usChain.map((f, i) =>
+    `<li><span class="n">${i + 1}</span><span class="t">${f.text}</span>` +
+    `<button class="x" data-id="${f.id}" title="remove">&times;</button></li>`).join('');
+  list.querySelectorAll('.x').forEach(b => b.addEventListener('click', () => usRemove(Number(b.dataset.id))));
+  const el = document.getElementById('us-facets');
+  el.innerHTML = `<span class="facet-lead">cell</span><span class="facet"><span class="k">measure</span> ${usLabel[usCtx.metric]}</span>` +
+    (usChain[usChain.length - 1].mode === 'usscatter' || usChain[usChain.length - 1].mode === 'ustiers'
+      ? `<span class="facet lens"><span class="k">against</span> ${usLabel[usCtx.lens]}</span>` : '') +
+    `<span class="facet"><span class="k">geography</span> US counties</span>`;
+  usDrawChart();
+}
+
+function usDrawChart() {
+  const f = usChain[usChain.length - 1];
+  const el = document.getElementById('us-chart');
+  const title = document.getElementById('us-chart-title');
+  const src = document.getElementById('us-chart-src');
+  src.textContent = 'Source: Opportunity Insights (Opportunity Atlas, Social Capital Atlas) and the health tables. County level, latest release.';
+
+  if (f.mode === 'usbars') {
+    let rows = f.bar.rows.slice();
+    if (f.bar.highlight && !rows.some(r => r.fips === f.bar.highlight)) {
+      const own = usRanked(f.bar.key, 'high').find(r => r.fips === f.bar.highlight);
+      if (own) rows = rows.concat([own]);
+    }
+    rows = rows.reverse();
+    const fmt = usFmtOf(f.bar.key);
+    Plotly.react(el, [{
+      type: 'bar', orientation: 'h', y: rows.map(r => usName(r.fips)), x: rows.map(r => r.v),
+      marker: { color: rows.map(r => r.fips === f.bar.highlight ? '#eb6834' : '#2a78d6') },
+      text: rows.map(r => fmt(r.v)), textposition: 'outside',
+      textfont: { size: 11, color: '#555' }, hovertemplate: '%{y}: %{text}<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, { margin: { t: 8, r: 80, b: 30, l: 190 }, bargap: 0.35 }), CFG);
+    title.textContent = `${cap(usLabel[f.bar.key])}, ${f.bar.dir === 'high' ? 'highest' : 'lowest'} counties`;
+  }
+  else if (f.mode === 'ustiers') {
+    const rows = f.tiers.rows.slice().reverse(), fmt = usFmtOf(f.tiers.y);
+    Plotly.react(el, [{
+      type: 'bar', orientation: 'h', y: rows.map(r => r.label), x: rows.map(r => r.v),
+      marker: { color: ['#1baf7a', '#c9d3e0', '#eb6834'] },
+      text: rows.map(r => fmt(r.v) + '  ·  ' + r.n), textposition: 'outside', textfont: { size: 11, color: '#555' },
+      hovertemplate: '%{y}: %{text} counties<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, { margin: { t: 8, r: 90, b: 30, l: 190 }, bargap: 0.4 }), CFG);
+    title.textContent = `${cap(usLabel[f.tiers.y])} by ${usLabel[f.tiers.x]} tier`;
+  }
+  else if (f.mode === 'usscatter') {
+    const sc = f.sc, fx = usFmtOf(sc.x), fy = usFmtOf(sc.y);
+    const labelSet = new Set(sc.label || []);
+    const bg = sc.pts.filter(p => !labelSet.has(p.fips)), named = sc.pts.filter(p => labelSet.has(p.fips));
+    const mk = a => ({ x: a.map(p => p.x), y: a.map(p => p.y), text: a.map(p => usName(p.fips)),
+      customdata: a.map(p => [fx(p.x), fy(p.y)]) });
+    const traces = [{ type: 'scatter', mode: 'markers', ...mk(bg), marker: { color: '#c9d3e0', size: 5 },
+      hovertemplate: '%{text}<br>' + usLabel[sc.x] + ': %{customdata[0]}<br>' + usLabel[sc.y] + ': %{customdata[1]}<extra></extra>' }];
+    if (sc.fit) {
+      const xs = sc.pts.map(p => p.x), lo = Math.min(...xs), hi = Math.max(...xs);
+      traces.push({ type: 'scatter', mode: 'lines', showlegend: false, hoverinfo: 'skip',
+        x: [lo, hi], y: [sc.fit.slope * lo + sc.fit.intercept, sc.fit.slope * hi + sc.fit.intercept],
+        line: { color: '#98a4b8', width: 1.5, dash: 'dash' } });
+    }
+    if (named.length) traces.push({ type: 'scatter', mode: 'markers+text', ...mk(named),
+      marker: { color: '#eb6834', size: 10, line: { color: '#fff', width: 1.5 } },
+      textposition: 'top center', textfont: { size: 10, color: '#1a2744' },
+      hovertemplate: '%{text}<br>' + usLabel[sc.x] + ': %{customdata[0]}<br>' + usLabel[sc.y] + ': %{customdata[1]}<extra></extra>' });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 12, b: 44, l: 60 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: usLabel[sc.x], font: { size: 12 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: usLabel[sc.y], font: { size: 12 } } }),
+    }), CFG);
+    title.textContent = (sc.fit ? `Who breaks the pattern: ` : '') + `${cap(usLabel[sc.y])} against ${usLabel[sc.x]}, by county`;
+    src.textContent = (sc.fit ? 'Dashed line is a robust (Theil-Sen) fit; labelled counties sit furthest from it. ' : '') + src.textContent;
+  }
+}
+
+function initUS() {
+  const loaded = document.getElementById('us-loaded'), empty = document.getElementById('us-empty');
+  if (!US_COUNTY || !usAvail().length) { if (loaded) loaded.hidden = true; if (empty) empty.hidden = false; return; }
+  loaded.hidden = false; empty.hidden = true;
+  if (US_MANIFEST) for (const m of US_MANIFEST.metrics) usWorse[m.id] = m.higher_is_worse;
+  for (const f in US_NAMES) { const p = US_NAMES[f].split(', '); if (p.length === 3) US_NAMES[f] = p[0] + ', ' + p[2]; }
+  usBuildIndex();
+  const av = usAvail();
+  document.getElementById('us-coverage').innerHTML =
+    `${(US_MANIFEST ? US_MANIFEST.counties_total : 3000).toLocaleString('en-US')} counties, ${av.length} measures: ` +
+    av.map(m => usLabel[m]).join(', ') + '.';
+  document.getElementById('us-form').addEventListener('submit', e => {
+    e.preventDefault(); const v = document.getElementById('us-q').value.trim(); if (v) usAsk(v);
   });
-  document.querySelector('#us-table tbody').innerHTML = rows.map(st =>
-    `<tr><td>${esc(US_NAMES[st])}</td>` +
-    mets.map(m => `<td>${US_META[m.id].fmt((US_STATE[m.id] || {})[st])}</td>`).join('') + '</tr>').join('');
-  document.querySelectorAll('#us-table thead th').forEach(th =>
-    th.querySelector('.dir') && (th.querySelector('.dir').textContent = th.dataset.k === k ? (usSort.dir === 'asc' ? '↑' : '↓') : ''));
+  document.getElementById('us-clear').addEventListener('click', () => { usChain.length = 0; usCtx.metric = 'us_mobility'; usCtx.lens = usLensDefault(); usRender(); });
+  usChips();
 }
+
 function setView(name) {
   for (const v of VIEWS) {
     document.getElementById('view-' + v).hidden = v !== name;
@@ -2095,7 +2335,7 @@ function boot() {
   });
   renderTable();
   fillCoverage();
-  renderUS();
+  initUS();
 
   if (location.hash.length > 1) {
     location.hash.slice(1).split('|').slice(0, 12)
@@ -2127,10 +2367,11 @@ Promise.all([
   opt('data/median_income.json'),
   opt('data/gdp_pc.json'),
   opt('data/life_satisfaction.json'),
+  opt('data/us_county.json'),
   opt('data/us_state.json'),
   opt('data/us_names.json'),
   opt('data/us_manifest.json'),
-]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, usState, usNames, usManifest]) => {
+]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, usCounty, usState, usNames, usManifest]) => {
   LATEST = latest; US = us;
   // spine is the union of every country any module knows, named from geo_names
   const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
@@ -2151,7 +2392,7 @@ Promise.all([
   SERIES.median_income = toSeries(medinc);
   SERIES.gdp_pc = toSeries(gdp);
   if (sat && Object.keys(sat).length) SERIES.life_satisfaction = toSeries(sat);
-  if (usState && Object.keys(usState).length) { US_STATE = usState; US_NAMES = usNames; US_MANIFEST = usManifest; }
+  if (usCounty && Object.keys(usCounty).length) { US_COUNTY = usCounty; US_STATE = usState; US_NAMES = usNames; US_MANIFEST = usManifest; }
 
   buildIndex();
   boot();
