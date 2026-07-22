@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Open Inequality Atlas: Wealth</title>
-<meta name="description" content="Household wealth inequality for 213 countries and territories. Ask short questions, chain the answers, take the data. Harmonized from WID, HFCS, LWS, SCF, and DFA.">
+<title>Open Inequality Atlas</title>
+<meta name="description" content="Wealth and income inequality, life expectancy, and emissions for 213 countries and territories. Ask short questions, chain the answers, take the data.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -233,6 +233,7 @@ tbody tr:last-child td { border-bottom: none; }
   padding: 12px 14px;
 }
 .data-row .foot { font-size: 12px; color: var(--ink-3); margin-top: 10px; }
+.try { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px !important; }
 
 footer { border-top: 1px solid var(--border); padding: 20px 0 40px; font-size: 12px; color: var(--ink-3); }
 footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
@@ -243,10 +244,13 @@ footer a { color: inherit; }
 
 <header>
   <div class="wrap">
-    <div class="wordmark">Open Inequality Atlas <span>/ wealth</span></div>
+    <div class="wordmark">Open Inequality Atlas</div>
     <nav class="tabs">
-      <button class="tab on" id="tab-ask">Ask</button>
-      <button class="tab" id="tab-db">Database</button>
+      <button class="tab on" data-view="ask">Ask</button>
+      <button class="tab" data-view="wealth">Wealth</button>
+      <button class="tab" data-view="income">Income</button>
+      <button class="tab" data-view="wellbeing">Wellbeing</button>
+      <button class="tab" data-view="db">Database</button>
     </nav>
     <div class="top-links">
       <span class="ver">v0.4.0</span>
@@ -261,8 +265,9 @@ footer a { color: inherit; }
     <section class="ask">
       <h1>Ask the atlas.</h1>
       <p class="sub">
-        Household wealth inequality, 213 countries and territories.
-        Short questions chain: start anywhere, then slice further.
+        Wealth and income inequality, life expectancy, and emissions across
+        213 countries and territories. Short questions chain: start anywhere,
+        slice further, switch topic mid-chain.
       </p>
       <form class="askbox" id="ask-form">
         <input id="q" type="text" autocomplete="off" spellcheck="false"
@@ -277,6 +282,7 @@ footer a { color: inherit; }
         <div class="help-row"><span class="help-k">Or movement</span><span class="help-v" data-qs="biggest risers since 2000;biggest fallers"></span></div>
         <div class="help-row"><span class="help-k">Then slice</span><span class="help-v" data-qs="over time;compared to whom;vs the average;the other extreme"></span></div>
         <div class="help-row"><span class="help-k">Switch measure</span><span class="help-v" data-qs="top 1% share;top 10% share;bottom 50% share"></span></div>
+        <div class="help-row"><span class="help-k">Cross topics</span><span class="help-v" data-qs="income inequality;life expectancy;CO2 per person;wealth inequality"></span></div>
         <div class="help-row"><span class="help-k">Or a region</span><span class="help-v" data-qs="Africa average;least equal in Latin America"></span></div>
         <p class="help-foot">Answers stack into a chain. Remove any line with its &times;, or clear and start again.</p>
       </div>
@@ -298,6 +304,95 @@ footer a { color: inherit; }
         <p class="chart-src" id="chart-src"></p>
       </div>
     </section>
+  </div>
+
+  <div id="view-wealth" class="wrap db" hidden>
+    <h1>Wealth</h1>
+    <p class="sub">
+      Wealth accumulates where income merely flows, so it concentrates harder:
+      the same country often shows a wealth Gini twenty points above its income
+      Gini. This is the atlas core, harmonized from five source families with
+      every row tagged for comparability.
+    </p>
+    <div class="grid3">
+      <div class="block">
+        <h2>Wealth Gini</h2>
+        <p>WID series, per-adult equal-split basis, negative net wealth zeroed.
+        <span id="cov-wealth"></span></p>
+        <p class="try" data-qs="least equal;most unequal in Europe;Sweden over time"></p>
+      </div>
+      <div class="block">
+        <h2>Distribution shares</h2>
+        <p>Top 1%, top 10%, and bottom 50% shares of household net wealth,
+        latest year per country, plus the US long-run series back to 1989.</p>
+        <p class="try" data-qs="top 1% share;bottom 50% share;the United States"></p>
+      </div>
+      <div class="block">
+        <h2>The full panel</h2>
+        <p>10,783 rows, 213 countries and territories, 1800 to 2025 in the
+        release files, with comparability tiers and top-tail flags per row.</p>
+        <p><a href="#" class="goto-db" style="color:var(--accent)">Browse the database</a></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-income" class="wrap db" hidden>
+    <h1>Income</h1>
+    <p class="sub">
+      The income side of the same question. Chaining the two Ginis shows where
+      high pay coexists with modest fortunes and where old wealth outlives the
+      income statistics that produced it.
+    </p>
+    <div class="grid3">
+      <div class="block">
+        <h2>Income Gini</h2>
+        <p>World Bank Poverty and Inequality Platform, national survey rows:
+        income where surveys measure it, consumption where they measure that
+        instead. <span id="cov-income"></span></p>
+        <p class="try" data-qs="income inequality;least equal on income;income in Brazil over time"></p>
+      </div>
+      <div class="block">
+        <h2>Wealth against income</h2>
+        <p>Ask one, then the other, without losing your place: the chain keeps
+        the country and switches the measure.</p>
+        <p class="try" data-qs="France;income inequality;compared to whom"></p>
+      </div>
+      <div class="block">
+        <h2>Source</h2>
+        <p>PIP data via Our World in Data, CC BY 4.0. Survey years vary by
+        country; the chart marks sparse series point by point.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-wellbeing" class="wrap db" hidden>
+    <h1>Wellbeing</h1>
+    <p class="sub">
+      How long people live and what their economies burn, next to how unequal
+      they are. Chain a wealth question into life expectancy or emissions and
+      the atlas keeps your countries in focus while the measure changes.
+    </p>
+    <div class="grid3">
+      <div class="block">
+        <h2>Life expectancy</h2>
+        <p>At birth, both sexes. UN World Population Prospects with Clio Infra
+        and Riley backfill, via Our World in Data.
+        <span id="cov-life"></span></p>
+        <p class="try" data-qs="life expectancy in France;highest life expectancy;least equal"></p>
+      </div>
+      <div class="block">
+        <h2>CO2 per person</h2>
+        <p>Territorial emissions per person in tonnes, Global Carbon Budget via
+        Our World in Data. <span id="cov-co2"></span></p>
+        <p class="try" data-qs="highest CO2 per person;CO2 in China over time;compared to whom"></p>
+      </div>
+      <div class="block">
+        <h2>Subjective wellbeing</h2>
+        <p>Life satisfaction (the Cantril ladder) is on the way. The page reads
+        <code>data/life_satisfaction.json</code> the moment the pipeline drops
+        it in, same shape as the other modules.</p>
+      </div>
+    </div>
   </div>
 
   <div id="view-db" class="wrap db" hidden>
@@ -374,7 +469,7 @@ footer a { color: inherit; }
 
 <footer>
   <div class="wrap">
-    <span>Open Inequality Atlas &middot; wealth module v0.4.0 &middot; CC BY 4.0 data &middot; MIT code</span>
+    <span>Open Inequality Atlas &middot; v0.4.0 &middot; CC BY 4.0 data &middot; MIT code</span>
     <a href="https://github.com/conway1521/wealth_ineq" target="_blank" rel="noopener">github.com/conway1521/wealth_ineq</a>
   </div>
 </footer>
@@ -383,37 +478,19 @@ footer a { color: inherit; }
 <script>
 'use strict';
 
-/* ── data ──────────────────────────────────────────────────────────── */
-let LATEST = null, TS = null, US = null;
-let BY_ISO = {};
-let WORLD_MEDIAN = null;
+/* ── data stores ───────────────────────────────────────────────────── */
+let LATEST = null, US = null;
+let BY_ISO = {};            // iso -> wealth snapshot row + name
+const SERIES = {};          // metric -> iso -> [{year, v}]
 
 /* ── palette: validated categorical slots, fixed order ─────────────── */
 const SLOTS = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#e34948'];
 const colorOf = {};
 let nextSlot = 0;
-function assignColor(iso) {
-  if (!(iso in colorOf)) { colorOf[iso] = SLOTS[nextSlot % SLOTS.length]; nextSlot++; }
-  return colorOf[iso];
+function assignColor(key) {
+  if (!(key in colorOf)) { colorOf[key] = SLOTS[nextSlot % SLOTS.length]; nextSlot++; }
+  return colorOf[key];
 }
-
-/* ── country matching ──────────────────────────────────────────────── */
-const ALIASES = {
-  'usa':'USA','us':'USA','u s':'USA','america':'USA','united states':'USA','the states':'USA',
-  'uk':'GBR','britain':'GBR','great britain':'GBR','united kingdom':'GBR',
-  'south korea':'KOR','korea':'KOR','north korea':'PRK',
-  'russia':'RUS','czech republic':'CZE','czechia':'CZE',
-  'ivory coast':'CIV','cote d ivoire':'CIV',
-  'drc':'COD','dr congo':'COD','democratic republic of the congo':'COD',
-  'holland':'NLD','netherlands':'NLD',
-  'uae':'ARE','emirates':'ARE','united arab emirates':'ARE',
-  'vietnam':'VNM','viet nam':'VNM','laos':'LAO','syria':'SYR','iran':'IRN',
-  'tanzania':'TZA','bolivia':'BOL','moldova':'MDA','macedonia':'MKD',
-  'swaziland':'SWZ','eswatini':'SWZ','cape verde':'CPV','cabo verde':'CPV',
-  'burma':'MMR','myanmar':'MMR','turkey':'TUR','turkiye':'TUR',
-  'hong kong':'HKG','taiwan':'TWN','palestine':'PSE','venezuela':'VEN',
-};
-let NAME_INDEX = [];
 
 /* ── regions ───────────────────────────────────────────────────────── */
 const REGION_DEF = {
@@ -441,6 +518,24 @@ const REGION_TOKENS = [
 const REGION_LABEL = {};
 for (const [, k, label] of REGION_TOKENS) REGION_LABEL[k] = label;
 function inRegion(iso, region) { return !region || REGION_SET[region].has(iso); }
+
+/* ── country matching ──────────────────────────────────────────────── */
+const ALIASES = {
+  'usa':'USA','us':'USA','u s':'USA','america':'USA','united states':'USA','the states':'USA',
+  'uk':'GBR','britain':'GBR','great britain':'GBR','united kingdom':'GBR',
+  'south korea':'KOR','korea':'KOR','north korea':'PRK',
+  'russia':'RUS','czech republic':'CZE','czechia':'CZE',
+  'ivory coast':'CIV','cote d ivoire':'CIV',
+  'drc':'COD','dr congo':'COD','democratic republic of the congo':'COD',
+  'holland':'NLD','netherlands':'NLD',
+  'uae':'ARE','emirates':'ARE','united arab emirates':'ARE',
+  'vietnam':'VNM','viet nam':'VNM','laos':'LAO','syria':'SYR','iran':'IRN',
+  'tanzania':'TZA','bolivia':'BOL','moldova':'MDA','macedonia':'MKD',
+  'swaziland':'SWZ','eswatini':'SWZ','cape verde':'CPV','cabo verde':'CPV',
+  'burma':'MMR','myanmar':'MMR','turkey':'TUR','turkiye':'TUR',
+  'hong kong':'HKG','taiwan':'TWN','palestine':'PSE','venezuela':'VEN',
+};
+let NAME_INDEX = [];
 
 function norm(s) {
   return s.toLowerCase()
@@ -480,29 +575,98 @@ function findCountries(text) {
 const g2 = v => v == null ? 'n/a' : v.toFixed(2);
 const g3 = v => v == null ? 'n/a' : v.toFixed(3);
 const pc = v => v == null ? 'n/a' : (v * 100).toFixed(1) + '%';
+const yrs1 = v => v == null ? 'n/a' : v.toFixed(1) + ' years';
+const t1 = v => v == null ? 'n/a' : v.toFixed(1) + ' t';
 function ord(n) {
   const s = ['th','st','nd','rd'], v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function rankedPool(key, dir, region) {
-  return LATEST.filter(r => r[key] != null && inRegion(r.geo_id, region)).slice()
-    .sort((a, b) => dir === 'low' ? a[key] - b[key] : b[key] - a[key]);
+function cap(s) { return s[0].toUpperCase() + s.slice(1); }
+function medianOf(arr) {
+  const v = arr.slice().sort((a, b) => a - b);
+  return v[Math.floor(v.length / 2)];
 }
-function rankOf(iso, key) {
-  const pool = rankedPool(key, 'high');
+
+/* ── metric registry ───────────────────────────────────────────────── */
+const META = {
+  wealth_gini: {
+    label: 'wealth Gini', topic: 'wealth', series: true, giniFam: true, fmt: g2, fmtD: g3, hover: '%{y:.3f}',
+    lineSrc: 'Source: WID, 1990 to 2024. Per-adult equal-split basis, negative net wealth zeroed. Gaps are years without published data.',
+    poolSrc: 'Source: WID, latest available year per country.',
+  },
+  income_gini: {
+    label: 'income Gini', topic: 'income', series: true, giniFam: true, file: 'data/income_gini.json',
+    fmt: g2, fmtD: g3, hover: '%{y:.3f}',
+    lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. Income where surveys measure it, consumption otherwise.',
+    poolSrc: 'Source: World Bank PIP via OWID, latest survey per country.',
+  },
+  life_exp: {
+    label: 'life expectancy', topic: 'wellbeing', series: true, file: 'data/life_expectancy.json',
+    fmt: yrs1, fmtD: yrs1, hover: '%{y:.1f}',
+    lineSrc: 'Source: UN WPP, Clio Infra, and Riley, via Our World in Data. Life expectancy at birth, both sexes.',
+    poolSrc: 'Source: UN WPP and predecessors via OWID, latest year per country.',
+  },
+  co2_pc: {
+    label: 'CO2 per person', topic: 'wellbeing', series: true, file: 'data/co2_per_capita.json',
+    fmt: t1, fmtD: t1, hover: '%{y:.1f}',
+    lineSrc: 'Source: Global Carbon Budget, via Our World in Data. Territorial emissions per person, tonnes of CO2.',
+    poolSrc: 'Source: Global Carbon Budget via OWID, latest year per country.',
+  },
+  top1_wealth_share: { label: 'top 1% share', topic: 'wealth', snap: true, us: 'top1_share', fmt: pc, fmtD: pc },
+  top10_wealth_share: { label: 'top 10% share', topic: 'wealth', snap: true, us: 'top10_share', fmt: pc, fmtD: pc },
+  bottom50_wealth_share: { label: 'bottom 50% share', topic: 'wealth', snap: true, us: 'bottom50_share', fmt: pc, fmtD: pc },
+};
+
+const poolCache = {};
+function poolOf(metric) {
+  if (poolCache[metric]) return poolCache[metric];
+  const m = META[metric];
+  let pool;
+  if (m.snap) {
+    pool = LATEST.filter(r => r[metric] != null)
+      .map(r => ({ geo_id: r.geo_id, geo_name: r.geo_name, val: r[metric], year: r.year }));
+  } else {
+    pool = [];
+    const s = SERIES[metric] || {};
+    for (const iso in s) {
+      const pts = s[iso];
+      if (!pts.length || !BY_ISO[iso]) continue;
+      const last = pts[pts.length - 1];
+      pool.push({ geo_id: iso, geo_name: BY_ISO[iso].name, val: last.v, year: last.year });
+    }
+  }
+  return (poolCache[metric] = pool);
+}
+function rankedPool(metric, dir, region) {
+  return poolOf(metric).filter(r => inRegion(r.geo_id, region)).slice()
+    .sort((a, b) => dir === 'low' ? a.val - b.val : b.val - a.val);
+}
+function rankOf(iso, metric) {
+  const pool = rankedPool(metric, 'high', null);
   const i = pool.findIndex(r => r.geo_id === iso);
-  return { rank: i + 1, of: pool.length, pool };
+  return { rank: i + 1, of: pool.length, row: i >= 0 ? pool[i] : null };
+}
+function seriesOf(metric, iso) { return (SERIES[metric] || {})[iso] || []; }
+
+const medianCache = {};
+function medianSeriesOf(metric, region) {
+  const key = metric + '|' + (region || 'world');
+  if (medianCache[key]) return medianCache[key];
+  const byYear = {};
+  const s = SERIES[metric] || {};
+  for (const iso in s) {
+    if (!inRegion(iso, region)) continue;
+    for (const p of s[iso]) (byYear[p.year] = byYear[p.year] || []).push(p.v);
+  }
+  const min = region ? 5 : 10;
+  const out = Object.keys(byYear).map(Number).sort((a, b) => a - b)
+    .filter(y => byYear[y].length >= min)
+    .map(y => ({ year: y, v: medianOf(byYear[y]) }));
+  return (medianCache[key] = out);
 }
 
 /* ── conversation context ──────────────────────────────────────────── */
-const METRICS = {
-  wealth_gini:          { label: 'wealth Gini', fmt: g2, isGini: true },
-  top1_wealth_share:    { label: 'top 1% share', fmt: pc, us: 'top1_share' },
-  top10_wealth_share:   { label: 'top 10% share', fmt: pc, us: 'top10_share' },
-  bottom50_wealth_share:{ label: 'bottom 50% share', fmt: pc, us: 'bottom50_share' },
-};
 const ctx = { lastIso: null, metric: 'wealth_gini', lastRankDir: null, lastRegion: null };
 function focusIsos() {
   const set = [];
@@ -510,12 +674,17 @@ function focusIsos() {
   return set;
 }
 
-/* ── parsing: short slices, resolved against context ───────────────── */
+/* ── parsing ───────────────────────────────────────────────────────── */
 function detectMetric(r) {
   if (/\btop\s*10\b|\b10%|\b10\s*(per\s*cent|percent|pct)\b/.test(r)) return 'top10_wealth_share';
   if (/\btop\s*1\b|\b1%|\btop\s*one\b|\b1\s*(per\s*cent|percent|pct)\b|\brich(est)?\b/.test(r)) return 'top1_wealth_share';
   if (/\bbottom\s*(50|half)\b|\b50%|\bpoor(est)?\s*half\b/.test(r)) return 'bottom50_wealth_share';
-  if (/\bgini\b/.test(r)) return 'wealth_gini';
+  if (/\bincome\b|\bearnings\b|\bwages?\b/.test(r)) return 'income_gini';
+  if (/\blife expectancy\b|\blongevity\b|\blifespan\b/.test(r)) return 'life_exp';
+  if (/\bco2\b|\bcarbon\b|\bemissions?\b|\benvironment\w*\b/.test(r)) return 'co2_pc';
+  if (/\bhappiness\b|\bwell\s?being\b|\blife satisfaction\b|\bsatisfaction\b/.test(r)) return 'PENDING';
+  if (/\bwealth\b/.test(r)) return 'wealth_gini';
+  if (/\bgini\b/.test(r)) return META[ctx.metric].giniFam ? ctx.metric : 'wealth_gini';
   return null;
 }
 
@@ -526,8 +695,9 @@ function parse(raw) {
     if (re.test(text)) { region = key; text = text.replace(re, ' '); break; }
   }
   const { isos, residual: r } = findCountries(text);
-  const years = (r.match(/\b(?:19|20)\d{2}\b/g) || []).map(Number).filter(y => y >= 1989 && y <= 2025);
+  const years = (r.match(/\b(?:19|20)\d{2}\b/g) || []).map(Number).filter(y => y >= 1950 && y <= 2025);
   const metric = detectMetric(r);
+  if (metric === 'PENDING') return { kind: 'pending' };
 
   const hasEqual = /\bequal\b/.test(r), hasUnequal = /\bunequal\b|\binequality\b/.test(r);
   const most = /\bmost\b|\bhighest\b|\bworst\b/.test(r), least = /\bleast\b|\blowest\b/.test(r);
@@ -538,29 +708,49 @@ function parse(raw) {
 
   const riser = /\brisers?\b|\brisen\b|\bincreas\w*\b|\bclimb\w*\b|\bgrown\b|\bworsen\w*\b|\bjump\w*\b/.test(r);
   const faller = /\bfallers?\b|\bfallen\b|\bdrop\w*\b|\bdeclin\w*\b|\bdecreas\w*\b|\bimprov\w*\b/.test(r);
-  const th = r.match(/\b(above|over|below|under)\s+(0?\.\d+)/);
+  const th = r.match(/\b(above|over|below|under)\s+(\d{1,3}(?:\.\d+)?|\.\d+)\b/);
+  const giniWords = hasEqual || hasUnequal;
 
   if (/\bother (end|extreme|side)\b|\bopposite\b|\bflip\b/.test(r))
-    return { kind: 'rank', dir: ctx.lastRankDir === 'high' ? 'low' : 'high', region: region || ctx.lastRegion };
+    return { kind: 'rank', dir: ctx.lastRankDir === 'high' ? 'low' : 'high',
+             region: region || ctx.lastRegion, metric, giniWords };
   if ((riser || faller) && isos.length === 0)
-    return { kind: 'delta_rank', dir: riser ? 'up' : 'down', year: years[0] || 1995, region };
+    return { kind: 'delta_rank', dir: riser ? 'up' : 'down', year: years[0] || 1995, region, metric };
   if (th)
     return { kind: 'threshold', op: (th[1] === 'above' || th[1] === 'over') ? 'above' : 'below',
-             val: parseFloat(th[2]), region };
-  if (rankDir && isos.length === 0) return { kind: 'rank', dir: rankDir, region };
+             val: parseFloat(th[2]), region, metric };
+  if (rankDir && isos.length === 0) return { kind: 'rank', dir: rankDir, region, metric, giniWords };
   if (/\bcompared to (whom|what|who)\b|^\s*compared\s*$|\bneighbou?rs\b/.test(r))
     return { kind: 'context' };
   if (/\baverage\b|\bworld\b|\bmedian\b|\btypical\b|\boverall\b/.test(r) && isos.length === 0)
-    return { kind: 'world', region };
+    return { kind: 'world', region, metric };
   if (/\bover time\b|\btrend\b|\bhistory\b|\bevolution\b/.test(r) || (/\bsince\b/.test(r) && years.length))
-    return { kind: 'time', isos, year: years[0] || null, region };
-  if (metric && !isos.length && !ctx.lastIso) return { kind: 'us_shares', metric };
-  if (metric) return { kind: 'metric', metric, isos };
+    return { kind: 'time', isos, year: years[0] || null, region, metric };
+  if (metric) {
+    if (META[metric].us && !isos.length && !ctx.lastIso) return { kind: 'us_shares', metric };
+    if (META[metric].series && !isos.length && !ctx.lastIso) return { kind: 'world', metric };
+    return { kind: 'metric', metric, isos };
+  }
   if (isos.length >= 2) return { kind: 'compare', isos: isos.slice(0, 4) };
   if (isos.length === 1 && years.length) return { kind: 'point', iso: isos[0], year: years[0] };
   if (isos.length === 1) return { kind: 'profile', iso: isos[0] };
   if (region) return { kind: 'world', region };
   return { kind: 'unknown' };
+}
+
+/* pick the metric a question should run on */
+function resolveMetric(p) {
+  let key = p.metric || ctx.metric;
+  if (p.giniWords && !META[key].giniFam) key = 'wealth_gini';
+  return key;
+}
+function latestValOf(metric, iso) {
+  if (META[metric].snap) {
+    const r = BY_ISO[iso] && BY_ISO[iso].latest;
+    return r && r[metric] != null ? { val: r[metric], year: r.year } : null;
+  }
+  const s = seriesOf(metric, iso);
+  return s.length ? { val: s[s.length - 1].v, year: s[s.length - 1].year } : null;
 }
 
 /* ── answering ─────────────────────────────────────────────────────── */
@@ -569,57 +759,75 @@ const chain = [];
 
 function answer(q) {
   const p = parse(q);
-  const M = METRICS[ctx.metric];
 
   if (p.kind === 'unknown') {
-    showNotice('Could not read that one. Try a country, "least equal", "over time", "vs the average", or a share like "top 1%".');
+    showNotice('Could not read that one. Try a country, "least equal", "over time", "income inequality", or "life expectancy".');
+    return null;
+  }
+  if (p.kind === 'pending') {
+    showNotice('Subjective wellbeing is on the way. Life expectancy and CO2 per person are in; try those.');
     return null;
   }
 
   let f = { id: ++factSeq, query: q, kind: p.kind, isos: [], mode: 'lines', bar: null, metric: null, marker: null };
 
   if (p.kind === 'profile') {
+    const key = ctx.metric.startsWith('top') || ctx.metric.startsWith('bottom') ? ctx.metric : ctx.metric;
+    const m = META[key];
     const c = BY_ISO[p.iso]; if (!c) return miss();
-    const rk = rankOf(p.iso, 'wealth_gini');
-    f.isos = [p.iso]; ctx.lastIso = p.iso;
-    f.text = `<strong>${esc(c.name)}</strong>: wealth Gini <strong>${g2(c.latest.wealth_gini)}</strong> in ${c.latest.year}, ` +
-      `${ord(rk.rank)} most unequal of ${rk.of}. The top 1% hold <strong>${pc(c.latest.top1_wealth_share)}</strong>.`;
+    const lv = latestValOf(key, p.iso); if (!lv) return miss();
+    const rk = rankOf(p.iso, key);
+    f.isos = [p.iso]; ctx.lastIso = p.iso; f.metricUsed = m.series ? key : 'wealth_gini';
+    const rankBit = m.giniFam ? `${ord(rk.rank)} most unequal of ${rk.of}` : `${ord(rk.rank)} of ${rk.of}`;
+    f.text = `<strong>${esc(c.name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> in ${lv.year}, ${rankBit}.`;
+    if (key === 'wealth_gini' && c.latest.top1_wealth_share != null)
+      f.text += ` The top 1% hold <strong>${pc(c.latest.top1_wealth_share)}</strong>.`;
+    if (!m.series) f.mode = 'bars', f.bar = barFor(key, p.iso);
   }
 
   else if (p.kind === 'compare') {
-    const rows = p.isos.map(i => BY_ISO[i] && BY_ISO[i].latest).filter(Boolean);
+    const key = META[ctx.metric].series || META[ctx.metric].snap ? ctx.metric : 'wealth_gini';
+    const m = META[key];
+    const rows = p.isos.map(i => ({ iso: i, lv: latestValOf(key, i) })).filter(x => x.lv);
     if (rows.length < 2) return miss();
-    f.isos = rows.map(r => r.geo_id); ctx.lastIso = f.isos[f.isos.length - 1];
-    const parts = rows.map(r => `${esc(r.geo_name)} <strong>${g2(r.wealth_gini)}</strong>`).join(' vs ');
-    const spread = Math.max(...rows.map(r => r.wealth_gini)) - Math.min(...rows.map(r => r.wealth_gini));
-    f.text = `${parts} (${rows[0].year}). Spread: <strong>${g3(spread)}</strong>.`;
+    f.isos = rows.map(x => x.iso); ctx.lastIso = f.isos[f.isos.length - 1];
+    f.metricUsed = m.series ? key : 'wealth_gini';
+    const parts = rows.map(x => `${esc(BY_ISO[x.iso].name)} <strong>${m.fmt(x.lv.val)}</strong>`).join(' vs ');
+    const spread = Math.max(...rows.map(x => x.lv.val)) - Math.min(...rows.map(x => x.lv.val));
+    f.text = `On ${m.label}: ${parts}. Spread: <strong>${m.fmtD(spread)}</strong>.`;
+    if (!m.series) { f.mode = 'bars'; f.bar = barFor(key, rows[0].iso); }
   }
 
   else if (p.kind === 'rank') {
-    const key = ctx.metric;
+    const key = resolveMetric(p);
+    ctx.metric = key;
+    const m = META[key];
     const pool = rankedPool(key, p.dir, p.region);
     if (!pool.length) return miss();
     const top = pool.slice(0, 10);
-    const fmt = METRICS[key].fmt, label = METRICS[key].label;
     const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
-    const three = top.slice(0, 3).map(r => `${esc(r.geo_name)} <strong>${fmt(r[key])}</strong>`).join(', ');
+    const three = top.slice(0, 3).map(r => `${esc(r.geo_name)} <strong>${m.fmt(r.val)}</strong>`).join(', ');
     ctx.lastRankDir = p.dir; ctx.lastIso = top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
     f.isos = [top[0].geo_id];
     f.mode = 'bars';
     f.bar = { key, dir: p.dir, rows: top, highlight: null, note: where };
-    f.text = `${p.dir === 'high' ? 'Highest' : 'Lowest'} ${label}${where}, latest year: ${three}.`;
+    f.text = `${p.dir === 'high' ? 'Highest' : 'Lowest'} ${m.label}${where}, latest year: ${three}.`;
   }
 
   else if (p.kind === 'delta_rank') {
+    const key = p.metric && META[p.metric].series ? p.metric : (META[ctx.metric].series ? ctx.metric : 'wealth_gini');
+    ctx.metric = key;
+    const m = META[key];
     const pool = [];
-    for (const iso in BY_ISO) {
-      if (!inRegion(iso, p.region)) continue;
-      const s = BY_ISO[iso].series;
-      if (!s.length) continue;
-      const from = s.find(d => d.year >= p.year) || s[0];
-      const to = s[s.length - 1];
+    const s = SERIES[key] || {};
+    for (const iso in s) {
+      if (!inRegion(iso, p.region) || !BY_ISO[iso]) continue;
+      const pts = s[iso];
+      if (!pts.length) continue;
+      const from = pts.find(d => d.year >= p.year) || pts[0];
+      const to = pts[pts.length - 1];
       if (to.year - from.year < 10) continue;
-      pool.push({ geo_id: iso, geo_name: BY_ISO[iso].name, val: to.gini - from.gini, from, to });
+      pool.push({ geo_id: iso, geo_name: BY_ISO[iso].name, val: to.v - from.v });
     }
     if (!pool.length) return miss();
     pool.sort((a, b) => p.dir === 'up' ? b.val - a.val : a.val - b.val);
@@ -627,164 +835,167 @@ function answer(q) {
     const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
     const rose = pool.filter(x => x.val > 0).length, fell = pool.filter(x => x.val < 0).length;
     const three = top.slice(0, 3).map(x =>
-      `${esc(x.geo_name)} ${x.val >= 0 ? '+' : ''}<strong>${g3(x.val)}</strong>`).join(', ');
+      `${esc(x.geo_name)} ${x.val >= 0 ? '+' : ''}<strong>${m.fmtD(Math.abs(x.val))}</strong>`.replace('+<strong>', '+<strong>')).join(', ');
     ctx.lastIso = top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
     f.isos = [top[0].geo_id];
     f.mode = 'bars';
-    f.bar = { key: 'delta', dir: p.dir, rows: top, highlight: null,
-              note: `${where}, wealth Gini since ${p.year}` };
-    f.text = `Biggest ${p.dir === 'up' ? 'rises' : 'falls'} in wealth Gini${where} since ${p.year}: ${three}. ` +
+    f.bar = { key: 'delta', metric: key, dir: p.dir, rows: top, highlight: null,
+              note: `${where}, ${m.label} since ${p.year}` };
+    f.text = `Biggest ${p.dir === 'up' ? 'rises' : 'falls'} in ${m.label}${where} since ${p.year}: ${three}. ` +
       `Overall ${rose} rose and ${fell} fell.`;
   }
 
   else if (p.kind === 'threshold') {
-    const key = ctx.metric, m = METRICS[key];
+    const key = p.metric || ctx.metric;
+    ctx.metric = key;
+    const m = META[key];
     const pool = rankedPool(key, p.op === 'above' ? 'high' : 'low', p.region);
     if (!pool.length) return miss();
-    const val = m.isGini ? p.val : (p.val > 1 ? p.val / 100 : p.val);
-    const hits = pool.filter(r => p.op === 'above' ? r[key] >= val : r[key] <= val);
+    const val = m.snap && p.val > 1 ? p.val / 100 : p.val;
+    const hits = pool.filter(r => p.op === 'above' ? r.val >= val : r.val <= val);
     const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
     ctx.lastRegion = p.region || ctx.lastRegion;
     if (hits.length) { ctx.lastIso = hits[0].geo_id; f.isos = [hits[0].geo_id]; }
     f.mode = 'bars';
     f.bar = { key, dir: p.op === 'above' ? 'high' : 'low', rows: hits.slice(0, 10), highlight: null, note: where };
-    const three = hits.slice(0, 3).map(r => `${esc(r.geo_name)} <strong>${m.fmt(r[key])}</strong>`).join(', ');
+    const three = hits.slice(0, 3).map(r => `${esc(r.geo_name)} <strong>${m.fmt(r.val)}</strong>`).join(', ');
     f.text = `<strong>${hits.length}</strong> of ${pool.length} countries${where} are ${p.op} ${p.val} on ${m.label}` +
       (three ? `: ${three}` : '') + (hits.length > 3 ? ', and more in the chart.' : '.');
   }
 
   else if (p.kind === 'context') {
     if (!ctx.lastIso) { showNotice('Ask about a country first, then "compared to whom".'); return null; }
-    const key = ctx.metric, fmt = METRICS[key].fmt;
-    const pool = rankedPool(key, 'high');
+    const key = ctx.metric, m = META[key];
+    const pool = rankedPool(key, 'high', null);
     const i = pool.findIndex(r => r.geo_id === ctx.lastIso);
     if (i === -1) return miss();
     const lo = Math.max(0, i - 4), win = pool.slice(lo, lo + 9);
-    const c = pool[i];
-    const above = pool[i - 1], below = pool[i + 1];
-    const med = medianOf(pool.map(r => r[key]));
+    const c = pool[i], above = pool[i - 1], below = pool[i + 1];
+    const med = medianOf(pool.map(r => r.val));
     f.mode = 'bars'; f.isos = [ctx.lastIso];
     f.bar = { key, dir: 'high', rows: win, highlight: ctx.lastIso };
-    f.text = `<strong>${esc(c.geo_name)}</strong> sits ${ord(i + 1)} of ${pool.length} on ${METRICS[key].label}` +
-      (above ? `, just below ${esc(above.geo_name)} <strong>${fmt(above[key])}</strong>` : '') +
-      (below ? `, just above ${esc(below.geo_name)} <strong>${fmt(below[key])}</strong>` : '') +
-      `. World median: <strong>${fmt(med)}</strong>.`;
+    f.text = `<strong>${esc(c.geo_name)}</strong> sits ${ord(i + 1)} of ${pool.length} on ${m.label}` +
+      (above ? `, just below ${esc(above.geo_name)} <strong>${m.fmt(above.val)}</strong>` : '') +
+      (below ? `, just above ${esc(below.geo_name)} <strong>${m.fmt(below.val)}</strong>` : '') +
+      `. World median: <strong>${m.fmt(med)}</strong>.`;
   }
 
   else if (p.kind === 'world') {
+    if (p.metric && META[p.metric].series) ctx.metric = p.metric;
+    const key = META[ctx.metric].series ? ctx.metric : 'wealth_gini';
+    const m = META[key];
     const regLabel = p.region ? REGION_LABEL[p.region] : '';
-    const label = p.region ? `${regLabel[0].toUpperCase()}${regLabel.slice(1)} median` : 'World median';
-    const pool = rankedPool('wealth_gini', 'high', p.region);
+    const label = p.region ? `${cap(regLabel)} median` : 'World median';
+    const pool = rankedPool(key, 'high', p.region);
     if (!pool.length) return miss();
-    const med = medianOf(pool.map(r => r.wealth_gini));
+    const med = medianOf(pool.map(r => r.val));
     if (p.region) { f.regionKey = p.region; ctx.lastRegion = p.region; } else f.world = true;
-    const foc = ctx.lastIso && BY_ISO[ctx.lastIso];
-    if (foc && foc.latest.wealth_gini != null && !pool.every(r => r.geo_id === ctx.lastIso)) {
-      const d = foc.latest.wealth_gini - med;
+    f.metricUsed = key;
+    const foc = ctx.lastIso && latestValOf(key, ctx.lastIso);
+    if (foc && !pool.every(r => r.geo_id === ctx.lastIso)) {
+      const d = foc.val - med;
       f.isos = [ctx.lastIso];
-      f.text = `${label} wealth Gini: <strong>${g2(med)}</strong> (${foc.latest.year}). ` +
-        `${esc(foc.name)} is <strong>${g3(Math.abs(d))}</strong> ${d >= 0 ? 'above' : 'below'} it.`;
+      f.text = `${label} ${m.label}: <strong>${m.fmt(med)}</strong>. ` +
+        `${esc(BY_ISO[ctx.lastIso].name)} is <strong>${m.fmtD(Math.abs(d))}</strong> ${d >= 0 ? 'above' : 'below'} it.`;
     } else {
-      f.text = `${label} wealth Gini: <strong>${g2(med)}</strong>, ` +
-        `across ${pool.length} countries and territories.`;
+      f.text = `${label} ${m.label}: <strong>${m.fmt(med)}</strong>, across ${pool.length} countries and territories.`;
     }
   }
 
   else if (p.kind === 'time') {
+    const key = p.metric && META[p.metric].series ? p.metric : (META[ctx.metric].series ? ctx.metric : 'wealth_gini');
+    ctx.metric = key;
+    const m = META[key];
     const isos = p.isos.length ? p.isos : focusIsos().length ? focusIsos() : (ctx.lastIso ? [ctx.lastIso] : []);
     const reg = p.region || (!isos.length ? ctx.lastRegion : null);
     if (!isos.length && reg) {
-      const series = regionMedianSeries(reg);
+      const series = medianSeriesOf(key, reg);
       if (!series.length) return miss();
       const from = p.year ? (series.find(d => d.year >= p.year) || series[0]) : series[0];
       const to = series[series.length - 1];
-      const d = to.gini - from.gini;
-      f.regionKey = reg; f.fromYear = p.year || null; ctx.lastRegion = reg;
-      f.text = `${REGION_LABEL[reg]} median over time: <strong>${g2(from.gini)}</strong> in ${from.year} to ` +
-        `<strong>${g2(to.gini)}</strong> in ${to.year}, ${d >= 0 ? '+' : ''}<strong>${g3(d)}</strong>.`;
+      const d = to.v - from.v;
+      f.regionKey = reg; f.fromYear = p.year || null; f.metricUsed = key; ctx.lastRegion = reg;
+      f.text = `${REGION_LABEL[reg]} median ${m.label} over time: <strong>${m.fmt(from.v)}</strong> in ${from.year} to ` +
+        `<strong>${m.fmt(to.v)}</strong> in ${to.year}, ${d >= 0 ? '+' : ''}<strong>${m.fmtD(Math.abs(d))}</strong>.`;
       return f;
     }
     if (!isos.length) { showNotice('Ask about a country first, then "over time".'); return null; }
     f.isos = isos.slice(0, 8); ctx.lastIso = f.isos[f.isos.length - 1];
-    f.fromYear = p.year || null;
+    f.fromYear = p.year || null; f.metricUsed = key;
     const bits = f.isos.slice(0, 3).map(iso => {
-      const s = BY_ISO[iso].series; if (!s.length) return null;
+      const s = seriesOf(key, iso); if (!s.length) return null;
       const from = p.year ? (s.find(d => d.year >= p.year) || s[0]) : s[0];
       const to = s[s.length - 1];
-      const d = to.gini - from.gini;
-      return `${esc(BY_ISO[iso].name)} ${d >= 0 ? '+' : ''}<strong>${g3(d)}</strong> since ${from.year}`;
+      const d = to.v - from.v;
+      return `${esc(BY_ISO[iso].name)} ${d >= 0 ? '+' : '-'}<strong>${m.fmtD(Math.abs(d))}</strong> since ${from.year}`;
     }).filter(Boolean);
-    f.text = `Over time: ${bits.join(', ')}.`;
+    if (!bits.length) return miss();
+    f.text = `${cap(m.label)} over time: ${bits.join(', ')}.`;
   }
 
   else if (p.kind === 'point') {
+    const key = META[ctx.metric].series ? ctx.metric : 'wealth_gini';
+    const m = META[key];
     const c = BY_ISO[p.iso]; if (!c) return miss();
-    const at = c.series.find(d => d.year === p.year);
+    const s = seriesOf(key, p.iso);
+    const at = s.find(d => d.year === p.year);
     if (!at) return miss();
     f.isos = [p.iso]; ctx.lastIso = p.iso;
-    f.marker = { iso: p.iso, year: at.year };
-    f.text = `<strong>${esc(c.name)}</strong> in ${at.year}: wealth Gini <strong>${g2(at.gini)}</strong>.`;
+    f.marker = { iso: p.iso, year: at.year }; f.metricUsed = key;
+    f.text = `<strong>${esc(c.name)}</strong> in ${at.year}: ${m.label} <strong>${m.fmt(at.v)}</strong>.`;
   }
 
   else if (p.kind === 'metric') {
     ctx.metric = p.metric;
-    const key = p.metric, m = METRICS[key];
+    const m = META[p.metric];
     const isos = p.isos.length ? p.isos : (ctx.lastIso ? [ctx.lastIso] : []);
-    if (key !== 'wealth_gini' && (!isos.length || isos.includes('USA')) && US) {
-      f.mode = 'us'; f.metric = key;
-      const usKey = m.us;
-      const first = US[0], last = US.filter(r => r[usKey] != null).slice(-1)[0];
-      ctx.lastIso = 'USA';
-      f.isos = ['USA'];
-      f.text = `<strong>US ${m.label}</strong>: <strong>${pc(last[usKey])}</strong> in ${last.year}, ` +
-        `from <strong>${pc(first[usKey])}</strong> in ${first.year}.`;
-    } else if (isos.length) {
-      const iso = isos[0], c = BY_ISO[iso]; if (!c || c.latest[key] == null) return miss();
-      const rk = rankOf(iso, key);
-      const pool = rankedPool(key, 'high');
-      let rows = pool.slice(0, 10);
-      if (!rows.some(r => r.geo_id === iso)) rows = rows.concat([c.latest]);
-      f.mode = 'bars'; f.metric = key; f.isos = [iso]; ctx.lastIso = iso;
-      f.bar = { key, dir: 'high', rows, highlight: iso };
-      f.text = `<strong>${esc(c.name)}</strong>: ${m.label} <strong>${m.fmt(c.latest[key])}</strong> ` +
-        `(${c.latest.year}), ${ord(rk.rank)} of ${rk.of}.`;
+    if (m.us && (!isos.length || (isos.length === 1 && isos[0] === 'USA')) && US) {
+      const first = US[0], last = US.filter(r => r[m.us] != null).slice(-1)[0];
+      f.mode = 'us'; f.metric = p.metric; f.isos = ['USA']; ctx.lastIso = 'USA';
+      f.text = `<strong>US ${m.label}</strong>: <strong>${pc(last[m.us])}</strong> in ${last.year}, ` +
+        `from <strong>${pc(first[m.us])}</strong> in ${first.year}.`;
+    } else if (m.series && isos.length) {
+      const iso = isos[0];
+      const lv = latestValOf(p.metric, iso); if (!lv) return miss();
+      const rk = rankOf(iso, p.metric);
+      f.isos = isos.slice(0, 8); ctx.lastIso = iso; f.metricUsed = p.metric;
+      const rankBit = m.giniFam ? `${ord(rk.rank)} most unequal of ${rk.of}` : `${ord(rk.rank)} of ${rk.of}`;
+      f.text = `<strong>${esc(BY_ISO[iso].name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> in ${lv.year}, ${rankBit}.`;
+    } else if (m.snap && isos.length) {
+      const iso = isos[0], lv = latestValOf(p.metric, iso);
+      if (!lv) return miss();
+      const rk = rankOf(iso, p.metric);
+      f.mode = 'bars'; f.metric = p.metric; f.isos = [iso]; ctx.lastIso = iso;
+      f.bar = barFor(p.metric, iso);
+      f.text = `<strong>${esc(BY_ISO[iso].name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> ` +
+        `(${lv.year}), ${ord(rk.rank)} of ${rk.of}.`;
     } else return miss();
   }
 
   else if (p.kind === 'us_shares') {
     ctx.metric = p.metric;
-    const m = METRICS[p.metric], usKey = m.us;
-    const first = US[0], last = US.filter(r => r[usKey] != null).slice(-1)[0];
+    const m = META[p.metric];
+    const first = US[0], last = US.filter(r => r[m.us] != null).slice(-1)[0];
     f.mode = 'us'; f.metric = p.metric; f.isos = ['USA']; ctx.lastIso = 'USA';
-    f.text = `<strong>US ${m.label}</strong>: <strong>${pc(last[usKey])}</strong> in ${last.year}, ` +
-      `from <strong>${pc(first[usKey])}</strong> in ${first.year}.`;
+    f.text = `<strong>US ${m.label}</strong>: <strong>${pc(last[m.us])}</strong> in ${last.year}, ` +
+      `from <strong>${pc(first[m.us])}</strong> in ${first.year}.`;
   }
 
   return f;
 
+  function barFor(key, highlightIso) {
+    const pool = rankedPool(key, 'high', null);
+    let rows = pool.slice(0, 10);
+    if (highlightIso && !rows.some(r => r.geo_id === highlightIso)) {
+      const own = pool.find(r => r.geo_id === highlightIso);
+      if (own) rows = rows.concat([own]);
+    }
+    return { key, dir: 'high', rows, highlight: highlightIso };
+  }
   function miss() {
     showNotice('No data for that one in this panel. The release files may go further.');
     return null;
   }
-}
-
-function medianOf(arr) {
-  const v = arr.slice().sort((a, b) => a - b);
-  return v[Math.floor(v.length / 2)];
-}
-
-const regionSeriesCache = {};
-function regionMedianSeries(reg) {
-  if (regionSeriesCache[reg]) return regionSeriesCache[reg];
-  const byYear = {};
-  for (const r of TS) {
-    if (r.wealth_gini == null || !inRegion(r.geo_id, reg)) continue;
-    (byYear[r.year] = byYear[r.year] || []).push(r.wealth_gini);
-  }
-  const out = Object.keys(byYear).map(Number).sort((a, b) => a - b)
-    .filter(y => byYear[y].length >= 5)
-    .map(y => ({ year: y, gini: medianOf(byYear[y]) }));
-  return (regionSeriesCache[reg] = out);
 }
 
 /* ── session ───────────────────────────────────────────────────────── */
@@ -850,10 +1061,12 @@ function drawChart() {
     const bar = chain.slice().reverse().find(f => f.mode === 'bars').bar;
     const rows = bar.rows.slice().reverse();
     const isDelta = bar.key === 'delta';
-    const m = isDelta ? null : METRICS[bar.key];
-    const vals = rows.map(r => isDelta ? r.val : (m.isGini ? r[bar.key] : r[bar.key] * 100));
-    const labels = vals.map(v => isDelta ? (v >= 0 ? '+' : '') + v.toFixed(3)
-      : (m.isGini ? v.toFixed(2) : v.toFixed(1) + '%'));
+    const m = META[isDelta ? bar.metric : bar.key];
+    const isPct = m.fmt === pc;
+    const vals = rows.map(r => isPct && !isDelta ? r.val * 100 : r.val);
+    const labels = rows.map(r => isDelta
+      ? (r.val >= 0 ? '+' : '-') + m.fmtD(Math.abs(r.val))
+      : m.fmt(r.val));
     Plotly.react(el, [{
       type: 'bar', orientation: 'h',
       y: rows.map(r => r.geo_name),
@@ -861,20 +1074,20 @@ function drawChart() {
       marker: { color: rows.map(r => r.geo_id === bar.highlight ? '#eb6834' : '#2a78d6') },
       text: labels,
       textposition: 'outside', textfont: { size: 11, color: '#555555' },
-      hovertemplate: '%{y}: %{x:.3f}<extra></extra>',
+      hovertemplate: '%{y}: %{text}<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, {
-      margin: { t: 8, r: 56, b: 36, l: 150 },
+      margin: { t: 8, r: 70, b: 36, l: 150 },
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis,
-        isDelta ? {} : (m.isGini ? { range: [0, 1.05] } : { ticksuffix: '%' })),
+        isDelta ? {} : (m.giniFam ? { range: [0, 1.05] } : (isPct ? { ticksuffix: '%' } : {}))),
       bargap: 0.35,
     }), CFG);
     const hl = bar.highlight && BY_ISO[bar.highlight];
     if (isDelta) {
       title.textContent = `${bar.dir === 'up' ? 'Biggest rises' : 'Biggest falls'}${bar.note || ''}`;
-      src.textContent = 'Source: WID. Change in wealth Gini between the first year at or after the start year and the latest year.';
+      src.textContent = (META[bar.metric].poolSrc || '') + ' Change from the first year at or after the start year to the latest.';
     } else {
-      title.textContent = `${m.label[0].toUpperCase() + m.label.slice(1)}${bar.note || ''}, latest year` + (hl ? `, around ${hl.name}` : '');
-      src.textContent = 'Source: WID, latest available year per country. Shares are of household net wealth.';
+      title.textContent = `${cap(m.label)}${bar.note || ''}, latest year` + (hl ? `, around ${hl.name}` : '');
+      src.textContent = m.poolSrc || 'Source: WID, latest available year per country. Shares are of household net wealth.';
     }
   }
 
@@ -886,7 +1099,7 @@ function drawChart() {
       ['bottom50_share', 'Bottom 50%', SLOTS[2]],
     ];
     const traces = specs.map(([key, name, color]) => {
-      const dim = focus && METRICS[focus] && METRICS[focus].us !== key;
+      const dim = focus && META[focus] && META[focus].us !== key;
       return {
         type: 'scatter', mode: 'lines', name,
         x: US.filter(r => r[key] != null).map(r => r.year),
@@ -907,108 +1120,122 @@ function drawChart() {
   }
 
   else {
+    const lineFacts = chain.filter(f => f.mode === 'lines');
+    const metric = lineFacts.slice().reverse().map(f => f.metricUsed).find(Boolean) || 'wealth_gini';
+    const m = META[metric];
     const isoSet = [];
-    chain.filter(f => f.mode === 'lines').forEach(f =>
-      f.isos.forEach(i => { if (!isoSet.includes(i)) isoSet.push(i); }));
+    lineFacts.forEach(f => f.isos.forEach(i => { if (!isoSet.includes(i)) isoSet.push(i); }));
     const wantWorld = chain.some(f => f.world);
     const fromYear = chain.slice().reverse().map(f => f.fromYear).find(Boolean) || null;
-    const traces = isoSet.map(iso => {
-      const c = BY_ISO[iso];
-      return {
-        type: 'scatter', mode: 'lines', name: c.name,
-        x: c.series.map(d => d.year), y: c.series.map(d => d.gini),
+    const traces = [];
+    for (const iso of isoSet) {
+      const s = seriesOf(metric, iso);
+      if (!s.length) continue;
+      traces.push({
+        type: 'scatter', mode: s.length < 25 ? 'lines+markers' : 'lines', name: BY_ISO[iso].name,
+        x: s.map(d => d.year), y: s.map(d => d.v),
         line: { color: assignColor(iso), width: 2.2 },
-        hovertemplate: c.name + ': %{y:.3f}<extra></extra>',
-      };
-    });
-    if (wantWorld) traces.push({
-      type: 'scatter', mode: 'lines', name: 'World median',
-      x: WORLD_MEDIAN.map(d => d.year), y: WORLD_MEDIAN.map(d => d.gini),
-      line: { color: '#999999', width: 2, dash: 'dash' },
-      hovertemplate: 'World median: %{y:.3f}<extra></extra>',
-    });
+        marker: { size: 5 },
+        hovertemplate: BY_ISO[iso].name + ': ' + m.hover + '<extra></extra>',
+      });
+    }
+    if (wantWorld) {
+      const w = medianSeriesOf(metric, null);
+      if (w.length) traces.push({
+        type: 'scatter', mode: 'lines', name: 'World median',
+        x: w.map(d => d.year), y: w.map(d => d.v),
+        line: { color: '#999999', width: 2, dash: 'dash' },
+        hovertemplate: 'World median: ' + m.hover + '<extra></extra>',
+      });
+    }
     const regs = [];
     chain.forEach(f => { if (f.regionKey && !regs.includes(f.regionKey)) regs.push(f.regionKey); });
     for (const reg of regs) {
-      const s = regionMedianSeries(reg);
+      const s = medianSeriesOf(metric, reg);
       if (!s.length) continue;
       const name = `${REGION_LABEL[reg]} median`;
       traces.push({
         type: 'scatter', mode: 'lines', name,
-        x: s.map(d => d.year), y: s.map(d => d.gini),
+        x: s.map(d => d.year), y: s.map(d => d.v),
         line: { color: assignColor('reg:' + reg), width: 2, dash: 'dash' },
-        hovertemplate: name + ': %{y:.3f}<extra></extra>',
+        hovertemplate: name + ': ' + m.hover + '<extra></extra>',
       });
     }
-    for (const m of chain.filter(f => f.marker).map(f => f.marker)) {
-      const c = BY_ISO[m.iso];
-      const at = c.series.find(d => d.year === m.year);
+    for (const mk of chain.filter(f => f.marker).map(f => f.marker)) {
+      const s = seriesOf(metric, mk.iso);
+      const at = s.find(d => d.year === mk.year);
       if (at) traces.push({
         type: 'scatter', mode: 'markers', showlegend: false,
-        x: [at.year], y: [at.gini],
-        marker: { color: assignColor(m.iso), size: 9, line: { color: '#ffffff', width: 2 } },
-        hovertemplate: `${c.name}, ${at.year}: %{y:.3f}<extra></extra>`,
+        x: [at.year], y: [at.v],
+        marker: { color: assignColor(mk.iso), size: 9, line: { color: '#ffffff', width: 2 } },
+        hovertemplate: `${BY_ISO[mk.iso].name}, ${at.year}: ` + m.hover + '<extra></extra>',
       });
     }
-    const annotations = isoSet.length <= 4 ? isoSet.map(iso => {
-      const c = BY_ISO[iso];
-      const last = c.series[c.series.length - 1];
-      return {
-        x: last.year, y: last.gini, xanchor: 'left', xshift: 6,
-        text: c.name, showarrow: false,
-        font: { size: 11, color: '#555555' },
-      };
-    }) : [];
+    const labelable = traces.filter(t => t.showlegend !== false && !t.line.dash);
+    const annotations = labelable.length <= 4 ? labelable.map(t => ({
+      x: t.x[t.x.length - 1], y: t.y[t.y.length - 1], xanchor: 'left', xshift: 6,
+      text: t.name, showarrow: false,
+      font: { size: 11, color: '#555555' },
+    })) : [];
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
       showlegend: traces.filter(t => t.showlegend !== false).length >= 2,
       legend: { orientation: 'h', y: 1.08, font: { size: 11 } },
       hovermode: 'x unified',
       annotations,
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis, fromYear ? { range: [fromYear, 2025] } : {}),
-      margin: { t: 8, r: isoSet.length <= 4 ? 110 : 16, b: 40, l: 46 },
+      margin: { t: 8, r: labelable.length <= 4 ? 110 : 16, b: 40, l: 46 },
     }), CFG);
-    title.textContent = 'Wealth Gini over time';
-    src.textContent = 'Source: WID, 1990 to 2024. Per-adult equal-split basis, negative net wealth zeroed. Gaps are years without published data.';
+    title.textContent = `${cap(m.label)} over time`;
+    src.textContent = m.lineSrc || '';
   }
 }
 
 /* ── chips: follow-ups track the conversation ──────────────────────── */
-const START_CHIPS = ['least equal', 'most unequal in Europe', 'biggest risers since 2000', 'top 1% share', 'the United States'];
+const START_CHIPS = ['least equal', 'income inequality', 'life expectancy in France', 'highest CO2 per person', 'biggest risers since 2000'];
+const CROSS_CHIP = { wealth_gini: 'income inequality', income_gini: 'life expectancy',
+  life_exp: 'CO2 per person', co2_pc: 'wealth inequality' };
 
 function updateChips() {
   const el = document.getElementById('chips');
   let list;
+  const cross = CROSS_CHIP[ctx.metric] || 'income inequality';
   if (!chain.length) list = START_CHIPS;
   else {
     const last = chain[chain.length - 1];
-    const metricChip = ctx.metric === 'top1_wealth_share' ? 'top 10% share' : 'top 1% share';
-    if (last.kind === 'rank') list = ['over time', 'compared to whom', 'the other extreme', metricChip];
-    else if (last.kind === 'delta_rank') list = ['over time', 'compared to whom', 'biggest fallers', 'least equal'];
-    else if (last.kind === 'threshold') list = ['over time', 'compared to whom', 'vs the average', metricChip];
-    else if (last.mode === 'us') list = ['bottom 50% share', 'top 10% share', 'least equal', 'world average'];
-    else if (last.kind === 'time') list = ['vs the average', 'since 2000', 'compared to whom', metricChip];
-    else if (last.kind === 'world') list = ['most unequal', 'least equal', 'over time'];
-    else list = ['over time', 'compared to whom', 'vs the average', metricChip];
+    if (last.kind === 'rank') list = ['over time', 'compared to whom', 'the other extreme', cross];
+    else if (last.kind === 'delta_rank') list = ['over time', 'compared to whom', 'biggest fallers', cross];
+    else if (last.kind === 'threshold') list = ['over time', 'compared to whom', 'vs the average', cross];
+    else if (last.mode === 'us') list = ['bottom 50% share', 'top 10% share', 'least equal', 'income inequality'];
+    else if (last.kind === 'time') list = ['vs the average', 'since 2000', 'compared to whom', cross];
+    else if (last.kind === 'world') list = ['most unequal', 'least equal', 'over time', cross];
+    else list = ['over time', 'compared to whom', 'vs the average', cross];
   }
   el.innerHTML = list.map(e => `<button type="button" class="chip">${e}</button>`).join('');
   el.querySelectorAll('.chip').forEach(b =>
     b.addEventListener('click', () => ask(b.textContent)));
 }
 
-/* ── notices, tabs, wiring ─────────────────────────────────────────── */
+/* ── notices, views, wiring ────────────────────────────────────────── */
 function showNotice(html) {
   const n = document.getElementById('notice');
   n.innerHTML = html; n.hidden = false;
 }
 function hideNotice() { document.getElementById('notice').hidden = true; }
 
-function setTab(db) {
-  document.getElementById('view-ask').hidden = db;
-  document.getElementById('view-db').hidden = !db;
-  document.getElementById('tab-ask').classList.toggle('on', !db);
-  document.getElementById('tab-db').classList.toggle('on', db);
-  if (!db && chain.length) requestAnimationFrame(() =>
+const VIEWS = ['ask', 'wealth', 'income', 'wellbeing', 'db'];
+function setView(name) {
+  for (const v of VIEWS) {
+    document.getElementById('view-' + v).hidden = v !== name;
+  }
+  document.querySelectorAll('.tabs .tab').forEach(t =>
+    t.classList.toggle('on', t.dataset.view === name));
+  if (name === 'ask' && chain.length) requestAnimationFrame(() =>
     Plotly.Plots.resize(document.getElementById('chart')));
+}
+
+function setHelp(open) {
+  document.getElementById('help').hidden = !open;
+  document.getElementById('helpbtn').classList.toggle('on', open);
 }
 
 /* ── database table ────────────────────────────────────────────────── */
@@ -1032,18 +1259,28 @@ function renderTable() {
   });
 }
 
-function setHelp(open) {
-  document.getElementById('help').hidden = !open;
-  document.getElementById('helpbtn').classList.toggle('on', open);
+function fillCoverage() {
+  const cov = (metric, elId) => {
+    const s = SERIES[metric] || {};
+    const isos = Object.keys(s).filter(i => s[i].length);
+    let lo = Infinity, hi = -Infinity;
+    for (const i of isos) { lo = Math.min(lo, s[i][0].year); hi = Math.max(hi, s[i][s[i].length - 1].year); }
+    const el = document.getElementById(elId);
+    if (el && isos.length) el.textContent = `${isos.length} countries, ${lo} to ${hi}.`;
+  };
+  cov('wealth_gini', 'cov-wealth');
+  cov('income_gini', 'cov-income');
+  cov('life_exp', 'cov-life');
+  cov('co2_pc', 'cov-co2');
 }
 
 function boot() {
   updateChips();
-  document.querySelectorAll('.help-v').forEach(v => {
+  document.querySelectorAll('.help-v, .try').forEach(v => {
     v.innerHTML = v.dataset.qs.split(';')
       .map(q => `<button type="button" class="chip">${q}</button>`).join('');
     v.querySelectorAll('.chip').forEach(b =>
-      b.addEventListener('click', () => { setHelp(false); ask(b.textContent); }));
+      b.addEventListener('click', () => { setHelp(false); setView('ask'); ask(b.textContent); }));
   });
   document.getElementById('helpbtn').addEventListener('click', () =>
     setHelp(document.getElementById('help').hidden));
@@ -1063,8 +1300,10 @@ function boot() {
     const old = b.textContent; b.textContent = 'copied';
     setTimeout(() => { b.textContent = old; }, 1200);
   });
-  document.getElementById('tab-ask').addEventListener('click', () => setTab(false));
-  document.getElementById('tab-db').addEventListener('click', () => setTab(true));
+  document.querySelectorAll('.tabs .tab').forEach(t =>
+    t.addEventListener('click', () => setView(t.dataset.view)));
+  document.querySelectorAll('.goto-db').forEach(a =>
+    a.addEventListener('click', e => { e.preventDefault(); setView('db'); }));
   document.getElementById('tfilter').addEventListener('input', renderTable);
   document.querySelectorAll('#dbtable thead th').forEach(th =>
     th.addEventListener('click', () => {
@@ -1075,10 +1314,11 @@ function boot() {
   document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement !== document.getElementById('q')
         && document.activeElement !== document.getElementById('tfilter')) {
-      e.preventDefault(); setTab(false); document.getElementById('q').focus();
+      e.preventDefault(); setView('ask'); document.getElementById('q').focus();
     }
   });
   renderTable();
+  fillCoverage();
 
   if (location.hash.length > 1) {
     location.hash.slice(1).split('|').slice(0, 12)
@@ -1087,25 +1327,34 @@ function boot() {
   }
 }
 
-/* the pipeline writes bare NaN into some numeric fields; JSON.parse rejects it */
+/* the wealth pipeline writes bare NaN into some numeric fields; JSON.parse rejects it */
 const loadJson = url => fetch(url).then(r => r.text())
   .then(t => JSON.parse(t.replace(/\bNaN\b/g, 'null')));
+
+function toSeries(dict) {
+  const out = {};
+  for (const iso in dict) out[iso] = dict[iso].map(([year, v]) => ({ year, v }));
+  return out;
+}
 
 Promise.all([
   loadJson('data/wealth_latest.json'),
   loadJson('data/wealth_timeseries.json'),
   loadJson('data/us_longrun.json'),
-]).then(([latest, ts, us]) => {
-  LATEST = latest; TS = ts; US = us;
-  for (const r of latest) BY_ISO[r.geo_id] = { name: r.geo_name, latest: r, series: [] };
+  loadJson('data/income_gini.json'),
+  loadJson('data/life_expectancy.json'),
+  loadJson('data/co2_per_capita.json'),
+]).then(([latest, ts, us, income, life, co2]) => {
+  LATEST = latest; US = us;
+  for (const r of latest) BY_ISO[r.geo_id] = { name: r.geo_name, latest: r };
+  const wg = {};
   for (const r of ts) if (BY_ISO[r.geo_id] && r.wealth_gini != null)
-    BY_ISO[r.geo_id].series.push({ year: r.year, gini: r.wealth_gini });
-  for (const iso in BY_ISO) BY_ISO[iso].series.sort((a, b) => a.year - b.year);
-
-  const byYear = {};
-  for (const r of ts) if (r.wealth_gini != null) (byYear[r.year] = byYear[r.year] || []).push(r.wealth_gini);
-  WORLD_MEDIAN = Object.keys(byYear).map(Number).sort((a, b) => a - b)
-    .map(y => ({ year: y, gini: medianOf(byYear[y]) }));
+    (wg[r.geo_id] = wg[r.geo_id] || []).push({ year: r.year, v: r.wealth_gini });
+  for (const iso in wg) wg[iso].sort((a, b) => a.year - b.year);
+  SERIES.wealth_gini = wg;
+  SERIES.income_gini = toSeries(income);
+  SERIES.life_exp = toSeries(life);
+  SERIES.co2_pc = toSeries(co2);
 
   buildIndex();
   boot();
