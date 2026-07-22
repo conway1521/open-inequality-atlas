@@ -284,14 +284,13 @@ footer a { color: inherit; }
 
   <div id="view-ask" class="wrap">
     <section class="ask">
-      <h1>How does inequality affect life?</h1>
+      <h1>Wealth or income?</h1>
       <p class="sub">
-        Inequality is called the defining problem of the age. Measured by
-        income, the gap has barely moved in a generation. The one that keeps
-        widening is wealth: the richest 1% of Americans held a fifth of it in
-        1991 and hold nearly a third now. This atlas takes wealth concentration
-        as the thing to explain, and asks what it does to ordinary life, country
-        by country and, next, county by county.
+        Two inequalities, and they have come apart. Measured by income, the gap
+        in the US has barely moved since 1991. Measured by wealth, the richest
+        1% went from a fifth of it to nearly a third. This atlas asks which of
+        the two the everyday things follow: health, poverty, satisfaction, how
+        long people live. First across countries, then across US counties.
       </p>
       <form class="askbox" id="ask-form">
         <input id="q" type="text" autocomplete="off" spellcheck="false"
@@ -301,12 +300,12 @@ footer a { color: inherit; }
       </form>
       <div class="chips" id="chips"></div>
       <div class="help" id="help" hidden>
-        <p class="help-intro">The argument runs in two steps. First, see how the two inequalities split apart. Then take everyday measures and see which gap they track.</p>
-        <div class="help-row"><span class="help-k">The two gaps</span><span class="help-v" data-qs="wealth vs income in the US;wealth vs income in France"></span></div>
-        <div class="help-row"><span class="help-k">What each touches</span><span class="help-v" data-qs="life expectancy and inequality;life satisfaction and inequality;poverty and inequality;median income and inequality"></span></div>
-        <div class="help-row"><span class="help-k">A single place</span><span class="help-v" data-qs="France;Brazil in 2000;happiest countries"></span></div>
-        <div class="help-row"><span class="help-k">Or zoom in</span><span class="help-v" data-qs="the United States"></span></div>
-        <p class="help-foot">Each answer stays; the chain builds a case. Ask freely too: rank, over time, who breaks the pattern, among richer countries. Remove any line with its &times; and the rest re-runs.</p>
+        <p class="help-intro">Two steps. See how wealth and income inequality have split, then take an everyday measure and see which one it tracks.</p>
+        <div class="help-row"><span class="help-k">The split</span><span class="help-v" data-qs="wealth vs income in the US;wealth vs income in France"></span></div>
+        <div class="help-row"><span class="help-k">Which one tracks</span><span class="help-v" data-qs="life expectancy and inequality;life satisfaction and inequality;poverty and inequality;median income and inequality"></span></div>
+        <div class="help-row"><span class="help-k">A country</span><span class="help-v" data-qs="France;Brazil in 2000;happiest countries"></span></div>
+        <div class="help-row"><span class="help-k">By county</span><span class="help-v" data-qs="the United States"></span></div>
+        <p class="help-foot">Answers stack up. You can also ask plainly: rank, over time, who breaks the pattern, among richer countries. Remove any line with its &times; and the rest re-runs.</p>
       </div>
       <div class="notice" id="notice" hidden></div>
     </section>
@@ -332,11 +331,10 @@ footer a { color: inherit; }
   <div id="view-wealth" class="wrap db" hidden>
     <h1>Wealth</h1>
     <p class="sub">
-      This is the gap that keeps widening, and the core of the atlas. Wealth
-      accumulates where income only flows, so it concentrates harder: the same
-      country often shows a wealth Gini twenty points above its income Gini, and
-      the distance has grown. Harmonized from five source families with every
-      row tagged for comparability.
+      Wealth concentrates harder than income. The same country often has a wealth
+      Gini twenty points above its income Gini, and the gap between the two has
+      widened. This is the series the atlas is built on, harmonized from five
+      sources with each row tagged for comparability.
     </p>
     <div class="grid3">
       <div class="block">
@@ -352,10 +350,10 @@ footer a { color: inherit; }
         <p class="try" data-qs="Lorenz curve for the United States;top 1% share;bottom 50% share"></p>
       </div>
       <div class="block">
-        <h2>Against everything else</h2>
-        <p>The reason the atlas exists: hold life expectancy, poverty, or income
-        up against how unequal a place is, as a scatter or by tier.</p>
-        <p class="try" data-qs="life expectancy against inequality;poverty across inequality tiers"></p>
+        <h2>Wealth or income</h2>
+        <p>Take an everyday measure and see which inequality it tracks: wealth or
+        income. Two scatters, side by side, the closer fit named.</p>
+        <p class="try" data-qs="life expectancy and inequality;poverty and inequality"></p>
       </div>
     </div>
   </div>
@@ -363,10 +361,9 @@ footer a { color: inherit; }
   <div id="view-income" class="wrap db" hidden>
     <h1>Income</h1>
     <p class="sub">
-      The gap that stabilized. In many rich economies the income Gini rose
-      through the 1980s and 1990s and has drifted sideways since, even as wealth
-      kept concentrating. That contrast is the point: ask for the divergence in
-      any country to see the two gaps on one chart.
+      Income inequality rose through the 1980s and 1990s in many rich economies,
+      then flattened. Wealth kept concentrating. Ask for the divergence in any
+      country to see both on one chart.
     </p>
     <div class="grid3">
       <div class="block">
@@ -395,11 +392,10 @@ footer a { color: inherit; }
   <div id="view-wellbeing" class="wrap db" hidden>
     <h1>Wellbeing</h1>
     <p class="sub">
-      What the wealth gap touches. How long people live, how satisfied they say
-      they are, what their economies burn, next to how concentrated wealth is.
-      At the country average the link is often weak, which is where the real
-      question begins, not ends: the bite shows up closer to the ground. A United
-      States deep-dive by county, built on Opportunity Insights data, is the next tab.
+      How long people live, how satisfied they say they are, what their
+      economies emit. Across countries these track income inequality more than
+      the wealth Gini, which is a coarse measure. The wealth story is clearer up
+      close: the US tab reads it by county.
     </p>
     <div class="grid3">
       <div class="block">
@@ -427,11 +423,10 @@ footer a { color: inherit; }
   <div id="view-us" class="wrap db" hidden>
     <h1>The United States, up close</h1>
     <p class="sub">
-      Across countries the wealth gap's link to everyday life looks weak, because
-      the national average hides who carries it. Drop to the county and it
-      sharpens: hold local mobility, connection, and health against how
-      concentrated the neighbourhood's wealth is. Here wealth is measured the way
-      people feel it, in housing: who owns, and what a home is worth.
+      The same question, one level down. No county has a wealth Gini, so housing
+      stands in for local wealth: home values, and who owns. For mobility, health,
+      and the rich-poor life gap, does a county track its housing wealth or its
+      income inequality? Data from Opportunity Insights, county by county.
     </p>
 
     <div class="grid3">
@@ -1080,13 +1075,8 @@ function answer(q) {
     const gap = Math.abs(aW - aI);
     const closeness = gap < 0.05 ? 'about as closely as' : gap < 0.12 ? 'a little more closely than' : 'more closely than';
     const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
-    let t = `Across ${wPts.length} countries${where}, ${my.label} tracks <strong>${win} inequality</strong> ` +
-      `${closeness} ${wealthWins ? 'income' : 'wealth'} inequality (r = <strong>${winR.toFixed(2)}</strong> vs ${other.toFixed(2)}).`;
-    // keep the wealth thread honest: income is the familiar cross-country link, but it is the gap that stopped growing
-    t += wealthWins
-      ? ' And wealth is the gap still climbing.'
-      : ' Income is the familiar cross-country link, but it is the gap that has stopped widening; wealth keeps climbing, and shows up closer to the ground.';
-    f.text = t;
+    f.text = `Across ${wPts.length} countries${where}, ${my.label} tracks <strong>${win} inequality</strong> ` +
+      `${closeness} ${wealthWins ? 'income' : 'wealth'} inequality: r = <strong>${winR.toFixed(2)}</strong> against ${other.toFixed(2)}.`;
   }
 
   else if (p.kind === 'correlate') {
@@ -1160,8 +1150,7 @@ function answer(q) {
     f.text = `<strong>${esc(BY_ISO[iso] ? BY_ISO[iso].name : iso)}</strong>: ${w.label} rose from ` +
       `<strong>${w.fmt(wFirst.v)}</strong> in ${wFirst.year} to <strong>${w.fmt(wEnd.v)}</strong> ` +
       `(${wPct >= 0 ? '+' : ''}${wPct}%); income Gini went <strong>${g2(iFirst.v)}</strong> in ${iFirst.year} ` +
-      `to <strong>${g2(iEnd.v)}</strong> (${iPct >= 0 ? '+' : ''}${iPct}%). ` +
-      `The wealth gap moved ${Math.abs(wPct) > Math.abs(iPct) * 1.5 ? 'far more' : 'differently'}.`;
+      `to <strong>${g2(iEnd.v)}</strong> (${iPct >= 0 ? '+' : ''}${iPct}%).`;
   }
 
   else if (p.kind === 'path') {
@@ -1729,8 +1718,7 @@ function drawChart() {
       yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' },
     }), CFG);
     title.textContent = `${cap(my.label)}: wealth inequality or income?` + (c.region ? ` (${REGION_LABEL[c.region]})` : '');
-    src.textContent = `Same measure against each inequality, one country per dot. The tighter cloud is the stronger link. ` +
-      `Wealth: WID. Income: World Bank PIP. ${my.poolSrc ? my.poolSrc.replace(/^Source: /, my.label[0].toUpperCase() + my.label.slice(1) + ': ') : ''}`;
+    src.textContent = `One country per dot, the same measure against each inequality. Wealth Gini: WID. Income Gini: World Bank PIP.`;
   }
 
   else if (mode === 'divergence') {
@@ -1756,8 +1744,8 @@ function drawChart() {
       margin: { t: 8, r: 16, b: 40, l: 48 },
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: `indexed to ${base} = 100`, font: { size: 11 } } }),
     }), CFG);
-    title.textContent = `${BY_ISO[dv.iso] ? BY_ISO[dv.iso].name : dv.iso}: the two inequalities since ${base}`;
-    src.textContent = `Both series indexed to ${base} = 100 to compare how far each has moved. ` +
+    title.textContent = `${BY_ISO[dv.iso] ? BY_ISO[dv.iso].name : dv.iso}: wealth and income inequality since ${base}`;
+    src.textContent = `Both indexed to ${base} = 100, so the lines start together and you can read how far each has moved. ` +
       (dv.iso === 'USA' ? 'Wealth: Fed Distributional Financial Accounts. Income: World Bank PIP.' : 'Wealth: WID. Income: World Bank PIP.') + ' via OWID.';
   }
 
@@ -2108,8 +2096,7 @@ function usAnswer(q) {
     const gap = Math.abs(aW - aI), closeness = gap < 0.05 ? 'about as closely as' : gap < 0.12 ? 'a little more closely than' : 'more closely than';
     f.mode = 'uscontrast'; f.uc = { y, wPts, iPts, rW, rI };
     f.text = `Across ${Math.max(wPts.length, iPts.length)} counties, ${usLabel[y]} tracks <strong>${win}</strong> ` +
-      `${closeness} ${lose} (r = <strong>${winR.toFixed(2)}</strong> vs ${other.toFixed(2)}).`;
-    if (wealthWins && Math.abs(rW) >= 0.15) f.text += ' Housing is the sharper divider, the way the national average could not show.';
+      `${closeness} ${lose}: r = <strong>${winR.toFixed(2)}</strong> against ${other.toFixed(2)}.`;
   }
   else if (brk) {
     const y = metric, x = (lens === y ? usLensDefault() : lens);
@@ -2301,7 +2288,7 @@ function usDrawChart() {
       yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: usLabel[uc.y], font: { size: 12 } } },
     }), CFG);
     title.textContent = `${cap(usLabel[uc.y])}: housing wealth or income inequality?`;
-    src.textContent = 'Each county against local home value and against local income inequality. The tighter cloud is the stronger link. Source: Opportunity Insights, county covariates.';
+    src.textContent = 'One county per dot, against local home value and against local income Gini. Source: Opportunity Insights, county covariates.';
   }
 }
 
