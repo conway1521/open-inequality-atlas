@@ -185,9 +185,11 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 }
 
 /* ── the cube: the facet selector ─────────────────────────────────── */
-.stage { display: grid; grid-template-columns: 232px 1fr; gap: 32px; margin-top: 30px; align-items: start; }
-.cubebox { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.scene { width: 184px; height: 184px; perspective: 720px; touch-action: none; cursor: grab; margin-bottom: 30px; }
+.stage { display: grid; grid-template-columns: 224px 1fr; gap: 40px; margin-top: 34px; align-items: start; }
+.cubebox { display: flex; flex-direction: column; align-items: center; gap: 14px;
+  user-select: none; -webkit-user-select: none; }
+.scene { width: 184px; height: 184px; perspective: 720px; touch-action: none; cursor: grab;
+  margin: 22px 0 36px; }   /* room above so the drifting cube never reaches the copy */
 .scene:active { cursor: grabbing; }
 .cube { position: relative; width: 184px; height: 184px; transform-style: preserve-3d;
   transition: transform .6s cubic-bezier(.22,1.1,.36,1); }
@@ -218,6 +220,13 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .fchip.meta[aria-pressed="true"] { color: var(--ink); background: var(--bg); border-style: solid; border-color: var(--ink-3); }
 .cube-hint { font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-align: center; }
 .askcol { min-width: 0; }
+.cell { margin-top: 18px; }
+
+/* the facet reminder in the results header: a small cube face + its name */
+.here { display: flex; align-items: center; gap: 8px; margin-left: 14px; margin-right: auto; }
+.here-cube { width: 18px; height: 18px; border-radius: 4px; background: var(--accent);
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--accent) 35%, transparent); flex-shrink: 0; }
+.here-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { .cube { transition: none; } }
 @media (max-width: 620px) { .stage { grid-template-columns: 1fr; gap: 24px; } }
 
@@ -394,6 +403,15 @@ footer a { color: inherit; }
             <span class="slash">/</span>
           </form>
           <div class="chips" id="chips"></div>
+          <div class="cell">
+            <div class="cell-h"><span class="cell-lead">the cell you're building</span></div>
+            <div class="ribs" id="ribs">
+              <div class="rib facet open" id="rib-facet"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div>
+              <div class="rib" id="rib-place"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span></div>
+              <div class="rib" id="rib-time"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span></div>
+              <div class="rib" id="rib-against"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span></div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="help" id="help" hidden>
@@ -410,6 +428,7 @@ footer a { color: inherit; }
     <section id="session" hidden>
       <div class="session-head">
         <span class="label">Your chain</span>
+        <div class="here" id="here" aria-hidden="true"><span class="here-cube" id="here-cube"></span><span class="here-label" id="here-label">wealth</span></div>
         <div class="session-actions">
           <button id="share">copy link</button>
           <button id="clear">clear</button>
@@ -417,13 +436,6 @@ footer a { color: inherit; }
       </div>
       <ol id="facts"></ol>
       <div class="chart-card">
-        <div class="cell-h"><span class="cell-lead">the cell you're in</span></div>
-        <div class="ribs" id="ribs">
-          <div class="rib facet open" id="rib-facet"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div>
-          <div class="rib" id="rib-place"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span></div>
-          <div class="rib" id="rib-time"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span></div>
-          <div class="rib" id="rib-against"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span></div>
-        </div>
         <div class="chart-title" id="chart-title"></div>
         <div id="chart"></div>
         <p class="chart-src" id="chart-src"></p>
@@ -1646,6 +1658,9 @@ function ask(q) {
   chain.push(f);
   render();
   document.getElementById('q').value = '';
+  // stage two: drop the reader down to the insight, with the facet reminder in view
+  const sess = document.getElementById('session');
+  if (sess && !sess.hidden) sess.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
 }
 
 // re-run the whole chain from its queries on a fresh context; flag lines whose answer shifted
@@ -1708,6 +1723,8 @@ function paintFacet(name) {
   document.querySelectorAll('.fchip').forEach(el => el.setAttribute('aria-pressed', el.dataset.facet === name ? 'true' : 'false'));
   const vf = document.getElementById('v-facet');
   if (vf) vf.innerHTML = `${name} &middot; <span class="muted">${f.sub}</span>`;
+  const hl = document.getElementById('here-label');   // the reminder in the results header
+  if (hl) hl.textContent = name;
 }
 function faceToFront(name) {
   const f = FACETS[name];
@@ -1757,6 +1774,7 @@ function initCube() {
   const scene = document.getElementById('scene');
   if (!scene) return;
   scene.addEventListener('pointerdown', e => {
+    e.preventDefault();   // don't start a text selection on the copy behind the cube
     stopIdle(false); cDragging = true; cMoved = 0; clx = e.clientX; cly = e.clientY;
     cubeEl().classList.add('drag'); scene.setPointerCapture(e.pointerId);
   });
@@ -1781,6 +1799,7 @@ function render() {
   updateChips();
   if (chain.length === 0) {
     session.hidden = true;
+    ['place', 'time', 'against'].forEach(id => setRib(id, false, ''));   // reset the cell to just the facet
     history.replaceState(null, '', location.pathname);
     return;
   }
@@ -1803,15 +1822,21 @@ function setRib(id, on, html) {
   if (on) { const v = document.getElementById('v-' + id); if (v) v.innerHTML = html; rib.classList.add('open'); }
   else rib.classList.remove('open');
 }
+// the cell reflects the answer you're looking at, not accumulated context
+const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence'];
 function updateCell() {
-  // facet rib text is set by paintFacet; it stays open
   const last = chain.length ? chain[chain.length - 1] : null;
-  const placeName = ctx.lastIso && BY_ISO[ctx.lastIso] ? esc(BY_ISO[ctx.lastIso].name)
-    : ctx.region ? REGION_LABEL[ctx.region] : (ctx.pool ? esc(ctx.pool.label) : null);
-  setRib('place', !!placeName, placeName || '');
-  const timeK = last && ['time', 'divergence', 'path', 'delta_rank'].includes(last.kind);
-  setRib('time', timeK, 'over the years');
-  const ag = (ctx.lastAspect && ctx.lastAspect !== ctx.metric && META[ctx.lastAspect]) ? META[ctx.lastAspect].label : null;
+  if (!last) { ['place', 'time', 'against'].forEach(id => setRib(id, false, '')); return; }
+  let place = null;
+  if (SINGLE_PLACE.includes(last.kind) && last.isos && last.isos.length)
+    place = last.isos.map(i => BY_ISO[i] ? esc(BY_ISO[i].name) : i).slice(0, 3).join(', ');
+  else if (ctx.region) place = REGION_LABEL[ctx.region];
+  else if (ctx.pool) place = esc(ctx.pool.label);
+  else place = 'all countries';   // a cross-country answer sits in no single place
+  setRib('place', !!place, place || '');
+  setRib('time', ['time', 'divergence', 'path', 'delta_rank'].includes(last.kind), 'over the years');
+  const ag = (last.contrast && last.contrast.y && META[last.contrast.y]) ? META[last.contrast.y].label
+    : (ctx.lastAspect && ctx.lastAspect !== ctx.metric && META[ctx.lastAspect]) ? META[ctx.lastAspect].label : null;
   setRib('against', !!ag, ag || '');
 }
 
