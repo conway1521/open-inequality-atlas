@@ -1056,9 +1056,10 @@ function parse(raw) {
     const y = aspectHere || (META[ctx.metric].series && !isIneq(ctx.metric) ? ctx.metric : ctx.lastAspect) || 'life_exp';
     const wealthOnly = /\bwealth (inequality|gini|concentration)\b/.test(r) && !/\bincome\b/.test(r);
     const incomeOnly = /\bincome (inequality|gini)\b/.test(r) && !/\bwealth\b/.test(r);
-    if (wealthOnly) return { kind: 'correlate', x: 'wealth_gini', y, region };
+    if (wealthOnly) return { kind: 'correlate', x: SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini', y, region };
     if (incomeOnly) return { kind: 'correlate', x: 'income_gini', y, region };
-    return { kind: 'contrast', y, region };   // default: pit wealth against income and name the winner
+    // otherwise it runs against the inequality of the facet you're on
+    return { kind: 'correlate', x: facetIneqDefault(), y, region };
   }
 
   const hasEqual = /\bequal\b/.test(r), hasUnequal = /\bunequal\b|\binequality\b/.test(r);
@@ -1810,16 +1811,6 @@ function chooseFacet(name) {
   // the cube in action: the same cell, re-read under the new facet
   if (chain.length && (f.metric || name === 'opportunity')) { recomputeChain(); render(); }
 }
-// after an answer: turn the cube to match the measure that was used
-function syncCube() {
-  const last = chain.length ? chain[chain.length - 1] : null;
-  const name = (last && last.kind === 'opp') ? 'opportunity'
-    : (META[ctx.metric] ? META[ctx.metric].topic : 'wealth') === 'income' ? 'income'
-    : (META[ctx.metric] ? META[ctx.metric].topic : 'wealth') === 'wellbeing' ? 'health' : 'wealth';
-  paintFacet(name);
-  faceToFront(name);
-  if (motion !== 'tumble') settle();
-}
 // motion: a slow tumble before anything is chosen, then a crisp snap to the
 // chosen face and a small wobble around it, a reminder the other faces are there
 let cDragging = false, clx = 0, cly = 0, cMoved = 0, motRAF = null, mClk = 0, wob0 = 0, motion = 'tumble', settleT = null;
@@ -1990,8 +1981,7 @@ function render() {
   document.querySelectorAll('#answer .x, #facts .x').forEach(b =>
     b.addEventListener('click', () => removeFact(Number(b.dataset.id))));
   drawChart();
-  syncCube();
-  updateCell();
+  updateCell();   // the cube stays on the facet you chose; only the cell coordinates move
 }
 
 // each dimension of the atlas is a slot; the cube fills the facet, asking fills the rest
@@ -2116,7 +2106,7 @@ function drawChart() {
       text: pts.map(p => p.name), customdata: pts.map(p => [mx.fmt(p.x), my.fmt(p.y)]) });
     const traces = [{
       type: 'scatter', mode: 'markers', ...mk(bg),
-      marker: { color: '#c9d3e0', size: 7 },
+      marker: { color: ACC(), size: 7, opacity: 0.4 },   // the whole cloud wears the facet colour, muted
       hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
     }];
     if (sc.fit) {   // the robust line, drawn across the x-range
