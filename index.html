@@ -1013,13 +1013,16 @@ function parse(raw) {
     return { kind: 'world', region, metric };
   if (/\bover time\b|\btrend\b|\bhistory\b|\bevolution\b/.test(r) || (/\bsince\b/.test(r) && years.length))
     return { kind: 'time', isos, year: years[0] || null, region, metric };
+  // a country, a year, and a named series metric: read that one cell ("wealth gini France 2010")
+  if (metric && isos.length === 1 && years.length && META[metric].series)
+    return { kind: 'point', iso: isos[0], year: years[0], metric };
   if (metric) {
     if (META[metric].us && !isos.length && !ctx.lastIso) return { kind: 'us_shares', metric };
     if (META[metric].series && !isos.length && !ctx.lastIso) return { kind: 'world', metric };
     return { kind: 'metric', metric, isos };
   }
   if (isos.length >= 2) return { kind: 'compare', isos: isos.slice(0, 4) };
-  if (isos.length === 1 && years.length) return { kind: 'point', iso: isos[0], year: years[0] };
+  if (isos.length === 1 && years.length) return { kind: 'point', iso: isos[0], year: years[0], metric };
   if (isos.length === 1) return { kind: 'profile', iso: isos[0] };
   if (region) return { kind: 'world', region };
   return { kind: 'unknown' };
@@ -1054,8 +1057,11 @@ function pairedPoints(xMetric, yMetric, region) {
 function wealthConc(iso) {
   if (iso === 'USA' && US) {
     const s = US.filter(r => r.top1_share != null).map(r => ({ year: r.year, v: r.top1_share }));
-    return { series: s, label: 'top 1% wealth share', fmt: pc };
+    if (s.length) return { series: s, label: 'top 1% wealth share', fmt: pc };
   }
+  // the WID top 1% share, the same concentration measure the rest of the atlas now leads with
+  if (SERIES.wealth_top1 && SERIES.wealth_top1[iso] && SERIES.wealth_top1[iso].length)
+    return { series: seriesOf('wealth_top1', iso), label: 'top 1% wealth share', fmt: pc };
   return { series: seriesOf('wealth_gini', iso), label: 'wealth Gini', fmt: g2 };
 }
 
@@ -1213,7 +1219,7 @@ function answer(q) {
     // shared indexing origin: the first income year at or after wealth starts (income is the sparser series)
     const base = (inc.find(d => d.year >= wFirst.year) || iFirst).year;
     const wPct = Math.round((wEnd.v / wFirst.v - 1) * 100), iPct = Math.round((iEnd.v / iFirst.v - 1) * 100);
-    ctx.metric = 'wealth_gini'; ctx.lastIso = iso; f.isos = [iso];
+    ctx.metric = SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini'; ctx.lastIso = iso; f.isos = [iso];
     f.mode = 'divergence'; f.diverge = { iso, w, inc, base };
     f.text = `<strong>${esc(BY_ISO[iso] ? BY_ISO[iso].name : iso)}</strong>: ${w.label} rose from ` +
       `<strong>${w.fmt(wFirst.v)}</strong> in ${wFirst.year} to <strong>${w.fmt(wEnd.v)}</strong> ` +
@@ -1480,15 +1486,20 @@ function answer(q) {
   }
 
   else if (p.kind === 'point') {
-    const key = META[ctx.metric].series ? ctx.metric : 'wealth_gini';
+    const key = (p.metric && META[p.metric].series) ? p.metric
+      : (META[ctx.metric].series ? ctx.metric : 'wealth_gini');
+    ctx.metric = key;
     const m = META[key];
     const c = BY_ISO[p.iso]; if (!c) return miss();
     const s = seriesOf(key, p.iso);
-    const at = s.find(d => d.year === p.year);
-    if (!at) return miss();
+    if (!s.length) return miss();
+    // snap to the nearest year the series actually carries
+    let at = s.find(d => d.year === p.year);
+    if (!at) at = s.reduce((best, d) => Math.abs(d.year - p.year) < Math.abs(best.year - p.year) ? d : best, s[0]);
     f.isos = [p.iso]; ctx.lastIso = p.iso;
     f.marker = { iso: p.iso, year: at.year }; f.metricUsed = key;
-    f.text = `<strong>${esc(c.name)}</strong> in ${at.year}: ${m.label} <strong>${m.fmt(at.v)}</strong>.`;
+    const asked = at.year === p.year ? '' : ` (nearest to ${p.year})`;
+    f.text = `<strong>${esc(c.name)}</strong> in ${at.year}${asked}: ${m.label} <strong>${m.fmt(at.v)}</strong>.`;
   }
 
   else if (p.kind === 'metric') {
@@ -1561,7 +1572,7 @@ function runQuery(q) {
 }
 
 function resetCtx() {
-  ctx.lastIso = null; ctx.metric = 'wealth_gini'; ctx.lastRankDir = null; ctx.lastRegion = null;
+  ctx.lastIso = null; ctx.metric = SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini'; ctx.lastRankDir = null; ctx.lastRegion = null;
   ctx.lastAspect = null; ctx.pool = null; ctx.lastQuery = null; ctx.region = null; computePool();
 }
 
@@ -2534,6 +2545,10 @@ function boot() {
     location.hash.slice(1).split('|').slice(0, 12)
       .map(decodeURIComponent).forEach(q => { const f = runQuery(q); if (f) chain.push(f); });
     if (chain.length) render();
+  } else {
+    // land on the split itself: the first thing in view is the thesis, not a blank box
+    const f = runQuery('wealth vs income in the US');
+    if (f) { chain.push(f); render(); }
   }
 }
 
