@@ -20,6 +20,11 @@
   --ink-3:   #999999;
   --accent:  #2a78d6;
   --mono:    ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* the four facets of inequality */
+  --wealth:      #2a78d6;
+  --income:      #2f9e8f;
+  --opportunity: #c98a2b;
+  --health:      #c0607a;
 }
 
 html { scroll-behavior: smooth; }
@@ -37,35 +42,39 @@ body {
 
 /* header */
 header { border-bottom: 1px solid var(--border); background: var(--surface); }
-header .wrap { display: flex; align-items: center; height: 56px; gap: 28px; }
-.wordmark { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; white-space: nowrap; }
+header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
+.wordmark { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; white-space: nowrap;
+  background: none; border: none; cursor: pointer; color: var(--ink); font-family: inherit; padding: 0; }
 .wordmark span { color: var(--ink-3); font-weight: 400; }
-.tabs { display: flex; gap: 4px; flex: 1; }
+.deeper { margin-left: auto; font: 500 12.5px 'Inter', system-ui, sans-serif; color: var(--ink-2);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 100px;
+  padding: 4px 13px; cursor: pointer; }
+.deeper:hover, .deeper[aria-expanded="true"] { color: var(--ink); border-color: var(--ink-3); }
+.tabs { border-top: 1px solid var(--border); background: var(--bg); }
+.tabs[hidden] { display: none; }
+.tabs .wrap { display: flex; gap: 4px; height: 46px; align-items: center; }
 .tab {
   font: 500 13px 'Inter', system-ui, sans-serif;
   color: var(--ink-2); background: none; border: none; cursor: pointer;
   padding: 6px 12px; border-radius: 7px;
 }
 .tab:hover { color: var(--ink); }
-.tab.on { color: var(--ink); background: var(--bg); }
+.tab.on { color: var(--ink); background: var(--surface); }
 .top-links { display: flex; gap: 16px; align-items: center; font-size: 13px; }
 .top-links a { color: var(--ink-2); text-decoration: none; }
 .top-links a:hover { color: var(--ink); }
 .ver { font-family: var(--mono); font-size: 11px; color: var(--ink-3);
   border: 1px solid var(--border); border-radius: 100px; padding: 2px 8px; }
 
-/* header on narrow screens: wordmark and links on top, tabs wrap to a full row below */
+/* header on narrow screens */
 @media (max-width: 720px) {
-  header .wrap {
-    height: auto; flex-wrap: wrap; gap: 8px 14px;
-    padding-top: 10px; padding-bottom: 10px;
-  }
-  .wordmark { flex: 1 1 auto; }
-  .top-links { order: 2; font-size: 12px; }
-  .tabs { order: 3; flex: 1 0 100%; flex-wrap: wrap; gap: 4px; }
+  header .wrap { gap: 12px; }
+  .top-links { font-size: 12px; }
+  .tabs .wrap { flex-wrap: wrap; height: auto; gap: 4px; padding-top: 8px; padding-bottom: 8px; }
   .tab { padding: 6px 10px; }
   .ask { padding: 32px 0 12px; }
 }
+.ask h1 .turn { color: var(--accent); transition: color .4s ease; }
 
 /* ask view */
 .ask { padding: 64px 0 12px; }
@@ -175,55 +184,67 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 28px; }
   position: relative;
 }
 
-/* the cube: a small readout of which dimension the last question moved */
-.cube-wrap {
-  position: absolute; top: 14px; right: 16px;
-  width: 62px; text-align: center; pointer-events: none; z-index: 2;
-}
-.cube-stage { width: 44px; height: 44px; margin: 0 auto 6px; perspective: 320px; }
-.cube {
-  position: relative; width: 44px; height: 44px;
-  transform-style: preserve-3d;
-  transform: rotateX(-16deg) rotateY(-24deg);
-  transition: transform 700ms cubic-bezier(.34,1.4,.5,1);
-}
-.cube .face {
-  position: absolute; width: 44px; height: 44px;
-  border: 1px solid var(--border); background: rgba(255,255,255,0.82);
-  border-radius: 5px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.02em;
-  color: var(--ink-3); text-align: center; padding: 3px;
-}
-.cube .face.lit { border-color: var(--accent); color: var(--accent); background: #f2f7fd; }
-.cube .fr { transform: translateZ(22px); }
-.cube .bk { transform: rotateY(180deg) translateZ(22px); }
-.cube .rt { transform: rotateY(90deg) translateZ(22px); }
-.cube .lf { transform: rotateY(-90deg) translateZ(22px); }
-.cube .tp { transform: rotateX(90deg) translateZ(22px); }
-.cube .bm { transform: rotateX(-90deg) translateZ(22px); }
-.cube-cap {
-  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
-  letter-spacing: 0.06em; color: var(--ink-3);
-}
+/* ── the cube: the facet selector ─────────────────────────────────── */
+.stage { display: grid; grid-template-columns: 232px 1fr; gap: 32px; margin-top: 30px; align-items: start; }
+.cubebox { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.scene { width: 184px; height: 184px; perspective: 720px; touch-action: none; cursor: grab; margin-bottom: 30px; }
+.scene:active { cursor: grabbing; }
+.cube { position: relative; width: 184px; height: 184px; transform-style: preserve-3d;
+  transition: transform .6s cubic-bezier(.22,1.1,.36,1); }
+.cube.drag { transition: none; }
+.cube .face { position: absolute; width: 184px; height: 184px; border-radius: 14px;
+  border: 1px solid var(--border); background: var(--surface);
+  display: flex; flex-direction: column; justify-content: space-between; padding: 17px;
+  backface-visibility: hidden; pointer-events: none; }
+.cube .face .lab { font-family: var(--mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--fc, var(--ink-3)); }
+.cube .face .q { font-size: 16px; font-weight: 560; letter-spacing: -.01em; color: var(--ink);
+  line-height: 1.34; height: calc(3 * 1.34em); overflow: hidden;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.cube .f-wealth      { --fc: var(--wealth);      transform: translateZ(92px); }
+.cube .f-income      { --fc: var(--income);      transform: rotateY(90deg) translateZ(92px); }
+.cube .f-opportunity { --fc: var(--opportunity); transform: rotateY(180deg) translateZ(92px); }
+.cube .f-health      { --fc: var(--health);      transform: rotateY(-90deg) translateZ(92px); }
+.cube .f-interplay   { --fc: var(--ink-2);       transform: rotateX(90deg) translateZ(92px); }
+.cube .f-scope       { --fc: var(--ink-2);       transform: rotateX(-90deg) translateZ(92px); }
+.cube .face.lit { border-color: var(--fc); box-shadow: 0 0 0 1px var(--fc); }
+.facet-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.fchip { font-size: 12.5px; padding: 4px 12px; border-radius: 100px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.fchip:hover { color: var(--ink); border-color: var(--ink-3); }
+.fchip[aria-pressed="true"] { color: #fff; background: var(--fc); border-color: var(--fc); }
+.fchip.w { --fc: var(--wealth); } .fchip.i { --fc: var(--income); }
+.fchip.o { --fc: var(--opportunity); } .fchip.h { --fc: var(--health); }
+.fchip.meta { --fc: var(--ink-2); font-size: 11px; color: var(--ink-3); border-style: dashed; background: transparent; }
+.fchip.meta[aria-pressed="true"] { color: var(--ink); background: var(--bg); border-style: solid; border-color: var(--ink-3); }
+.cube-hint { font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-align: center; }
+.askcol { min-width: 0; }
 @media (prefers-reduced-motion: reduce) { .cube { transition: none; } }
-@media (max-width: 560px) { .cube-wrap { display: none; } }
+@media (max-width: 620px) { .stage { grid-template-columns: 1fr; gap: 24px; } }
+
+/* ── the accordion: the cell you're in ───────────────────────────── */
+.cell-h { margin-bottom: 10px; }
+.cell-lead { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
+.ribs { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.rib { display: grid; grid-template-columns: 6px 84px 1fr; align-items: center;
+  border-bottom: 1px solid var(--border); overflow: hidden;
+  max-height: 0; opacity: 0; transition: max-height .4s cubic-bezier(.22,1,.36,1), opacity .3s ease; }
+.rib:last-child { border-bottom: 0; }
+.rib.open { max-height: 60px; opacity: 1; }
+.rib .spine { align-self: stretch; background: var(--rc, var(--ink-3)); }
+.rib .dim { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); padding: 12px 0 12px 12px; }
+.rib .val { font-size: 14px; color: var(--ink); padding: 10px 12px 10px 4px; }
+.rib .val .muted { color: var(--ink-3); }
+.rib.facet { --rc: var(--accent); }
+.rib.facet .val { font-weight: 600; }
+
+/* the US view keeps a compact strip (its own deeper page) */
 .facets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; align-items: center; }
 .facets:empty { display: none; }
 .facet-lead { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); margin-right: 2px; }
-.facet {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 12px; color: var(--ink); background: var(--bg);
-  border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px;
-}
+.facet { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; }
 .facet .k { color: var(--ink-3); }
 .facet.lens { border-color: #c9d9ec; }
-.facet.filter { background: #fff5ef; border-color: #f2d3c1; }
-.facet button {
-  font-family: var(--mono); background: none; border: none; cursor: pointer;
-  color: var(--ink-3); font-size: 12px; padding: 0; line-height: 1;
-}
-.facet button:hover { color: var(--ink); }
 .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
 #chart { width: 100%; height: 380px; }
 .chart-src {
@@ -312,41 +333,69 @@ footer a { color: inherit; }
 
 <header>
   <div class="wrap">
-    <div class="wordmark">Open Inequality Atlas</div>
-    <nav class="tabs">
-      <button class="tab on" data-view="ask">Ask</button>
-      <button class="tab" data-view="wealth">Wealth</button>
-      <button class="tab" data-view="income">Income</button>
-      <button class="tab" data-view="wellbeing">Wellbeing</button>
-      <button class="tab" data-view="us">United States</button>
-      <button class="tab" data-view="db">Database</button>
-    </nav>
+    <button class="wordmark" data-view="ask" id="home">Open Inequality Atlas</button>
+    <button class="deeper" id="deeper" aria-expanded="false">deeper &rsaquo;</button>
     <div class="top-links">
       <span class="ver">v0.4.0</span>
       <a href="https://github.com/conway1521/wealth_ineq" target="_blank" rel="noopener">GitHub</a>
     </div>
   </div>
+  <nav class="tabs" id="tabs" hidden>
+    <div class="wrap">
+      <button class="tab" data-view="wealth">Wealth</button>
+      <button class="tab" data-view="income">Income</button>
+      <button class="tab" data-view="wellbeing">Wellbeing</button>
+      <button class="tab" data-view="us">United States</button>
+      <button class="tab" data-view="db">Database</button>
+    </div>
+  </nav>
 </header>
 
 <main>
 
   <div id="view-ask" class="wrap">
     <section class="ask">
-      <h1>Wealth or income?</h1>
+      <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality.</h1>
       <p class="sub">
-        Two inequalities, and they have come apart. Measured by income, the gap
-        in the US has barely moved since 1991. Measured by wealth, the richest
-        1% went from a fifth of it to nearly a third. This atlas asks which of
-        the two the everyday things follow: health, poverty, satisfaction, how
-        long people live. First across countries, then across US counties.
+        Wealth, income, opportunity, health. Turn the cube to choose one, then
+        ask a plain question. Each answer is one cell, and the cell builds up a
+        dimension at a time: a place, a stretch of years, another measure to
+        hold it against.
       </p>
-      <form class="askbox" id="ask-form">
-        <input id="q" type="text" autocomplete="off" spellcheck="false"
-               placeholder="wealth vs income in the US">
-        <button type="button" class="qmark" id="helpbtn" aria-label="What can I ask">?</button>
-        <span class="slash">/</span>
-      </form>
-      <div class="chips" id="chips"></div>
+      <div class="stage">
+        <div class="cubebox">
+          <div class="scene" id="scene">
+            <div class="cube" id="cube">
+              <div class="face f-wealth" data-facet="wealth"><span class="lab">wealth</span><div class="q">The wealth held by the richest one percent.</div></div>
+              <div class="face f-income" data-facet="income"><span class="lab">income</span><div class="q">How unevenly income is shared out.</div></div>
+              <div class="face f-opportunity" data-facet="opportunity"><span class="lab">opportunity</span><div class="q">How much your parents' income sets your own.</div></div>
+              <div class="face f-health" data-facet="health"><span class="lab">health</span><div class="q">The life-expectancy gap, rich to poor.</div></div>
+              <div class="face f-interplay" data-facet="interplay"><span class="lab">interplay</span><div class="q">How the four inequalities line up.</div></div>
+              <div class="face f-scope" data-facet="scope"><span class="lab">scope</span><div class="q">The world, or one commuting zone.</div></div>
+            </div>
+          </div>
+          <div class="facet-chips" id="facet-chips">
+            <button class="fchip w" data-facet="wealth" aria-pressed="true">wealth</button>
+            <button class="fchip i" data-facet="income" aria-pressed="false">income</button>
+            <button class="fchip o" data-facet="opportunity" aria-pressed="false">opportunity</button>
+            <button class="fchip h" data-facet="health" aria-pressed="false">health</button>
+          </div>
+          <div class="facet-chips meta-row">
+            <button class="fchip meta" data-facet="interplay" aria-pressed="false">interplay &uarr;</button>
+            <button class="fchip meta" data-facet="scope" aria-pressed="false">scope &darr;</button>
+          </div>
+          <div class="cube-hint">drag to spin &middot; or pick a facet</div>
+        </div>
+        <div class="askcol">
+          <form class="askbox" id="ask-form">
+            <input id="q" type="text" autocomplete="off" spellcheck="false"
+                   placeholder="try: France, then over time, then vs life expectancy">
+            <button type="button" class="qmark" id="helpbtn" aria-label="What can I ask">?</button>
+            <span class="slash">/</span>
+          </form>
+          <div class="chips" id="chips"></div>
+        </div>
+      </div>
       <div class="help" id="help" hidden>
         <p class="help-intro">Two steps. See how wealth and income inequality have split, then take an everyday measure and see which one it tracks.</p>
         <div class="help-row"><span class="help-k">The split</span><span class="help-v" data-qs="wealth vs income in the US;wealth vs income in France"></span></div>
@@ -368,20 +417,13 @@ footer a { color: inherit; }
       </div>
       <ol id="facts"></ol>
       <div class="chart-card">
-        <div class="cube-wrap" aria-hidden="true">
-          <div class="cube-stage">
-            <div class="cube" id="cube">
-              <div class="face fr" data-face="measure">msr</div>
-              <div class="face rt" data-face="against">vs</div>
-              <div class="face lf" data-face="place">place</div>
-              <div class="face bk" data-face="geo">US</div>
-              <div class="face tp" data-face="time">time</div>
-              <div class="face bm" data-face="scope">scope</div>
-            </div>
-          </div>
-          <div class="cube-cap" id="cube-cap">measure</div>
+        <div class="cell-h"><span class="cell-lead">the cell you're in</span></div>
+        <div class="ribs" id="ribs">
+          <div class="rib facet open" id="rib-facet"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div>
+          <div class="rib" id="rib-place"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span></div>
+          <div class="rib" id="rib-time"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span></div>
+          <div class="rib" id="rib-against"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span></div>
         </div>
-        <div class="facets" id="facets"></div>
         <div class="chart-title" id="chart-title"></div>
         <div id="chart"></div>
         <p class="chart-src" id="chart-src"></p>
@@ -1591,6 +1633,7 @@ function resetCtx() {
 
 function ask(q) {
   hideNotice();
+  stopIdle(false);   // the cube stops drifting once you ask
   chain.forEach(f => { f.changed = false; });   // clear stale badges on any new move
   const f = runQuery(q);
   if (!f) return;
@@ -1629,37 +1672,107 @@ function removeFact(id) {
 
 // the cube: six faces, one per dimension of the ask cube. It turns to whichever
 // dimension the last question moved, so the abstract cube stays in view.
-const FACE_ROT = {
-  measure: 'rotateX(-14deg) rotateY(-20deg)',
-  against: 'rotateX(-14deg) rotateY(-90deg)',
-  place:   'rotateX(-14deg) rotateY(90deg)',
-  geo:     'rotateX(-14deg) rotateY(-200deg)',
-  time:    'rotateX(-90deg) rotateY(0deg)',
-  scope:   'rotateX(90deg) rotateY(0deg)',
+/* ── the cube: the facet selector ─────────────────────────────────── */
+const FACETS = {
+  wealth:      { i: 0, side: true, color: 'var(--wealth)', metric: 'wealth_top1', sub: 'top 1% share' },
+  income:      { i: 1, side: true, color: 'var(--income)', metric: 'income_gini', sub: 'income Gini' },
+  opportunity: { i: 2, side: true, color: 'var(--opportunity)', metric: null, sub: 'commuting zones',
+                 note: 'Opportunity comes from the commuting-zone data: whether a child born poor climbs. That layer is being wired in next.' },
+  health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'the life gap',
+                 note: 'Health inequality is the rich-poor gap in life expectancy. That measure is being wired in next.' },
+  interplay:   { i: -1, side: false, color: 'var(--ink-2)', sub: 'across the four',
+                 note: 'Interplay holds two inequalities against each other across places. The scatter view is coming next.' },
+  scope:       { i: -1, side: false, color: 'var(--ink-2)', sub: 'world to zone',
+                 note: 'Scope drops the same measure from countries down to commuting zones. The local data is coming next.' },
 };
-const FACE_LABEL = { measure: 'measure', against: 'against', place: 'place', geo: 'geography', time: 'over time', scope: 'scope' };
-function activeFace() {
-  const last = chain.length ? chain[chain.length - 1] : null;
-  if (!last) return 'measure';
-  switch (last.kind) {
-    case 'time': case 'path': case 'delta_rank': return 'time';
-    case 'among': return 'scope';
-    case 'profile': case 'point': case 'compare': case 'metric': case 'lorenz': return 'place';
-    case 'contrast': case 'correlate': case 'tiers': case 'break': return 'against';
-    case 'divergence': case 'us_shares': return 'measure';
-  }
-  if (last.kind === 'rank' && ctx.region) return 'scope';
-  if (ctx.pool || ctx.region) return 'scope';
-  return 'measure';
+const cubeEl = () => document.getElementById('cube');
+let curFacet = 'wealth', cRotX = 0, cRotY = 0;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const STATIC_TILT = 'rotateX(-15deg) rotateY(-20deg) ';
+function cubeApply() {
+  const c = cubeEl(); if (!c) return;
+  c.style.transform = (reduceMotion ? STATIC_TILT : '') + `rotateX(${cRotX}deg) rotateY(${cRotY}deg)`;
 }
-function spinCube() {
-  const cube = document.getElementById('cube');
-  if (!cube) return;
-  const face = activeFace();
-  cube.style.transform = FACE_ROT[face] || FACE_ROT.measure;
-  cube.querySelectorAll('[data-face]').forEach(f => f.classList.toggle('lit', f.dataset.face === face));
-  const cap = document.getElementById('cube-cap');
-  if (cap) cap.textContent = FACE_LABEL[face] || 'measure';
+function facetFromAngles() {
+  const rx = ((Math.round(cRotX / 90) * 90) % 360 + 360) % 360;
+  if (rx === 90) return 'scope';
+  if (rx === 270) return 'interplay';
+  const idx = ((Math.round(-cRotY / 90) % 4) + 4) % 4;
+  return ['wealth', 'income', 'opportunity', 'health'][idx];
+}
+function paintFacet(name) {
+  const f = FACETS[name]; if (!f) return;
+  curFacet = name;
+  document.documentElement.style.setProperty('--accent', f.color);
+  document.querySelectorAll('#cube .face').forEach(el => el.classList.toggle('lit', el.dataset.facet === name));
+  document.querySelectorAll('.fchip').forEach(el => el.setAttribute('aria-pressed', el.dataset.facet === name ? 'true' : 'false'));
+  const vf = document.getElementById('v-facet');
+  if (vf) vf.innerHTML = `${name} &middot; <span class="muted">${f.sub}</span>`;
+}
+function faceToFront(name) {
+  const f = FACETS[name];
+  if (f.side) { cRotX = 0; cRotY = -90 * f.i; }
+  else if (name === 'interplay') { cRotX = -90; cRotY = 0; }
+  else { cRotX = 90; cRotY = 0; }
+  cubeApply();
+}
+// user turns to a facet: switch the lens and refresh the starters
+function chooseFacet(name) {
+  stopIdle(false);
+  if (!FACETS[name]) return;
+  paintFacet(name);
+  faceToFront(name);
+  hideNotice();
+  const f = FACETS[name];
+  if (f.metric) ctx.metric = f.metric;
+  if (f.note) showNotice(f.note);
+  updateChips();
+}
+// after an answer: turn the cube to match the measure that was used
+function syncCube() {
+  const topic = META[ctx.metric] ? META[ctx.metric].topic : 'wealth';
+  const name = topic === 'income' ? 'income' : topic === 'wellbeing' ? 'health' : 'wealth';
+  paintFacet(name);
+  faceToFront(name);
+}
+// drag + idle drift
+let cDragging = false, clx = 0, cly = 0, cMoved = 0, idle = false, idleRAF = null, iclk = 0;
+function idleStep() {
+  if (!idle) return;
+  iclk += 1;
+  const s = iclk * 0.0042;
+  cRotY = Math.sin(s) * 40 + Math.sin(s * 0.63 + 1.1) * 14;
+  cRotX = Math.sin(s * 0.86 + 2.0) * 34 + Math.sin(s * 0.42) * 12;
+  cubeApply();
+  idleRAF = requestAnimationFrame(idleStep);
+}
+function startIdle() { if (reduceMotion || idle) return; idle = true; idleRAF = requestAnimationFrame(idleStep); }
+function stopIdle(settle) { if (!idle) return; idle = false; if (idleRAF) cancelAnimationFrame(idleRAF); if (settle) chooseFacet(curFacet); }
+function cubeSnap() {
+  cRotX = Math.max(-90, Math.min(90, Math.round(cRotX / 90) * 90));
+  cRotY = Math.round(cRotY / 90) * 90;
+  chooseFacet(facetFromAngles());
+}
+function initCube() {
+  const scene = document.getElementById('scene');
+  if (!scene) return;
+  scene.addEventListener('pointerdown', e => {
+    stopIdle(false); cDragging = true; cMoved = 0; clx = e.clientX; cly = e.clientY;
+    cubeEl().classList.add('drag'); scene.setPointerCapture(e.pointerId);
+  });
+  scene.addEventListener('pointermove', e => {
+    if (!cDragging) return;
+    const dx = e.clientX - clx, dy = e.clientY - cly; clx = e.clientX; cly = e.clientY;
+    cMoved += Math.abs(dx) + Math.abs(dy);
+    cRotY += dx * 0.6; cRotX -= dy * 0.6; cRotX = Math.max(-92, Math.min(92, cRotX));
+    cubeApply();
+  });
+  const end = () => { if (!cDragging) return; cDragging = false; cubeEl().classList.remove('drag'); cubeSnap(); };
+  scene.addEventListener('pointerup', end);
+  scene.addEventListener('pointercancel', end);
+  document.querySelectorAll('.fchip').forEach(el =>
+    el.addEventListener('click', () => chooseFacet(el.dataset.facet)));
+  paintFacet('wealth'); cubeApply(); startIdle();
 }
 
 function render() {
@@ -1678,29 +1791,28 @@ function render() {
     `<button class="x" data-id="${f.id}" title="remove">&times;</button></li>`).join('');
   list.querySelectorAll('.x').forEach(b =>
     b.addEventListener('click', () => removeFact(Number(b.dataset.id))));
-  renderStrip();
   drawChart();
-  spinCube();
+  syncCube();
+  updateCell();
   history.replaceState(null, '', '#' + chain.map(f => encodeURIComponent(f.query)).join('|'));
 }
 
-// the facet strip: the current cube cell, made visible and (for filters) clearable
-function renderStrip() {
-  const el = document.getElementById('facets');
-  if (!el) return;
-  const chips = [];
-  const m = META[ctx.metric];
-  if (m) chips.push(`<span class="facet"><span class="k">measure</span> ${m.label}</span>`);
-  if (ctx.lastAspect && ctx.lastAspect !== ctx.metric)
-    chips.push(`<span class="facet lens"><span class="k">against</span> ${META[ctx.lastAspect].label}</span>`);
-  if (ctx.region)
-    chips.push(`<span class="facet filter"><span class="k">in</span> ${REGION_LABEL[ctx.region]} <button data-clear="1" title="all countries">&times;</button></span>`);
-  if (ctx.pool)
-    chips.push(`<span class="facet filter"><span class="k">among</span> ${ctx.pool.label} <button data-clear="1" title="all countries">&times;</button></span>`);
-  el.innerHTML = chips.length > 1 || ctx.region || ctx.pool
-    ? `<span class="facet-lead">cell</span>` + chips.join('') : '';
-  el.querySelectorAll('button[data-clear]').forEach(b =>
-    b.addEventListener('click', () => ask('all countries')));
+// the accordion: the cell you're in, one rib per dimension you've drilled
+function setRib(id, on, html) {
+  const rib = document.getElementById('rib-' + id); if (!rib) return;
+  if (on) { const v = document.getElementById('v-' + id); if (v) v.innerHTML = html; rib.classList.add('open'); }
+  else rib.classList.remove('open');
+}
+function updateCell() {
+  // facet rib text is set by paintFacet; it stays open
+  const last = chain.length ? chain[chain.length - 1] : null;
+  const placeName = ctx.lastIso && BY_ISO[ctx.lastIso] ? esc(BY_ISO[ctx.lastIso].name)
+    : ctx.region ? REGION_LABEL[ctx.region] : (ctx.pool ? esc(ctx.pool.label) : null);
+  setRib('place', !!placeName, placeName || '');
+  const timeK = last && ['time', 'divergence', 'path', 'delta_rank'].includes(last.kind);
+  setRib('time', timeK, 'over the years');
+  const ag = (ctx.lastAspect && ctx.lastAspect !== ctx.metric && META[ctx.lastAspect]) ? META[ctx.lastAspect].label : null;
+  setRib('against', !!ag, ag || '');
 }
 
 /* ── chart ─────────────────────────────────────────────────────────── */
@@ -2074,13 +2186,18 @@ function drawChart() {
 const ASPECT_CHIP = { life_exp: 'life expectancy and inequality', life_satisfaction: 'life satisfaction and inequality',
   poverty_rate: 'poverty and inequality', median_income: 'median income and inequality' };
 const START_CHIPS = ['wealth vs income in the US', 'life expectancy and inequality', 'life satisfaction and inequality', 'poverty and inequality'];
+// starters per facet, so turning the cube changes what the terminal suggests
+const FACET_CHIPS = {
+  wealth: ['wealth vs income in the US', 'France', 'most concentrated', 'life expectancy and inequality'],
+  income: ['most unequal', 'France', 'median income and inequality', 'poverty and inequality'],
+};
 
 function updateChips() {
   const el = document.getElementById('chips');
   let list;
   const avail = Object.keys(ASPECT_CHIP).filter(k => SERIES[k]);
   const otherAspects = cur => avail.filter(k => k !== cur).map(k => ASPECT_CHIP[k]);
-  if (!chain.length) list = START_CHIPS;
+  if (!chain.length) list = (typeof curFacet !== 'undefined' && FACET_CHIPS[curFacet]) || START_CHIPS;
   else {
     const last = chain[chain.length - 1];
     if (last.kind === 'divergence')
@@ -2526,6 +2643,18 @@ function boot() {
   document.getElementById('clear').addEventListener('click', () => {
     chain.length = 0; resetCtx();
     render();
+    chooseFacet('wealth'); startIdle();   // back to the drifting home state
+  });
+  // the cube, and the folded-away deeper views
+  initCube();
+  const tabsEl = document.getElementById('tabs'), deeperBtn = document.getElementById('deeper');
+  deeperBtn.addEventListener('click', () => {
+    const open = tabsEl.hidden;
+    tabsEl.hidden = !open;
+    deeperBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  document.getElementById('home').addEventListener('click', () => {
+    setView('ask'); tabsEl.hidden = true; deeperBtn.setAttribute('aria-expanded', 'false');
   });
   document.getElementById('share').addEventListener('click', () => {
     navigator.clipboard && navigator.clipboard.writeText(location.href);
@@ -2558,11 +2687,8 @@ function boot() {
     location.hash.slice(1).split('|').slice(0, 12)
       .map(decodeURIComponent).forEach(q => { const f = runQuery(q); if (f) chain.push(f); });
     if (chain.length) render();
-  } else {
-    // land on the split itself: the first thing in view is the thesis, not a blank box
-    const f = runQuery('wealth vs income in the US');
-    if (f) { chain.push(f); render(); }
   }
+  // otherwise the terminal opens clean: the cube drifts, the prompt waits
 }
 
 /* the wealth pipeline writes bare NaN into some numeric fields; JSON.parse rejects it */
