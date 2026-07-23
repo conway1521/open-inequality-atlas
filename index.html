@@ -350,9 +350,10 @@ footer a { color: inherit; }
         <p class="try" data-qs="Lorenz curve for the United States;top 1% share;bottom 50% share"></p>
       </div>
       <div class="block">
-        <h2>Wealth or income</h2>
-        <p>Take an everyday measure and see which inequality it tracks: wealth or
-        income. Two scatters, side by side, the closer fit named.</p>
+        <h2>Against everyday life</h2>
+        <p>Take an everyday measure and see it against wealth concentration and
+        against income inequality. Two scatters, side by side, both correlations
+        shown.</p>
         <p class="try" data-qs="life expectancy and inequality;poverty and inequality"></p>
       </div>
     </div>
@@ -1083,16 +1084,12 @@ function answer(q) {
     if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
     f.mode = 'contrast';
     f.contrast = { y, wPts, iPts, rW, rI, focus, region: p.region, wealthLens };
-    const aW = Math.abs(rW || 0), aI = Math.abs(rI || 0);
-    const wealthWins = aW >= aI;
     const wealthLabel = wealthLens === 'wealth_top1' ? 'wealth concentration' : 'wealth inequality';
-    const winLabel = wealthWins ? wealthLabel : 'income inequality', loseLabel = wealthWins ? 'income inequality' : wealthLabel;
-    const winR = wealthWins ? rW : rI, other = wealthWins ? rI : rW;
-    const gap = Math.abs(aW - aI);
-    const closeness = gap < 0.05 ? 'about as closely as' : gap < 0.12 ? 'a little more closely than' : 'more closely than';
+    const parts = [];
+    if (rW != null) parts.push(`${wealthLabel} at r = <strong>${rW.toFixed(2)}</strong>`);
+    if (rI != null) parts.push(`income inequality at r = <strong>${rI.toFixed(2)}</strong>`);
     const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
-    f.text = `Across ${wPts.length} countries${where}, ${my.label} tracks <strong>${winLabel}</strong> ` +
-      `${closeness} ${loseLabel}: r = <strong>${winR.toFixed(2)}</strong> against ${other.toFixed(2)}.`;
+    f.text = `Across ${Math.max(wPts.length, iPts.length)} countries${where}, ${my.label} tracks ${parts.join(', ')}.`;
   }
 
   else if (p.kind === 'correlate') {
@@ -1735,7 +1732,7 @@ function drawChart() {
       xaxis2: { domain: [0.54, 1], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'income Gini', font: { size: 12 } } },
       yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' },
     }), CFG);
-    title.textContent = `${cap(my.label)}: ${wPctAxis ? 'wealth concentration' : 'wealth inequality'} or income?` + (c.region ? ` (${REGION_LABEL[c.region]})` : '');
+    title.textContent = `${cap(my.label)}, against ${wPctAxis ? 'wealth concentration' : 'wealth inequality'} and income` + (c.region ? ` (${REGION_LABEL[c.region]})` : '');
     src.textContent = `One country per dot, the same measure against each gap. ${wPctAxis ? 'Top 1% wealth share' : 'Wealth Gini'}: WID. Income Gini: World Bank PIP.`;
   }
 
@@ -2108,13 +2105,11 @@ function usAnswer(q) {
     const rW = pearson(wPts), rI = pearson(iPts);
     if ((rW == null && rI == null) || (wPts.length < 12 && iPts.length < 12)) return usMiss();
     usCtx.metric = y;
-    const aW = Math.abs(rW || 0), aI = Math.abs(rI || 0), wealthWins = aW >= aI;
-    const win = wealthWins ? 'housing wealth' : 'income inequality', lose = wealthWins ? 'income inequality' : 'housing wealth';
-    const winR = wealthWins ? rW : rI, other = wealthWins ? rI : rW;
-    const gap = Math.abs(aW - aI), closeness = gap < 0.05 ? 'about as closely as' : gap < 0.12 ? 'a little more closely than' : 'more closely than';
+    const parts = [];
+    if (rW != null) parts.push(`housing wealth at r = <strong>${rW.toFixed(2)}</strong>`);
+    if (rI != null) parts.push(`income inequality at r = <strong>${rI.toFixed(2)}</strong>`);
     f.mode = 'uscontrast'; f.uc = { y, wPts, iPts, rW, rI };
-    f.text = `Across ${Math.max(wPts.length, iPts.length)} counties, ${usLabel[y]} tracks <strong>${win}</strong> ` +
-      `${closeness} ${lose}: r = <strong>${winR.toFixed(2)}</strong> against ${other.toFixed(2)}.`;
+    f.text = `Across ${Math.max(wPts.length, iPts.length)} counties, ${usLabel[y]} tracks ${parts.join(', ')}.`;
   }
   else if (brk) {
     const y = metric, x = (lens === y ? usLensDefault() : lens);
@@ -2195,7 +2190,7 @@ function usChips() {
   const el = document.getElementById('us-chips');
   const av = usAvail();
   const aspects = ['us_mobility', 'us_le_gap', 'us_life_exp', 'us_econ_conn'].filter(m => av.includes(m));
-  const contrast = m => `${usLabel[m]}: wealth or income?`;
+  const contrast = m => `${usLabel[m]} and inequality`;
   let list;
   if (!usChain.length) {
     list = aspects.slice(0, 3).map(contrast).concat(['who breaks the pattern']);
@@ -2305,7 +2300,7 @@ function usDrawChart() {
       xaxis2: { domain: [0.54, 1], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'income Gini', font: { size: 12 } } },
       yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: usLabel[uc.y], font: { size: 12 } } },
     }), CFG);
-    title.textContent = `${cap(usLabel[uc.y])}: housing wealth or income inequality?`;
+    title.textContent = `${cap(usLabel[uc.y])}, against housing wealth and income inequality`;
     src.textContent = 'One county per dot, against local home value and against local income Gini. Source: Opportunity Insights, county covariates.';
   }
 }
