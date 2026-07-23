@@ -351,9 +351,9 @@ footer a { color: inherit; }
       </div>
       <div class="block">
         <h2>Against everyday life</h2>
-        <p>Take an everyday measure and see it against how prosperous a country
-        is and how unequal its income. Two scatters, side by side, both
-        correlations shown. The US tab asks the same by county.</p>
+        <p>Take an everyday measure and see it against how concentrated wealth
+        is and how unequal income is. Two scatters, side by side, both
+        correlations shown.</p>
         <p class="try" data-qs="life expectancy and inequality;poverty and inequality"></p>
       </div>
     </div>
@@ -394,9 +394,8 @@ footer a { color: inherit; }
     <h1>Wellbeing</h1>
     <p class="sub">
       How long people live, how satisfied they say they are, what their
-      economies emit. Each shown against how prosperous a country is and how
-      unequal its income, side by side, both correlations left to stand. The US
-      tab does the same by county.
+      economies emit. Each shown against how concentrated wealth is and how
+      unequal income is, side by side, both correlations left to stand.
     </p>
     <div class="grid3">
       <div class="block">
@@ -1068,10 +1067,9 @@ function answer(q) {
 
   if (p.kind === 'contrast') {
     const y = p.y, my = META[y];
-    // wealth axis is a level of material prosperity (GDP per person), the national twin of US home values;
-    // net-wealth levels only exist for ~23 rich countries with no spread, so they can't drive a contrast.
-    const wealthLens = SERIES.gdp_pc ? 'gdp_pc' : 'wealth_gini';
-    const wLog = wealthLens === 'gdp_pc';   // GDP spans orders of magnitude; correlate and plot on a log axis
+    // wealth axis is the top 1% share: real wealth concentration, measured across all 213 countries by WID
+    const wealthLens = SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini';
+    const wLog = false;
     const wPts = [], iPts = [];
     for (const iso in BY_ISO) {
       if (!inScope(iso, p.region)) continue;
@@ -1086,7 +1084,7 @@ function answer(q) {
     if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
     f.mode = 'contrast';
     f.contrast = { y, wPts, iPts, rW, rI, focus, region: p.region, wealthLens, wLog };
-    const wealthLabel = wealthLens === 'gdp_pc' ? 'GDP per person' : 'wealth inequality';
+    const wealthLabel = wealthLens === 'wealth_top1' ? 'wealth concentration' : 'wealth inequality';
     const parts = [];
     if (rW != null) parts.push(`${wealthLabel} at r = <strong>${rW.toFixed(2)}</strong>`);
     if (rI != null) parts.push(`income inequality at r = <strong>${rI.toFixed(2)}</strong>`);
