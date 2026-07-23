@@ -971,7 +971,7 @@ function detectMetrics(r) {
   push(/\bhappiness\b|\bhappy\b|\blife satisfaction\b|\bsatisfaction\b|\bcantril\b|\bladder\b/, 'life_satisfaction');
   if (/\bwell\s?being\b/.test(r) && !found.length) found.push('life_satisfaction');
   // bare "inequality"/"unequal" with nothing else: the concentration measure (fixes the dead front door)
-  if (/\binequalit\w*\b|\bunequal\b/.test(r) && !found.some(k => isIneq(k) || k === 'wealth_top1')) found.push('wealth_top1');
+  if (/\binequalit\w*\b|\bunequal\b/.test(r) && !found.some(k => isIneq(k) || k === 'wealth_top1')) found.push(facetIneqDefault());
   if (/\bgini\b/.test(r) && !found.length) found.push(META[ctx.metric] && META[ctx.metric].giniFam ? ctx.metric : 'wealth_gini');
   return found;
 }
@@ -981,6 +981,11 @@ function detectMetric(r) {
 }
 const INEQ_METRICS = ['wealth_gini', 'wealth_top1', 'income_gini'];
 function isIneq(key) { return INEQ_METRICS.includes(key); }
+// a bare "inequality" means the inequality of the facet you're standing on
+function facetIneqDefault() {
+  if (typeof curFacet !== 'undefined' && curFacet === 'income') return 'income_gini';
+  return SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini';
+}
 
 function parse(raw) {
   let text = norm(raw);
@@ -1034,7 +1039,7 @@ function parse(raw) {
     const aspect = metrics.find(m => !isIneq(m) && META[m].series) ||
       (META[ctx.metric].series && !isIneq(ctx.metric) ? ctx.metric : null) ||
       ctx.lastAspect || 'life_exp';
-    const lens = metrics.find(isIneq) || 'wealth_gini';
+    const lens = metrics.find(isIneq) || facetIneqDefault();
     return { kind: 'tiers', aspect, lens, region: region };
   }
   const aspectHere = metrics.find(m => !isIneq(m) && META[m].series);
@@ -1105,7 +1110,7 @@ function parse(raw) {
 /* pick the metric a question should run on */
 function resolveMetric(p) {
   let key = p.metric || ctx.metric;
-  if (p.giniWords && !META[key].giniFam) key = 'wealth_top1';   // "most unequal" defaults to concentration, not the debt-skewed Gini
+  if (p.giniWords && !META[key].giniFam) key = facetIneqDefault();   // "most unequal" follows the facet you're on
   return key;
 }
 function latestValOf(metric, iso) {
@@ -1709,6 +1714,41 @@ const FACETS = {
   scope:       { i: -1, side: false, color: 'var(--ink-2)', sub: 'world to zone',
                  note: 'Scope drops the same measure from countries down to commuting zones. The local data is coming next.' },
 };
+// example prompts, per facet, all runnable: enter on the empty box executes the one showing
+const PROMPT_SETS = {
+  default: [
+    'ask: France, then over time, then against life expectancy',
+    'compare: France and Germany',
+    'rank: where wealth is most concentrated',
+    'trace: the United States since 1990',
+    'hold: life expectancy against income inequality',
+  ],
+  income: [
+    'ask: Brazil, then over time',
+    'rank: most unequal incomes',
+    'compare: France and Germany',
+    'hold: poverty against income inequality',
+  ],
+  opportunity: [
+    'rank: upward mobility',
+    "hold: credit by parents' income",
+    "hold: mortgages by parents' income",
+    'hold: mobility and income',
+  ],
+};
+let promptIdx = 0;
+function nextPrompt(jump) {
+  const el = document.getElementById('q'); if (!el) return;
+  const set = PROMPT_SETS[curFacet] || PROMPT_SETS.default;
+  if (jump) promptIdx = 0;
+  else { if (el.value || document.activeElement === el) return; promptIdx += 1; }
+  el.placeholder = set[promptIdx % set.length];
+}
+function runPrompt(text) {
+  // strip the verb, split a chained example into its steps, run them in order
+  const steps = text.replace(/^\w+:\s*/, '').split(/,?\s+then\s+/);
+  steps.forEach(s => { if (s.trim()) ask(s.trim()); });
+}
 const FACET_HEX = { wealth: '#2a78d6', income: '#2f9e8f', opportunity: '#c98a2b', health: '#c0607a' };
 const ACC = () => FACET_HEX[curFacet] || '#2a78d6';   // charts wear the colour of the facet you're on
 const cubeEl = () => document.getElementById('cube');
@@ -1757,6 +1797,7 @@ function chooseFacet(name) {
   if (f.metric) ctx.metric = f.metric;
   if (f.note) showNotice(f.note);
   updateChips();
+  nextPrompt(true);   // the example prompt follows the facet
   // the cube in action: the same cell, re-read under the new facet
   if (chain.length && (f.metric || name === 'opportunity')) { recomputeChain(); render(); }
 }
@@ -1781,9 +1822,9 @@ function motionStep() {
     cRotX = Math.sin(s * 0.86 + 2.0) * 34 + Math.sin(s * 0.42) * 12;
     cubeApply();
   } else if (motion === 'wobble') {
-    const s = mClk * 0.0036;
-    cRotY = baseY + Math.sin(s) * 9 + Math.sin(s * 0.57 + 1.2) * 4;
-    cRotX = baseX + Math.sin(s * 0.83 + 2.1) * 8 + Math.sin(s * 0.44) * 4;
+    const s = mClk * 0.0048;
+    cRotY = baseY + Math.sin(s) * 14 + Math.sin(s * 0.57 + 1.2) * 6;
+    cRotX = baseX + Math.sin(s * 0.83 + 2.1) * 12 + Math.sin(s * 0.44) * 5;
     cubeApply();
   }
   motRAF = requestAnimationFrame(motionStep);
@@ -1940,7 +1981,6 @@ function render() {
   drawChart();
   syncCube();
   updateCell();
-  history.replaceState(null, '', '#' + chain.map(f => encodeURIComponent(f.query)).join('|'));
 }
 
 // the accordion: the cell you're in, one rib per dimension you've drilled
@@ -1949,28 +1989,24 @@ function setRib(id, on, html) {
   if (on) { const v = document.getElementById('v-' + id); if (v) v.innerHTML = html; rib.classList.add('open'); }
   else rib.classList.remove('open');
 }
-// the cell reflects the answer you're looking at, not accumulated context
-const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence'];
+// the cell accumulates across the chain: each question opens or moves a dimension
 function updateCell() {
   const last = chain.length ? chain[chain.length - 1] : null;
   if (!last) { ['place', 'time', 'against'].forEach(id => setRib(id, false, '')); return; }
-  if (last.kind === 'opp') {
-    setRib('place', true, 'US commuting zones');
-    setRib('time', false, '');
-    const o = last.opp;
-    setRib('against', o.kind === 'scatter' || o.kind === 'gap', o.covLabel || o.label || '');
-    return;
-  }
+  const isOpp = last.kind === 'opp';
   let place = null;
-  if (SINGLE_PLACE.includes(last.kind) && last.isos && last.isos.length)
-    place = last.isos.map(i => BY_ISO[i] ? esc(BY_ISO[i].name) : i).slice(0, 3).join(', ');
+  if (isOpp) place = 'US commuting zones';
+  else if (ctx.lastIso && BY_ISO[ctx.lastIso]) place = esc(BY_ISO[ctx.lastIso].name);
   else if (ctx.region) place = REGION_LABEL[ctx.region];
   else if (ctx.pool) place = esc(ctx.pool.label);
-  else place = 'all countries';   // a cross-country answer sits in no single place
+  else place = 'all countries';
   setRib('place', !!place, place || '');
-  setRib('time', ['time', 'divergence', 'path', 'delta_rank'].includes(last.kind), 'over the years');
-  const ag = (last.contrast && last.contrast.y && META[last.contrast.y]) ? META[last.contrast.y].label
-    : (ctx.lastAspect && ctx.lastAspect !== ctx.metric && META[ctx.lastAspect]) ? META[ctx.lastAspect].label : null;
+  const timeOn = !isOpp && chain.some(f => ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind));
+  setRib('time', timeOn, 'over the years');
+  let ag = null;
+  if (isOpp) ag = last.opp.covLabel || last.opp.label || null;
+  else if (last.contrast && last.contrast.y && META[last.contrast.y]) ag = META[last.contrast.y].label;
+  else if (ctx.lastAspect && ctx.lastAspect !== ctx.metric && META[ctx.lastAspect]) ag = META[ctx.lastAspect].label;
   setRib('against', !!ag, ag || '');
 }
 
@@ -2800,29 +2836,19 @@ function boot() {
     setHelp(document.getElementById('help').hidden));
   document.getElementById('ask-form').addEventListener('submit', e => {
     e.preventDefault();
-    const v = document.getElementById('q').value.trim();
-    if (v) { setHelp(false); ask(v); }
+    const el = document.getElementById('q');
+    const v = el.value.trim();
+    setHelp(false);
+    if (v) ask(v);
+    else runPrompt(el.placeholder);   // enter on the empty box runs the example showing
   });
   document.getElementById('clear').addEventListener('click', () => {
     chain.length = 0; resetCtx();
     render();
     chooseFacet('wealth'); startIdle();   // back to the drifting home state
   });
-  // the prompt cycles through the question verbs, the way the cube cycles faces
-  const PROMPTS = [
-    'ask: France, then over time, then against life expectancy',
-    'compare: France and Germany',
-    'rank: where wealth is most concentrated',
-    'trace: the United States since 1990',
-    'hold: life expectancy against income inequality',
-  ];
-  let pIdx = 0;
-  setInterval(() => {
-    const el = document.getElementById('q');
-    if (!el || el.value || document.activeElement === el) return;
-    pIdx = (pIdx + 1) % PROMPTS.length;
-    el.placeholder = PROMPTS[pIdx];
-  }, 3800);
+  // the prompt cycles through the question verbs; press enter on the empty box to run one
+  setInterval(() => nextPrompt(false), 3800);
   // the cube, and the folded-away deeper views
   initCube();
   const tabsEl = document.getElementById('tabs'), deeperBtn = document.getElementById('deeper');
@@ -2835,7 +2861,9 @@ function boot() {
     setView('ask'); tabsEl.hidden = true; deeperBtn.setAttribute('aria-expanded', 'false');
   });
   document.getElementById('share').addEventListener('click', () => {
-    navigator.clipboard && navigator.clipboard.writeText(location.href);
+    const url = location.origin + location.pathname +
+      (chain.length ? '#' + chain.map(f => encodeURIComponent(f.query)).join('|') : '');
+    navigator.clipboard && navigator.clipboard.writeText(url);
     const b = document.getElementById('share');
     const old = b.textContent; b.textContent = 'copied';
     setTimeout(() => { b.textContent = old; }, 1200);
@@ -2862,8 +2890,10 @@ function boot() {
   initUS();
 
   if (location.hash.length > 1) {
+    // a shared link replays its chain, then the URL goes clean so a reload starts blank
     location.hash.slice(1).split('|').slice(0, 12)
       .map(decodeURIComponent).forEach(q => { const f = runQuery(q); if (f) chain.push(f); });
+    history.replaceState(null, '', location.pathname);
     if (chain.length) render();
   }
   // otherwise the terminal opens clean: the cube drifts, the prompt waits
