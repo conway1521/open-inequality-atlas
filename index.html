@@ -159,7 +159,42 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 28px; }
   background: var(--surface);
   border: 1px solid var(--border); border-radius: 12px;
   padding: 18px 18px 8px;
+  position: relative;
 }
+
+/* the cube: a small readout of which dimension the last question moved */
+.cube-wrap {
+  position: absolute; top: 14px; right: 16px;
+  width: 62px; text-align: center; pointer-events: none; z-index: 2;
+}
+.cube-stage { width: 44px; height: 44px; margin: 0 auto 6px; perspective: 320px; }
+.cube {
+  position: relative; width: 44px; height: 44px;
+  transform-style: preserve-3d;
+  transform: rotateX(-16deg) rotateY(-24deg);
+  transition: transform 700ms cubic-bezier(.34,1.4,.5,1);
+}
+.cube .face {
+  position: absolute; width: 44px; height: 44px;
+  border: 1px solid var(--border); background: rgba(255,255,255,0.82);
+  border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.02em;
+  color: var(--ink-3); text-align: center; padding: 3px;
+}
+.cube .face.lit { border-color: var(--accent); color: var(--accent); background: #f2f7fd; }
+.cube .fr { transform: translateZ(22px); }
+.cube .bk { transform: rotateY(180deg) translateZ(22px); }
+.cube .rt { transform: rotateY(90deg) translateZ(22px); }
+.cube .lf { transform: rotateY(-90deg) translateZ(22px); }
+.cube .tp { transform: rotateX(90deg) translateZ(22px); }
+.cube .bm { transform: rotateX(-90deg) translateZ(22px); }
+.cube-cap {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--ink-3);
+}
+@media (prefers-reduced-motion: reduce) { .cube { transition: none; } }
+@media (max-width: 560px) { .cube-wrap { display: none; } }
 .facets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; align-items: center; }
 .facets:empty { display: none; }
 .facet-lead { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); margin-right: 2px; }
@@ -320,6 +355,19 @@ footer a { color: inherit; }
       </div>
       <ol id="facts"></ol>
       <div class="chart-card">
+        <div class="cube-wrap" aria-hidden="true">
+          <div class="cube-stage">
+            <div class="cube" id="cube">
+              <div class="face fr" data-face="measure">msr</div>
+              <div class="face rt" data-face="against">vs</div>
+              <div class="face lf" data-face="place">place</div>
+              <div class="face bk" data-face="geo">US</div>
+              <div class="face tp" data-face="time">time</div>
+              <div class="face bm" data-face="scope">scope</div>
+            </div>
+          </div>
+          <div class="cube-cap" id="cube-cap">measure</div>
+        </div>
         <div class="facets" id="facets"></div>
         <div class="chart-title" id="chart-title"></div>
         <div id="chart"></div>
@@ -721,7 +769,7 @@ const META = {
     poolSrc: 'Source: World Bank PIP via OWID. Share below the international poverty line, latest survey per country.',
   },
   wealth_top1: {
-    label: 'wealth concentration', topic: 'wealth', series: true, file: 'data/wealth_top1.json',
+    label: 'wealth concentration', topic: 'wealth', series: true, giniFam: true, concFam: true, file: 'data/wealth_top1.json',
     fmt: pc, fmtD: pc, hover: '%{y:.1%}',
     lineSrc: 'Source: WID. Share of household net wealth held by the top 1%.',
     poolSrc: 'Source: WID, top 1% wealth share, latest year per country.',
@@ -804,7 +852,7 @@ function medianSeriesOf(metric, region) {
 }
 
 /* ── conversation context ──────────────────────────────────────────── */
-const ctx = { lastIso: null, metric: 'wealth_gini', lastRankDir: null, lastRegion: null,
+const ctx = { lastIso: null, metric: 'wealth_top1', lastRankDir: null, lastRegion: null,
   lastAspect: null, pool: null, lastQuery: null, region: null };
 function setRegion(r) { if (r !== ctx.region) { ctx.region = r; medianCache.gen = (medianCache.gen || 0) + 1; } }
 function focusIsos() {
@@ -841,20 +889,23 @@ function detectMetrics(r) {
   push(/\bmedian income\b|\bmedian\b|\btypical income\b|\bmiddle\b/, 'median_income');
   push(/\bgdp\b|\boutput\b|\bprosper\w*\b|\beconomic size\b/, 'gdp_pc');
   push(/\bincome inequality\b|\bincome gini\b/, 'income_gini');
-  push(/\bwealth inequality\b|\bwealth gini\b/, 'wealth_gini');
+  push(/\bwealth gini\b/, 'wealth_gini');                                   // explicit Gini, for experts
+  push(/\bwealth (inequality|concentration)\b|\bconcentration\b/, 'wealth_top1');  // default wealth measure = concentration
   // bare "income"/"wealth" only if no more specific income/wealth metric already matched
   if (!found.some(k => META[k].topic === 'income') && /\bincome\b|\bearnings\b|\bwages?\b/.test(r)) found.push('income_gini');
-  if (!found.some(k => k === 'wealth_gini' || META[k].snap) && /\bwealth\b/.test(r)) found.push('wealth_gini');
+  if (!found.some(k => k === 'wealth_gini' || k === 'wealth_top1' || META[k].snap) && /\bwealth\b/.test(r)) found.push('wealth_top1');
   push(/\bhappiness\b|\bhappy\b|\blife satisfaction\b|\bsatisfaction\b|\bcantril\b|\bladder\b/, 'life_satisfaction');
   if (/\bwell\s?being\b/.test(r) && !found.length) found.push('life_satisfaction');
-  if (/\bgini\b/.test(r) && !found.length) found.push(META[ctx.metric].giniFam ? ctx.metric : 'wealth_gini');
+  // bare "inequality"/"unequal" with nothing else: the concentration measure (fixes the dead front door)
+  if (/\binequalit\w*\b|\bunequal\b/.test(r) && !found.some(k => isIneq(k) || k === 'wealth_top1')) found.push('wealth_top1');
+  if (/\bgini\b/.test(r) && !found.length) found.push(META[ctx.metric] && META[ctx.metric].giniFam ? ctx.metric : 'wealth_gini');
   return found;
 }
 function detectMetric(r) {
   const m = detectMetrics(r);
   return m.length ? m[0] : null;
 }
-const INEQ_METRICS = ['wealth_gini', 'income_gini'];
+const INEQ_METRICS = ['wealth_gini', 'wealth_top1', 'income_gini'];
 function isIneq(key) { return INEQ_METRICS.includes(key); }
 
 function parse(raw) {
@@ -977,7 +1028,7 @@ function parse(raw) {
 /* pick the metric a question should run on */
 function resolveMetric(p) {
   let key = p.metric || ctx.metric;
-  if (p.giniWords && !META[key].giniFam) key = 'wealth_gini';
+  if (p.giniWords && !META[key].giniFam) key = 'wealth_top1';   // "most unequal" defaults to concentration, not the debt-skewed Gini
   return key;
 }
 function latestValOf(metric, iso) {
@@ -1084,12 +1135,16 @@ function answer(q) {
     if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
     f.mode = 'contrast';
     f.contrast = { y, wPts, iPts, rW, rI, focus, region: p.region, wealthLens, wLog };
-    const wealthLabel = wealthLens === 'wealth_top1' ? 'wealth concentration' : 'wealth inequality';
-    const parts = [];
-    if (rW != null) parts.push(`${wealthLabel} at r = <strong>${rW.toFixed(2)}</strong>`);
-    if (rI != null) parts.push(`income inequality at r = <strong>${rI.toFixed(2)}</strong>`);
     const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
-    f.text = `Across ${Math.max(wPts.length, iPts.length)} countries${where}, ${my.label} tracks ${parts.join(', ')}.`;
+    // lead with a plain reading of the wealth axis; keep the r's as a quiet second layer
+    const wLabel = wealthLens === 'wealth_top1' ? 'the top 1% share' : 'the wealth Gini';
+    const lead = rW != null
+      ? `Across ${wPts.length} countries${where}, ${my.label} ${corrClause(rW, wLabel)}.`
+      : `Across ${iPts.length} countries${where}, ${my.label} ${corrClause(rI, 'the income Gini')}.`;
+    const stats = [];
+    if (rW != null) stats.push(`wealth r = ${rW.toFixed(2)}`);
+    if (rI != null) stats.push(`income r = ${rI.toFixed(2)}`);
+    f.text = `${lead} <em>${stats.join(', ')}</em>`;
   }
 
   else if (p.kind === 'correlate') {
@@ -1264,10 +1319,15 @@ function answer(q) {
     const lv = latestValOf(key, p.iso); if (!lv) return miss();
     const rk = rankOf(p.iso, key);
     f.isos = [p.iso]; ctx.lastIso = p.iso; f.metricUsed = m.series ? key : 'wealth_gini';
-    const rankBit = m.giniFam ? `${ord(rk.rank)} most unequal of ${rk.of}` : `${ord(rk.rank)} of ${rk.of}`;
-    f.text = `<strong>${esc(c.name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> in ${lv.year}, ${rankBit}.`;
-    if (key === 'wealth_gini' && c.latest && c.latest.top1_wealth_share != null)
-      f.text += ` The top 1% hold <strong>${pc(c.latest.top1_wealth_share)}</strong>.`;
+    const rankBit = m.concFam ? `${ord(rk.rank)} most concentrated of ${rk.of}`
+      : m.giniFam ? `${ord(rk.rank)} most unequal of ${rk.of}` : `${ord(rk.rank)} of ${rk.of}`;
+    if (key === 'wealth_top1')
+      f.text = `<strong>${esc(c.name)}</strong>: the top 1% hold <strong>${m.fmt(lv.val)}</strong> of the wealth (${lv.year}), ${rankBit}.`;
+    else {
+      f.text = `<strong>${esc(c.name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> in ${lv.year}, ${rankBit}.`;
+      if (key === 'wealth_gini' && c.latest && c.latest.top1_wealth_share != null)
+        f.text += ` The top 1% hold <strong>${pc(c.latest.top1_wealth_share)}</strong>.`;
+    }
     if (!m.series) f.mode = 'bars', f.bar = barFor(key, p.iso);
   }
 
@@ -1543,6 +1603,41 @@ function removeFact(id) {
   render();
 }
 
+// the cube: six faces, one per dimension of the ask cube. It turns to whichever
+// dimension the last question moved, so the abstract cube stays in view.
+const FACE_ROT = {
+  measure: 'rotateX(-14deg) rotateY(-20deg)',
+  against: 'rotateX(-14deg) rotateY(-90deg)',
+  place:   'rotateX(-14deg) rotateY(90deg)',
+  geo:     'rotateX(-14deg) rotateY(-200deg)',
+  time:    'rotateX(-90deg) rotateY(0deg)',
+  scope:   'rotateX(90deg) rotateY(0deg)',
+};
+const FACE_LABEL = { measure: 'measure', against: 'against', place: 'place', geo: 'geography', time: 'over time', scope: 'scope' };
+function activeFace() {
+  const last = chain.length ? chain[chain.length - 1] : null;
+  if (!last) return 'measure';
+  switch (last.kind) {
+    case 'time': case 'path': case 'delta_rank': return 'time';
+    case 'among': return 'scope';
+    case 'profile': case 'point': case 'compare': case 'metric': case 'lorenz': return 'place';
+    case 'contrast': case 'correlate': case 'tiers': case 'break': return 'against';
+    case 'divergence': case 'us_shares': return 'measure';
+  }
+  if (last.kind === 'rank' && ctx.region) return 'scope';
+  if (ctx.pool || ctx.region) return 'scope';
+  return 'measure';
+}
+function spinCube() {
+  const cube = document.getElementById('cube');
+  if (!cube) return;
+  const face = activeFace();
+  cube.style.transform = FACE_ROT[face] || FACE_ROT.measure;
+  cube.querySelectorAll('[data-face]').forEach(f => f.classList.toggle('lit', f.dataset.face === face));
+  const cap = document.getElementById('cube-cap');
+  if (cap) cap.textContent = FACE_LABEL[face] || 'measure';
+}
+
 function render() {
   const session = document.getElementById('session');
   const list = document.getElementById('facts');
@@ -1561,6 +1656,7 @@ function render() {
     b.addEventListener('click', () => removeFact(Number(b.dataset.id))));
   renderStrip();
   drawChart();
+  spinCube();
   history.replaceState(null, '', '#' + chain.map(f => encodeURIComponent(f.query)).join('|'));
 }
 
@@ -1976,6 +2072,10 @@ function updateChips() {
     else
       list = ['wealth vs income in the US', ...otherAspects(ctx.lastAspect).slice(0, 2), 'the United States'];
   }
+  // don't re-offer a question the chain has already asked: the cube should keep moving
+  const asked = new Set(chain.map(f => norm(f.query)));
+  list = list.filter(e => !asked.has(norm(e)));
+  if (!list.length) list = START_CHIPS.filter(e => !asked.has(norm(e)));
   el.innerHTML = list.map(e => `<button type="button" class="chip">${e}</button>`).join('');
   el.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
     if (/\bunited states\b|\bus up close\b/i.test(b.textContent)) setView('us');
