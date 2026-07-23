@@ -54,6 +54,19 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 28px; }
 .ver { font-family: var(--mono); font-size: 11px; color: var(--ink-3);
   border: 1px solid var(--border); border-radius: 100px; padding: 2px 8px; }
 
+/* header on narrow screens: wordmark and links on top, tabs wrap to a full row below */
+@media (max-width: 720px) {
+  header .wrap {
+    height: auto; flex-wrap: wrap; gap: 8px 14px;
+    padding-top: 10px; padding-bottom: 10px;
+  }
+  .wordmark { flex: 1 1 auto; }
+  .top-links { order: 2; font-size: 12px; }
+  .tabs { order: 3; flex: 1 0 100%; flex-wrap: wrap; gap: 4px; }
+  .tab { padding: 6px 10px; }
+  .ask { padding: 32px 0 12px; }
+}
+
 /* ask view */
 .ask { padding: 64px 0 12px; }
 .ask h1 {
