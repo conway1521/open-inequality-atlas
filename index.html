@@ -86,17 +86,23 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .ask .sub { color: var(--ink-2); max-width: 500px; margin: 0 auto; }
 
 .askbox { position: relative; max-width: 560px; margin: 0 auto; text-align: left; }
+.askbox .car {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  font-family: var(--mono); font-size: 17px; font-weight: 700;
+  color: var(--accent); transition: color .4s ease; pointer-events: none;
+}
 #q {
   width: 100%; height: 52px;
   font: 500 15px 'Inter', system-ui, sans-serif;
   color: var(--ink); background: var(--surface);
   border: 1px solid var(--border); border-radius: 10px;
-  padding: 0 44px 0 16px;
+  padding: 0 44px 0 38px;
   outline: none;
+  box-shadow: 0 1px 2px rgba(16,20,28,0.05), 0 8px 30px rgba(16,20,28,0.06);
   transition: border-color 0.12s, box-shadow 0.12s;
 }
 #q::placeholder { color: var(--ink-3); }
-#q:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,120,214,0.15); }
+#q:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
 .slash {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
   font-family: var(--mono); font-size: 11px; color: var(--ink-3);
@@ -223,6 +229,36 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   box-shadow: 2px 2px 0 color-mix(in srgb, var(--accent) 35%, transparent); flex-shrink: 0; }
 .here-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { .cube { transition: none; } }
+
+/* ── the cell: one rib per dimension of the answer on screen ───────── */
+.ribs { border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  background: var(--surface); margin-bottom: 14px;
+  box-shadow: 0 1px 2px rgba(16,20,28,0.04); }
+.rib { display: grid; grid-template-columns: 6px 92px 1fr; align-items: center;
+  border-bottom: 1px solid var(--border); overflow: hidden;
+  max-height: 0; opacity: 0; transition: max-height .4s cubic-bezier(.22,1,.36,1), opacity .3s ease; }
+.rib:last-child { border-bottom: 0; }
+.rib.open { max-height: 60px; opacity: 1; }
+.rib .spine { align-self: stretch; background: var(--rc, var(--ink-3)); }
+.rib .dim { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); padding: 12px 0 12px 12px; }
+.rib .val { font-size: 14px; color: var(--ink); padding: 10px 12px 10px 4px; }
+.rib .val .muted { color: var(--ink-3); }
+.rib.facet { --rc: var(--accent); }
+.rib.facet .val { font-weight: 600; }
+
+/* the current answer, then the chart, then the quiet history */
+.answer { display: flex; gap: 10px; align-items: baseline; font-size: 15.5px; margin: 2px 2px 4px; }
+.answer:empty { display: none; }
+.answer .t { flex: 1; color: var(--ink-2); }
+.answer .t strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.answer .t em { font-style: normal; color: var(--ink-3); }
+.answer .x { font-family: var(--mono); background: none; border: none; cursor: pointer;
+  color: var(--ink-3); font-size: 13px; padding: 0 2px; flex-shrink: 0; }
+.answer .x:hover { color: var(--ink); }
+#facts { margin-top: 14px; }
+#facts li { font-size: 13px; }
+#facts li .t { color: var(--ink-3); }
+#facts li .t strong { color: var(--ink-2); }
 
 /* the US view keeps a compact strip (its own deeper page) */
 .facets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; align-items: center; }
@@ -355,7 +391,7 @@ footer a { color: inherit; }
             <div class="face f-wealth" data-facet="wealth"><span class="lab">wealth</span><div class="q">The wealth held by the richest one percent.</div></div>
             <div class="face f-income" data-facet="income"><span class="lab">income</span><div class="q">How unevenly income is shared out.</div></div>
             <div class="face f-opportunity" data-facet="opportunity"><span class="lab">opportunity</span><div class="q">How much your parents' income sets your own.</div></div>
-            <div class="face f-health" data-facet="health"><span class="lab">health</span><div class="q">How many more years the rich live than the poor.</div></div>
+            <div class="face f-health" data-facet="health"><span class="lab">health</span><div class="q">How much longer the rich live than the poor.</div></div>
             <div class="face f-interplay" data-facet="interplay"><span class="lab">interplay</span><div class="q">How the four inequalities line up.</div></div>
             <div class="face f-scope" data-facet="scope"><span class="lab">scope</span><div class="q">The world, or one commuting zone.</div></div>
           </div>
@@ -372,8 +408,9 @@ footer a { color: inherit; }
         </div>
       </div>
       <form class="askbox" id="ask-form">
+        <span class="car" aria-hidden="true">&rsaquo;</span>
         <input id="q" type="text" autocomplete="off" spellcheck="false"
-               placeholder="ask: France, then over time, then against life expectancy">
+               placeholder="ask: France, then over time, then against life expectancy" aria-label="Ask the atlas">
         <button type="button" class="qmark" id="helpbtn" aria-label="What can I ask">?</button>
         <span class="slash">/</span>
       </form>
@@ -397,12 +434,19 @@ footer a { color: inherit; }
           <button id="clear">clear</button>
         </div>
       </div>
-      <ol id="facts"></ol>
+      <div class="ribs" id="ribs">
+        <div class="rib facet open" id="rib-facet"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div>
+        <div class="rib" id="rib-place"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span></div>
+        <div class="rib" id="rib-time"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span></div>
+        <div class="rib" id="rib-against"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span></div>
+      </div>
+      <div class="answer" id="answer"></div>
       <div class="chart-card">
         <div class="chart-title" id="chart-title"></div>
         <div id="chart"></div>
         <p class="chart-src" id="chart-src"></p>
       </div>
+      <ol id="facts"></ol>
     </section>
   </div>
 
@@ -1602,7 +1646,9 @@ function runQuery(q) {
 }
 
 function resetCtx() {
-  ctx.lastIso = null; ctx.metric = SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini'; ctx.lastRankDir = null; ctx.lastRegion = null;
+  ctx.lastIso = null; ctx.lastRankDir = null; ctx.lastRegion = null;
+  ctx.metric = (typeof FACETS !== 'undefined' && FACETS[curFacet] && FACETS[curFacet].metric)
+    || (SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini');
   ctx.lastAspect = null; ctx.pool = null; ctx.lastQuery = null; ctx.region = null; computePool();
 }
 
@@ -1628,11 +1674,12 @@ function ask(q) {
 
 // re-run the whole chain from its queries on a fresh context; flag lines whose answer shifted
 function recomputeChain() {
-  const items = chain.map(f => ({ id: f.id, query: f.query, oldText: f.text, opp: f.mode === 'opp' }));
+  const items = chain.map(f => ({ id: f.id, query: f.query, oldText: f.text }));
   resetCtx();
   chain.length = 0;
   for (const it of items) {
-    const nf = (it.opp && US_CZ) ? oppAnswer(it.query) : runQuery(it.query);
+    // route by the facet the cube is on now; questions that don't translate drop out
+    const nf = (curFacet === 'opportunity' && US_CZ) ? oppAnswer(it.query, true) : runQuery(it.query);
     if (!nf) continue;                    // query no longer resolves under new state: drop it
     nf.id = it.id;
     nf.changed = nf.text !== it.oldText;
@@ -1662,6 +1709,8 @@ const FACETS = {
   scope:       { i: -1, side: false, color: 'var(--ink-2)', sub: 'world to zone',
                  note: 'Scope drops the same measure from countries down to commuting zones. The local data is coming next.' },
 };
+const FACET_HEX = { wealth: '#2a78d6', income: '#2f9e8f', opportunity: '#c98a2b', health: '#c0607a' };
+const ACC = () => FACET_HEX[curFacet] || '#2a78d6';   // charts wear the colour of the facet you're on
 const cubeEl = () => document.getElementById('cube');
 let curFacet = 'wealth', cRotX = 0, cRotY = 0;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1688,47 +1737,67 @@ function paintFacet(name) {
   const hl = document.getElementById('here-label');   // the reminder in the results header
   if (hl) hl.textContent = name;
 }
+let baseX = 0, baseY = 0;   // the resting orientation of the active face
 function faceToFront(name) {
   const f = FACETS[name];
   if (f.side) { cRotX = 0; cRotY = -90 * f.i; }
   else if (name === 'interplay') { cRotX = -90; cRotY = 0; }
   else { cRotX = 90; cRotY = 0; }
+  baseX = cRotX; baseY = cRotY;
   cubeApply();
 }
-// user turns to a facet: switch the lens and refresh the starters
+// user turns to a facet: switch the lens, refresh the starters, recompute what's on screen
 function chooseFacet(name) {
-  stopIdle(false);
   if (!FACETS[name]) return;
   paintFacet(name);
   faceToFront(name);
+  setMotion('wobble');
   hideNotice();
   const f = FACETS[name];
   if (f.metric) ctx.metric = f.metric;
   if (f.note) showNotice(f.note);
   updateChips();
+  // the cube in action: the same cell, re-read under the new facet
+  if (chain.length && (f.metric || name === 'opportunity')) { recomputeChain(); render(); }
 }
 // after an answer: turn the cube to match the measure that was used
 function syncCube() {
   const last = chain.length ? chain[chain.length - 1] : null;
-  if (last && last.kind === 'opp') { paintFacet('opportunity'); faceToFront('opportunity'); return; }
-  const topic = META[ctx.metric] ? META[ctx.metric].topic : 'wealth';
-  const name = topic === 'income' ? 'income' : topic === 'wellbeing' ? 'health' : 'wealth';
+  const name = (last && last.kind === 'opp') ? 'opportunity'
+    : (META[ctx.metric] ? META[ctx.metric].topic : 'wealth') === 'income' ? 'income'
+    : (META[ctx.metric] ? META[ctx.metric].topic : 'wealth') === 'wellbeing' ? 'health' : 'wealth';
   paintFacet(name);
   faceToFront(name);
+  if (motion !== 'tumble') setMotion('wobble');
 }
-// drag + idle drift
-let cDragging = false, clx = 0, cly = 0, cMoved = 0, idle = false, idleRAF = null, iclk = 0;
-function idleStep() {
-  if (!idle) return;
-  iclk += 1;
-  const s = iclk * 0.0042;
-  cRotY = Math.sin(s) * 40 + Math.sin(s * 0.63 + 1.1) * 14;
-  cRotX = Math.sin(s * 0.86 + 2.0) * 34 + Math.sin(s * 0.42) * 12;
-  cubeApply();
-  idleRAF = requestAnimationFrame(idleStep);
+// motion: a slow tumble before anything is chosen, then a small wobble
+// around the active face, a reminder that the other dimensions are there
+let cDragging = false, clx = 0, cly = 0, cMoved = 0, motRAF = null, mClk = 0, motion = 'tumble';
+function motionStep() {
+  mClk += 1;
+  if (motion === 'tumble') {
+    const s = mClk * 0.0042;
+    cRotY = Math.sin(s) * 40 + Math.sin(s * 0.63 + 1.1) * 14;
+    cRotX = Math.sin(s * 0.86 + 2.0) * 34 + Math.sin(s * 0.42) * 12;
+    cubeApply();
+  } else if (motion === 'wobble') {
+    const s = mClk * 0.0036;
+    cRotY = baseY + Math.sin(s) * 9 + Math.sin(s * 0.57 + 1.2) * 4;
+    cRotX = baseX + Math.sin(s * 0.83 + 2.1) * 8 + Math.sin(s * 0.44) * 4;
+    cubeApply();
+  }
+  motRAF = requestAnimationFrame(motionStep);
 }
-function startIdle() { if (reduceMotion || idle) return; idle = true; idleRAF = requestAnimationFrame(idleStep); }
-function stopIdle(settle) { if (!idle) return; idle = false; if (idleRAF) cancelAnimationFrame(idleRAF); if (settle) chooseFacet(curFacet); }
+function setMotion(m) {
+  motion = m;
+  if (!reduceMotion && !motRAF) motRAF = requestAnimationFrame(motionStep);
+}
+function startIdle() { setMotion('tumble'); }
+function stopIdle() {   // leave the opening tumble; settle into the wobble on the active face
+  if (motion !== 'tumble') return;
+  faceToFront(curFacet);
+  setMotion('wobble');
+}
 function cubeSnap() {
   cRotX = Math.max(-90, Math.min(90, Math.round(cRotX / 90) * 90));
   cRotY = Math.round(cRotY / 90) * 90;
@@ -1739,7 +1808,7 @@ function initCube() {
   if (!scene) return;
   scene.addEventListener('pointerdown', e => {
     e.preventDefault();   // don't start a text selection on the copy behind the cube
-    stopIdle(false); cDragging = true; cMoved = 0; clx = e.clientX; cly = e.clientY;
+    motion = 'drag'; cDragging = true; cMoved = 0; clx = e.clientX; cly = e.clientY;
     cubeEl().classList.add('drag'); scene.setPointerCapture(e.pointerId);
   });
   scene.addEventListener('pointermove', e => {
@@ -1765,7 +1834,7 @@ const OPP_FIN = [
   { re: /\bcredit\b|\bscore\b/, key: 'cr', label: 'credit score', fmt: v => '' + Math.round(v) },
 ];
 function czMed(sel) { const a = Object.values(US_CZ).map(sel).filter(v => v != null).sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; }
-function oppAnswer(q) {
+function oppAnswer(q, strict) {
   const r = norm(q);
   const f = { id: ++factSeq, query: q, kind: 'opp', isos: [], mode: 'opp', text: '', opp: {} };
   const zones = Object.values(US_CZ);
@@ -1791,6 +1860,12 @@ function oppAnswer(q) {
       `${cov.label} is higher. <em>r = ${rr.toFixed(2)}</em>`;
     return f;
   }
+  const mobWords = /\bmobilit\w*|\bclimb\w*|\bmove up\b|\bopportunit\w*|\brank\w*|\bbest\b|\bworst\b|\bhighest\b|\blowest\b|\bwhere\b|\bzones?\b/.test(r);
+  if (strict && !mobWords) return null;   // a question that doesn't translate to this facet drops, it doesn't get faked
+  if (!strict && !mobWords) {
+    showNotice('Opportunity is the US commuting-zone layer. Ask about upward mobility, or credit, mortgages, and delinquency by parents\' income.');
+    return null;
+  }
   const ranked = zones.filter(z => z.mob != null).sort((a, b) => b.mob - a.mob);
   const top = ranked[0], bot = ranked[ranked.length - 1];
   f.opp = { kind: 'mobility', ranked };
@@ -1800,7 +1875,7 @@ function oppAnswer(q) {
 }
 function drawOpp(f) {
   const el = document.getElementById('chart'), title = document.getElementById('chart-title'), src = document.getElementById('chart-src');
-  const o = f.opp, AM = '#c98a2b';
+  const o = f.opp, AM = ACC();
   if (o.kind === 'gap') {
     const all = o.pts.flatMap(p => [p.x, p.y]), lo = Math.min(...all), hi = Math.max(...all);
     Plotly.react(el, [
@@ -1844,15 +1919,23 @@ function render() {
   if (chain.length === 0) {
     session.hidden = true;
     ['place', 'time', 'against'].forEach(id => setRib(id, false, ''));   // reset the cell to just the facet
+    const a0 = document.getElementById('answer'); if (a0) a0.innerHTML = '';
     history.replaceState(null, '', location.pathname);
     return;
   }
   session.hidden = false;
-  list.innerHTML = chain.map((f, i) =>
+  // the newest answer carries the room; the rest fold into a quiet history
+  const last = chain[chain.length - 1];
+  const ansEl = document.getElementById('answer');
+  ansEl.innerHTML = `<span class="t">${last.text}` +
+    `${last.changed ? ' <span class="upd">updated</span>' : ''}</span>` +
+    `<button class="x" data-id="${last.id}" title="remove">&times;</button>`;
+  const earlier = chain.slice(0, -1);
+  list.innerHTML = earlier.map((f, i) =>
     `<li><span class="n">${i + 1}</span><span class="t">${f.text}` +
     `${f.changed ? ' <span class="upd">updated</span>' : ''}</span>` +
     `<button class="x" data-id="${f.id}" title="remove">&times;</button></li>`).join('');
-  list.querySelectorAll('.x').forEach(b =>
+  document.querySelectorAll('#answer .x, #facts .x').forEach(b =>
     b.addEventListener('click', () => removeFact(Number(b.dataset.id))));
   drawChart();
   syncCube();
@@ -1926,7 +2009,7 @@ function drawChart() {
       type: 'bar', orientation: 'h',
       y: rows.map(r => r.geo_name),
       x: vals,
-      marker: { color: rows.map(r => r.geo_id === bar.highlight ? '#eb6834' : '#2a78d6') },
+      marker: { color: rows.map(r => r.geo_id === bar.highlight ? '#eb6834' : ACC()) },
       text: labels,
       textposition: 'outside', textfont: { size: 11, color: '#555555' },
       hovertemplate: '%{y}: %{text}<extra></extra>',
@@ -2000,7 +2083,7 @@ function drawChart() {
     }
     if (named.length) traces.push({
       type: 'scatter', mode: 'markers+text', ...mk(named),
-      marker: { color: named.map(p => focusSet.has(p.iso) ? '#eb6834' : '#2a78d6'), size: 11, line: { color: '#fff', width: 1.5 } },
+      marker: { color: named.map(p => focusSet.has(p.iso) ? '#eb6834' : ACC()), size: 11, line: { color: '#fff', width: 1.5 } },
       textposition: 'top center', textfont: { size: 11, color: '#1a2744' },
       hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
     });
@@ -2032,7 +2115,7 @@ function drawChart() {
       return fg.length ? [mk(bg, false), mk(fg, true)] : [mk(bg, false)];
     };
     const isGdp = c.wealthLens === 'gdp_pc';
-    const traces = [...panel(c.wPts, 'x', '#2a78d6', wPctAxis ? (v => v * 100) : (v => v)), ...panel(c.iPts, 'x2', '#98a4b8', v => v)];
+    const traces = [...panel(c.wPts, 'x', ACC(), wPctAxis ? (v => v * 100) : (v => v)), ...panel(c.iPts, 'x2', '#98a4b8', v => v)];
     const rTxt = (r, dom) => ({ x: dom, y: 1.06, xref: 'paper', yref: 'paper', xanchor: 'center',
       text: r == null ? '' : `r = ${r.toFixed(2)}`, showarrow: false, font: { size: 12, color: '#1a2744' } });
     const wLabel = isGdp ? 'GDP per person' : wPctAxis ? 'top 1% wealth share' : 'wealth Gini';
@@ -2060,7 +2143,7 @@ function drawChart() {
     const traces = [
       { type: 'scatter', mode: 'lines', name: cap(w.label),
         x: wLine.map(d => d.year), y: wLine.map(d => d.v / wBase * 100),
-        line: { color: SLOTS[0], width: 2.4 },
+        line: { color: ACC(), width: 2.4 },
         hovertemplate: cap(w.label) + ' %{y:.0f} (base ' + base + ' = 100)<extra></extra>' },
       { type: 'scatter', mode: 'lines', name: 'Income Gini',
         x: iLine.map(d => d.year), y: iLine.map(d => d.v / iBase * 100),
@@ -2138,7 +2221,7 @@ function drawChart() {
       type: 'scatter', mode: 'markers',
       x: bg.map(r => scale(r.val)), y: yj(bg, 1),
       text: bg.map(r => r.geo_name), customdata: bg.map(r => m.fmt(r.val)),
-      marker: { color: '#2a78d6', size: 6, opacity: 0.5 },
+      marker: { color: ACC(), size: 6, opacity: 0.5 },
       hovertemplate: '%{text}: %{customdata}<extra></extra>',
     }];
     if (fg.length) traces.push({
@@ -2203,7 +2286,7 @@ function drawChart() {
       traces.push({
         type: 'scatter', mode: s.length < 25 ? 'lines+markers' : 'lines', name: BY_ISO[iso].name,
         x: s.map(d => d.year), y: s.map(d => d.v),
-        line: { color: assignColor(iso), width: 2.2 },
+        line: { color: isoSet.length === 1 ? ACC() : assignColor(iso), width: 2.2 },
         marker: { size: 5 },
         hovertemplate: BY_ISO[iso].name + ': ' + m.hover + '<extra></extra>',
       });
@@ -2725,6 +2808,21 @@ function boot() {
     render();
     chooseFacet('wealth'); startIdle();   // back to the drifting home state
   });
+  // the prompt cycles through the question verbs, the way the cube cycles faces
+  const PROMPTS = [
+    'ask: France, then over time, then against life expectancy',
+    'compare: France and Germany',
+    'rank: where wealth is most concentrated',
+    'trace: the United States since 1990',
+    'hold: life expectancy against income inequality',
+  ];
+  let pIdx = 0;
+  setInterval(() => {
+    const el = document.getElementById('q');
+    if (!el || el.value || document.activeElement === el) return;
+    pIdx = (pIdx + 1) % PROMPTS.length;
+    el.placeholder = PROMPTS[pIdx];
+  }, 3800);
   // the cube, and the folded-away deeper views
   initCube();
   const tabsEl = document.getElementById('tabs'), deeperBtn = document.getElementById('deeper');
