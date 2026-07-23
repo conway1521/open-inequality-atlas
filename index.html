@@ -230,21 +230,26 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .here-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { .cube { transition: none; } }
 
-/* ── the cell: one rib per dimension of the answer on screen ───────── */
+/* ── the cell: the coordinates of where you are, one row per dimension ─ */
+.cell { max-width: 560px; margin: 22px auto 0; text-align: left; }
+.cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 8px; display: flex; gap: 8px; align-items: baseline; }
+.cell-note { text-transform: none; letter-spacing: 0; color: var(--ink-3); font-size: 11px; opacity: .8; }
 .ribs { border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
-  background: var(--surface); margin-bottom: 14px;
-  box-shadow: 0 1px 2px rgba(16,20,28,0.04); }
-.rib { display: grid; grid-template-columns: 6px 92px 1fr; align-items: center;
-  border-bottom: 1px solid var(--border); overflow: hidden;
-  max-height: 0; opacity: 0; transition: max-height .4s cubic-bezier(.22,1,.36,1), opacity .3s ease; }
+  background: var(--surface); box-shadow: 0 1px 2px rgba(16,20,28,0.04); }
+.rib { display: grid; grid-template-columns: 5px 94px 1fr; align-items: stretch;
+  border-bottom: 1px solid var(--border); min-height: 44px; }
 .rib:last-child { border-bottom: 0; }
-.rib.open { max-height: 60px; opacity: 1; }
-.rib .spine { align-self: stretch; background: var(--rc, var(--ink-3)); }
-.rib .dim { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); padding: 12px 0 12px 12px; }
-.rib .val { font-size: 14px; color: var(--ink); padding: 10px 12px 10px 4px; }
+.rib .spine { background: var(--border); transition: background .3s ease; }
+.rib .dim { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-3); padding: 14px 0 14px 12px; }
+.rib .val { font-size: 14px; color: var(--ink); padding: 12px 12px; display: flex; align-items: center; }
 .rib .val .muted { color: var(--ink-3); }
+.rib.filled .spine { background: var(--ink-3); }
+.rib.empty .val { color: var(--ink-3); font-style: italic; opacity: .7; }
 .rib.facet { --rc: var(--accent); }
-.rib.facet .val { font-weight: 600; }
+.rib.facet .spine { background: var(--accent); }
+.rib.facet .val { font-weight: 600; color: var(--ink); font-style: normal; opacity: 1; }
 
 /* the current answer, then the chart, then the quiet history */
 .answer { display: flex; gap: 10px; align-items: baseline; font-size: 15.5px; margin: 2px 2px 4px; }
@@ -415,6 +420,15 @@ footer a { color: inherit; }
         <span class="slash">/</span>
       </form>
       <div class="chips" id="chips"></div>
+      <div class="cell" id="cell">
+        <div class="cell-lead">the cell you're on <span class="cell-note">the cube sets the facet; asking fills the rest</span></div>
+        <div class="ribs" id="ribs">
+          <div class="rib facet" id="rib-facet"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div>
+          <div class="rib" id="rib-place"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span></div>
+          <div class="rib" id="rib-time"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span></div>
+          <div class="rib" id="rib-against"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span></div>
+        </div>
+      </div>
       <div class="help" id="help" hidden>
         <p class="help-intro">Two steps. See how wealth and income inequality have split, then take an everyday measure and see which one it tracks.</p>
         <div class="help-row"><span class="help-k">The split</span><span class="help-v" data-qs="wealth vs income in the US;wealth vs income in France"></span></div>
@@ -433,12 +447,6 @@ footer a { color: inherit; }
           <button id="share">copy link</button>
           <button id="clear">clear</button>
         </div>
-      </div>
-      <div class="ribs" id="ribs">
-        <div class="rib facet open" id="rib-facet"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div>
-        <div class="rib" id="rib-place"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span></div>
-        <div class="rib" id="rib-time"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span></div>
-        <div class="rib" id="rib-against"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span></div>
       </div>
       <div class="answer" id="answer"></div>
       <div class="chart-card">
@@ -1776,6 +1784,7 @@ function paintFacet(name) {
   if (vf) vf.innerHTML = `${name} &middot; <span class="muted">${f.sub}</span>`;
   const hl = document.getElementById('here-label');   // the reminder in the results header
   if (hl) hl.textContent = name;
+  if (typeof updateCell === 'function') updateCell();   // keep the coordinates current
 }
 let baseX = 0, baseY = 0;   // the resting orientation of the active face
 function faceToFront(name) {
@@ -1791,7 +1800,7 @@ function chooseFacet(name) {
   if (!FACETS[name]) return;
   paintFacet(name);
   faceToFront(name);
-  setMotion('wobble');
+  settle();
   hideNotice();
   const f = FACETS[name];
   if (f.metric) ctx.metric = f.metric;
@@ -1809,11 +1818,11 @@ function syncCube() {
     : (META[ctx.metric] ? META[ctx.metric].topic : 'wealth') === 'wellbeing' ? 'health' : 'wealth';
   paintFacet(name);
   faceToFront(name);
-  if (motion !== 'tumble') setMotion('wobble');
+  if (motion !== 'tumble') settle();
 }
-// motion: a slow tumble before anything is chosen, then a small wobble
-// around the active face, a reminder that the other dimensions are there
-let cDragging = false, clx = 0, cly = 0, cMoved = 0, motRAF = null, mClk = 0, motion = 'tumble';
+// motion: a slow tumble before anything is chosen, then a crisp snap to the
+// chosen face and a small wobble around it, a reminder the other faces are there
+let cDragging = false, clx = 0, cly = 0, cMoved = 0, motRAF = null, mClk = 0, wob0 = 0, motion = 'tumble', settleT = null;
 function motionStep() {
   mClk += 1;
   if (motion === 'tumble') {
@@ -1822,23 +1831,25 @@ function motionStep() {
     cRotX = Math.sin(s * 0.86 + 2.0) * 34 + Math.sin(s * 0.42) * 12;
     cubeApply();
   } else if (motion === 'wobble') {
-    const s = mClk * 0.0048;
+    const s = (mClk - wob0) * 0.0048;   // starts at 0 so the wobble eases out of the snap
     cRotY = baseY + Math.sin(s) * 14 + Math.sin(s * 0.57 + 1.2) * 6;
     cRotX = baseX + Math.sin(s * 0.83 + 2.1) * 12 + Math.sin(s * 0.44) * 5;
     cubeApply();
   }
-  motRAF = requestAnimationFrame(motionStep);
+  motRAF = (motion === 'tumble' || motion === 'wobble') ? requestAnimationFrame(motionStep) : null;
 }
-function setMotion(m) {
-  motion = m;
-  if (!reduceMotion && !motRAF) motRAF = requestAnimationFrame(motionStep);
+function runMotion() { if (!reduceMotion && !motRAF && (motion === 'tumble' || motion === 'wobble')) motRAF = requestAnimationFrame(motionStep); }
+// let the CSS transition land the face, then ease the wobble back in
+function settle() {
+  clearTimeout(settleT);
+  motion = 'still';
+  if (motRAF) { cancelAnimationFrame(motRAF); motRAF = null; }
+  cubeApply();
+  if (reduceMotion) return;
+  settleT = setTimeout(() => { wob0 = mClk; motion = 'wobble'; runMotion(); }, 660);
 }
-function startIdle() { setMotion('tumble'); }
-function stopIdle() {   // leave the opening tumble; settle into the wobble on the active face
-  if (motion !== 'tumble') return;
-  faceToFront(curFacet);
-  setMotion('wobble');
-}
+function startIdle() { motion = 'tumble'; runMotion(); }
+function stopIdle() { if (motion !== 'tumble') return; faceToFront(curFacet); settle(); }
 function cubeSnap() {
   cRotX = Math.max(-90, Math.min(90, Math.round(cRotX / 90) * 90));
   cRotY = Math.round(cRotY / 90) * 90;
@@ -1849,7 +1860,8 @@ function initCube() {
   if (!scene) return;
   scene.addEventListener('pointerdown', e => {
     e.preventDefault();   // don't start a text selection on the copy behind the cube
-    motion = 'drag'; cDragging = true; cMoved = 0; clx = e.clientX; cly = e.clientY;
+    motion = 'drag'; if (motRAF) { cancelAnimationFrame(motRAF); motRAF = null; } clearTimeout(settleT);
+    cDragging = true; cMoved = 0; clx = e.clientX; cly = e.clientY;
     cubeEl().classList.add('drag'); scene.setPointerCapture(e.pointerId);
   });
   scene.addEventListener('pointermove', e => {
@@ -1959,9 +1971,8 @@ function render() {
   updateChips();
   if (chain.length === 0) {
     session.hidden = true;
-    ['place', 'time', 'against'].forEach(id => setRib(id, false, ''));   // reset the cell to just the facet
+    updateCell();   // back to just the facet, the other slots empty
     const a0 = document.getElementById('answer'); if (a0) a0.innerHTML = '';
-    history.replaceState(null, '', location.pathname);
     return;
   }
   session.hidden = false;
@@ -1983,31 +1994,31 @@ function render() {
   updateCell();
 }
 
-// the accordion: the cell you're in, one rib per dimension you've drilled
-function setRib(id, on, html) {
+// each dimension of the atlas is a slot; the cube fills the facet, asking fills the rest
+function setSlot(id, value, hint) {
   const rib = document.getElementById('rib-' + id); if (!rib) return;
-  if (on) { const v = document.getElementById('v-' + id); if (v) v.innerHTML = html; rib.classList.add('open'); }
-  else rib.classList.remove('open');
+  const v = document.getElementById('v-' + id); if (!v) return;
+  if (value) { rib.classList.add('filled'); rib.classList.remove('empty'); v.innerHTML = value; }
+  else { rib.classList.remove('filled'); rib.classList.add('empty'); v.textContent = hint; }
 }
-// the cell accumulates across the chain: each question opens or moves a dimension
+// the cell shows all four coordinates at once; they fill in as you build the question
 function updateCell() {
   const last = chain.length ? chain[chain.length - 1] : null;
-  if (!last) { ['place', 'time', 'against'].forEach(id => setRib(id, false, '')); return; }
-  const isOpp = last.kind === 'opp';
+  const isOpp = last && last.kind === 'opp';
   let place = null;
   if (isOpp) place = 'US commuting zones';
   else if (ctx.lastIso && BY_ISO[ctx.lastIso]) place = esc(BY_ISO[ctx.lastIso].name);
   else if (ctx.region) place = REGION_LABEL[ctx.region];
   else if (ctx.pool) place = esc(ctx.pool.label);
-  else place = 'all countries';
-  setRib('place', !!place, place || '');
+  else if (last) place = 'all countries';
+  setSlot('place', place, 'a country, or all of them');
   const timeOn = !isOpp && chain.some(f => ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind));
-  setRib('time', timeOn, 'over the years');
+  setSlot('time', timeOn ? 'over the years' : null, 'a moment, or a run of years');
   let ag = null;
   if (isOpp) ag = last.opp.covLabel || last.opp.label || null;
-  else if (last.contrast && last.contrast.y && META[last.contrast.y]) ag = META[last.contrast.y].label;
+  else if (last && last.contrast && last.contrast.y && META[last.contrast.y]) ag = META[last.contrast.y].label;
   else if (ctx.lastAspect && ctx.lastAspect !== ctx.metric && META[ctx.lastAspect]) ag = META[ctx.lastAspect].label;
-  setRib('against', !!ag, ag || '');
+  setSlot('against', ag, 'another measure to hold it to');
 }
 
 /* ── chart ─────────────────────────────────────────────────────────── */
