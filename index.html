@@ -1647,7 +1647,7 @@ function ask(q) {
   hideNotice();
   stopIdle(false);   // the cube stops drifting once you ask
   chain.forEach(f => { f.changed = false; });   // clear stale badges on any new move
-  const f = runQuery(q);
+  const f = (curFacet === 'opportunity' && US_CZ) ? oppAnswer(q) : runQuery(q);
   if (!f) return;
   const lineIsos = new Set(chain.filter(x => x.mode === 'lines').flatMap(x => x.isos));
   f.isos.forEach(i => lineIsos.add(i));
@@ -1665,11 +1665,11 @@ function ask(q) {
 
 // re-run the whole chain from its queries on a fresh context; flag lines whose answer shifted
 function recomputeChain() {
-  const items = chain.map(f => ({ id: f.id, query: f.query, oldText: f.text }));
+  const items = chain.map(f => ({ id: f.id, query: f.query, oldText: f.text, opp: f.mode === 'opp' }));
   resetCtx();
   chain.length = 0;
   for (const it of items) {
-    const nf = runQuery(it.query);
+    const nf = (it.opp && US_CZ) ? oppAnswer(it.query) : runQuery(it.query);
     if (!nf) continue;                    // query no longer resolves under new state: drop it
     nf.id = it.id;
     nf.changed = nf.text !== it.oldText;
@@ -1691,8 +1691,7 @@ function removeFact(id) {
 const FACETS = {
   wealth:      { i: 0, side: true, color: 'var(--wealth)', metric: 'wealth_top1', sub: 'top 1% share' },
   income:      { i: 1, side: true, color: 'var(--income)', metric: 'income_gini', sub: 'income Gini' },
-  opportunity: { i: 2, side: true, color: 'var(--opportunity)', metric: null, sub: 'commuting zones',
-                 note: 'Opportunity comes from the commuting-zone data: whether a child born poor climbs. That layer is being wired in next.' },
+  opportunity: { i: 2, side: true, color: 'var(--opportunity)', metric: null, sub: 'commuting zones' },
   health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'the life gap',
                  note: 'Health inequality is the rich-poor gap in life expectancy. That measure is being wired in next.' },
   interplay:   { i: -1, side: false, color: 'var(--ink-2)', sub: 'across the four',
@@ -1747,6 +1746,8 @@ function chooseFacet(name) {
 }
 // after an answer: turn the cube to match the measure that was used
 function syncCube() {
+  const last = chain.length ? chain[chain.length - 1] : null;
+  if (last && last.kind === 'opp') { paintFacet('opportunity'); faceToFront('opportunity'); return; }
   const topic = META[ctx.metric] ? META[ctx.metric].topic : 'wealth';
   const name = topic === 'income' ? 'income' : topic === 'wellbeing' ? 'health' : 'wealth';
   paintFacet(name);
@@ -1793,6 +1794,85 @@ function initCube() {
   paintFacet('wealth'); cubeApply(); startIdle();
 }
 
+/* ── opportunity: the commuting-zone layer (Opportunity Insights) ──── */
+let US_CZ = null;
+const OPP_FIN = [
+  { re: /\bmortgage\b|\bhome ?loan\b|\bhousing\b/, key: 'mort', label: 'mortgage balance', fmt: usd0 },
+  { re: /\bdelinqu\w*|\bbehind on\b|\bmiss\w* payment/, key: 'delq', label: 'delinquency rate', fmt: v => (v * 100).toFixed(0) + '%' },
+  { re: /\bcredit\b|\bscore\b/, key: 'cr', label: 'credit score', fmt: v => '' + Math.round(v) },
+];
+function czMed(sel) { const a = Object.values(US_CZ).map(sel).filter(v => v != null).sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; }
+function oppAnswer(q) {
+  const r = norm(q);
+  const f = { id: ++factSeq, query: q, kind: 'opp', isos: [], mode: 'opp', text: '', opp: {} };
+  const zones = Object.values(US_CZ);
+  const fin = OPP_FIN.find(x => x.re.test(r));
+  if (fin || /\bgap\b|\brich[- ]?poor\b|\bp25\b|\bp75\b|\bstart\w* poor\b|\bborn poor\b/.test(r)) {
+    const g = fin || OPP_FIN[2];
+    const pts = zones.filter(z => z[g.key + '25'] != null && z[g.key + '75'] != null)
+      .map(z => ({ name: z.name, x: z[g.key + '25'], y: z[g.key + '75'] }));
+    const m25 = czMed(z => z[g.key + '25']), m75 = czMed(z => z[g.key + '75']);
+    f.opp = { kind: 'gap', label: g.label, fmt: g.fmt, pts };
+    f.text = `Take a typical commuting zone. A child who started poor reaches a ${g.label} of <strong>${g.fmt(m25)}</strong>; ` +
+      `one who started rich in the same place, <strong>${g.fmt(m75)}</strong>. Same zone, different life.`;
+    return f;
+  }
+  const cov = /\bpoverty\b/.test(r) ? { key: 'pov', label: 'poverty rate' }
+    : /\brent\b|\bhousing cost\b/.test(r) ? { key: 'rent', label: 'two-bed rent' }
+    : /\bincome\b|\bagainst\b|\bvs\b|\btrack|\bcorrelat/.test(r) ? { key: 'inc', label: 'median income' } : null;
+  if (cov) {
+    const pts = zones.filter(z => z.mob != null && z[cov.key] != null).map(z => ({ name: z.name, x: z[cov.key], y: z.mob }));
+    const rr = pearson(pts);
+    f.opp = { kind: 'scatter', covLabel: cov.label, pts };
+    f.text = `Across ${pts.length} commuting zones, the odds a poor child climbs ${corrClause(rr, cov.label)}. <em>r = ${rr.toFixed(2)}</em>`;
+    return f;
+  }
+  const ranked = zones.filter(z => z.mob != null).sort((a, b) => b.mob - a.mob);
+  const top = ranked[0], bot = ranked[ranked.length - 1];
+  f.opp = { kind: 'mobility', ranked };
+  f.text = `A child born poor reaches the <strong>${ord(Math.round(top.mob * 100))}</strong> income percentile by adulthood in ${esc(top.name)}, ` +
+    `but only the <strong>${ord(Math.round(bot.mob * 100))}</strong> in ${esc(bot.name)}. Where you grow up sets the odds.`;
+  return f;
+}
+function drawOpp(f) {
+  const el = document.getElementById('chart'), title = document.getElementById('chart-title'), src = document.getElementById('chart-src');
+  const o = f.opp, AM = '#c98a2b';
+  if (o.kind === 'gap') {
+    const all = o.pts.flatMap(p => [p.x, p.y]), lo = Math.min(...all), hi = Math.max(...all);
+    Plotly.react(el, [
+      { x: [lo, hi], y: [lo, hi], mode: 'lines', line: { color: '#cbd5e1', width: 1, dash: 'dash' }, hoverinfo: 'skip' },
+      { x: o.pts.map(p => p.x), y: o.pts.map(p => p.y), text: o.pts.map(p => p.name), mode: 'markers',
+        marker: { color: AM, size: 6, opacity: 0.45 }, hovertemplate: '%{text}<extra></extra>' },
+    ], Object.assign({}, BASE_LAYOUT, {
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: 'kids who started poor (p25)', type: 'linear', autorange: true }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: 'kids who started rich (p75)', type: 'linear', autorange: true }),
+    }), CFG);
+    title.textContent = `The rich-poor gap in ${o.label}, by commuting zone`;
+    src.textContent = 'Each dot is a commuting zone; the line is equal outcomes. Source: Opportunity Insights.';
+  } else if (o.kind === 'scatter') {
+    Plotly.react(el, [{ x: o.pts.map(p => p.x), y: o.pts.map(p => p.y), text: o.pts.map(p => p.name),
+      mode: 'markers', marker: { color: AM, size: 6, opacity: 0.45 }, hovertemplate: '%{text}<extra></extra>' }],
+      Object.assign({}, BASE_LAYOUT, {
+        xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: o.covLabel, type: 'linear', autorange: true }),
+        yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: 'upward mobility (rank at p25)', type: 'linear', autorange: true }),
+      }), CFG);
+    title.textContent = `Upward mobility against ${o.covLabel}, by commuting zone`;
+    src.textContent = 'Each dot is a US commuting zone. Source: Opportunity Insights.';
+  } else {
+    const rows = o.ranked.slice(-8).concat(o.ranked.slice(0, 8));
+    Plotly.react(el, [{ type: 'bar', orientation: 'h', y: rows.map(z => z.name), x: rows.map(z => Math.round(z.mob * 100)),
+      marker: { color: rows.map((z, i) => i < 8 ? '#e0c194' : AM) },
+      text: rows.map(z => Math.round(z.mob * 100)), textposition: 'outside', textfont: { size: 11, color: '#555555' }, hoverinfo: 'skip' }],
+      Object.assign({}, BASE_LAYOUT, {
+        margin: { t: 8, r: 26, b: 40, l: 150 },
+        xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: 'income percentile a poor kid reaches', type: 'linear', autorange: true }),
+        yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category', autorange: true }),
+      }), CFG);
+    title.textContent = 'Where poor kids climb, and where they do not';
+    src.textContent = 'Top and bottom commuting zones by upward mobility. Source: Opportunity Insights (Chetty et al.).';
+  }
+}
+
 function render() {
   const session = document.getElementById('session');
   const list = document.getElementById('facts');
@@ -1827,6 +1907,13 @@ const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', '
 function updateCell() {
   const last = chain.length ? chain[chain.length - 1] : null;
   if (!last) { ['place', 'time', 'against'].forEach(id => setRib(id, false, '')); return; }
+  if (last.kind === 'opp') {
+    setRib('place', true, 'US commuting zones');
+    setRib('time', false, '');
+    const o = last.opp;
+    setRib('against', o.kind === 'scatter' || o.kind === 'gap', o.covLabel || o.label || '');
+    return;
+  }
   let place = null;
   if (SINGLE_PLACE.includes(last.kind) && last.isos && last.isos.length)
     place = last.isos.map(i => BY_ISO[i] ? esc(BY_ISO[i].name) : i).slice(0, 3).join(', ');
@@ -1858,6 +1945,8 @@ function drawChart() {
   const el = document.getElementById('chart');
   const title = document.getElementById('chart-title');
   const src = document.getElementById('chart-src');
+
+  if (mode === 'opp') { drawOpp(drawable); return; }
 
   if (mode === 'bars') {
     const bar = chain.slice().reverse().find(f => f.mode === 'bars').bar;
@@ -2215,6 +2304,7 @@ const START_CHIPS = ['wealth vs income in the US', 'life expectancy and inequali
 const FACET_CHIPS = {
   wealth: ['wealth vs income in the US', 'France', 'most concentrated', 'life expectancy and inequality'],
   income: ['most unequal', 'France', 'median income and inequality', 'poverty and inequality'],
+  opportunity: ['where poor kids climb', 'the credit gap', 'the mortgage gap', 'mobility vs income'],
 };
 
 function updateChips() {
@@ -2222,7 +2312,8 @@ function updateChips() {
   let list;
   const avail = Object.keys(ASPECT_CHIP).filter(k => SERIES[k]);
   const otherAspects = cur => avail.filter(k => k !== cur).map(k => ASPECT_CHIP[k]);
-  if (!chain.length) list = (typeof curFacet !== 'undefined' && FACET_CHIPS[curFacet]) || START_CHIPS;
+  if (typeof curFacet !== 'undefined' && curFacet === 'opportunity') list = FACET_CHIPS.opportunity;
+  else if (!chain.length) list = (typeof curFacet !== 'undefined' && FACET_CHIPS[curFacet]) || START_CHIPS;
   else {
     const last = chain[chain.length - 1];
     if (last.kind === 'divergence')
@@ -2745,7 +2836,8 @@ Promise.all([
   opt('data/us_state.json'),
   opt('data/us_names.json'),
   opt('data/us_manifest.json'),
-]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50, usCounty, usState, usNames, usManifest]) => {
+  opt('data/us_cz.json'),
+]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50, usCounty, usState, usNames, usManifest, usCz]) => {
   LATEST = latest; US = us;
   // spine is the union of every country any module knows, named from geo_names
   const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
@@ -2769,6 +2861,7 @@ Promise.all([
   if (wtop1 && Object.keys(wtop1).length) SERIES.wealth_top1 = toSeries(wtop1);
   if (wbot50 && Object.keys(wbot50).length) SERIES.wealth_bottom50 = toSeries(wbot50);
   if (usCounty && Object.keys(usCounty).length) { US_COUNTY = usCounty; US_STATE = usState; US_NAMES = usNames; US_MANIFEST = usManifest; }
+  if (usCz && Object.keys(usCz).length) US_CZ = usCz;
 
   buildIndex();
   boot();
