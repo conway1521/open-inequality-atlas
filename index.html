@@ -77,15 +77,15 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .ask h1 .turn { color: var(--accent); transition: color .4s ease; }
 
 /* ask view */
-.ask { padding: 64px 0 12px; }
+.ask { padding: 52px 0 12px; text-align: center; }
 .ask h1 {
   font-size: clamp(28px, 5vw, 38px);
   font-weight: 700; letter-spacing: -0.03em; line-height: 1.15;
-  margin-bottom: 10px;
+  margin-bottom: 10px; text-wrap: balance;
 }
-.ask .sub { color: var(--ink-2); max-width: 540px; margin-bottom: 26px; }
+.ask .sub { color: var(--ink-2); max-width: 500px; margin: 0 auto; }
 
-.askbox { position: relative; max-width: 640px; }
+.askbox { position: relative; max-width: 560px; margin: 0 auto; text-align: left; }
 #q {
   width: 100%; height: 52px;
   font: 500 15px 'Inter', system-ui, sans-serif;
@@ -113,7 +113,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .qmark:hover, .qmark.on { color: var(--ink); border-color: var(--ink-3); }
 
 .help {
-  max-width: 640px; margin-top: 12px;
+  max-width: 560px; margin: 12px auto 0; text-align: left;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 10px; padding: 14px 16px 10px;
 }
@@ -127,7 +127,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .help-foot { font-size: 12px; color: var(--ink-3); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
 @media (max-width: 540px) { .help-row { flex-direction: column; gap: 4px; } .help-k { width: auto; } }
 
-.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; max-width: 640px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px auto 0; max-width: 560px; justify-content: center; }
 .chip {
   font: 400 13px 'Inter', system-ui, sans-serif;
   color: var(--ink-2); background: var(--surface);
@@ -184,12 +184,11 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   position: relative;
 }
 
-/* ── the cube: the facet selector ─────────────────────────────────── */
-.stage { display: grid; grid-template-columns: 224px 1fr; gap: 40px; margin-top: 34px; align-items: start; }
-.cubebox { display: flex; flex-direction: column; align-items: center; gap: 14px;
-  user-select: none; -webkit-user-select: none; }
-.scene { width: 184px; height: 184px; perspective: 720px; touch-action: none; cursor: grab;
-  margin: 22px 0 36px; }   /* room above so the drifting cube never reaches the copy */
+/* ── the cube: the facet selector, centred with the stack beneath ─── */
+.cubebox { display: flex; flex-direction: column; align-items: center; gap: 12px;
+  margin: 52px auto 26px; user-select: none; -webkit-user-select: none; }
+.scene { width: 188px; height: 188px; perspective: 760px; touch-action: none; cursor: grab;
+  margin-bottom: 24px; }
 .scene:active { cursor: grabbing; }
 .cube { position: relative; width: 184px; height: 184px; transform-style: preserve-3d;
   transition: transform .6s cubic-bezier(.22,1.1,.36,1); }
@@ -218,33 +217,12 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .fchip.o { --fc: var(--opportunity); } .fchip.h { --fc: var(--health); }
 .fchip.meta { --fc: var(--ink-2); font-size: 11px; color: var(--ink-3); border-style: dashed; background: transparent; }
 .fchip.meta[aria-pressed="true"] { color: var(--ink); background: var(--bg); border-style: solid; border-color: var(--ink-3); }
-.cube-hint { font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-align: center; }
-.askcol { min-width: 0; }
-.cell { margin-top: 18px; }
-
 /* the facet reminder in the results header: a small cube face + its name */
 .here { display: flex; align-items: center; gap: 8px; margin-left: 14px; margin-right: auto; }
 .here-cube { width: 18px; height: 18px; border-radius: 4px; background: var(--accent);
   box-shadow: 2px 2px 0 color-mix(in srgb, var(--accent) 35%, transparent); flex-shrink: 0; }
 .here-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { .cube { transition: none; } }
-@media (max-width: 620px) { .stage { grid-template-columns: 1fr; gap: 24px; } }
-
-/* ── the accordion: the cell you're in ───────────────────────────── */
-.cell-h { margin-bottom: 10px; }
-.cell-lead { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
-.ribs { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
-.rib { display: grid; grid-template-columns: 6px 84px 1fr; align-items: center;
-  border-bottom: 1px solid var(--border); overflow: hidden;
-  max-height: 0; opacity: 0; transition: max-height .4s cubic-bezier(.22,1,.36,1), opacity .3s ease; }
-.rib:last-child { border-bottom: 0; }
-.rib.open { max-height: 60px; opacity: 1; }
-.rib .spine { align-self: stretch; background: var(--rc, var(--ink-3)); }
-.rib .dim { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); padding: 12px 0 12px 12px; }
-.rib .val { font-size: 14px; color: var(--ink); padding: 10px 12px 10px 4px; }
-.rib .val .muted { color: var(--ink-3); }
-.rib.facet { --rc: var(--accent); }
-.rib.facet .val { font-weight: 600; }
 
 /* the US view keeps a compact strip (its own deeper page) */
 .facets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; align-items: center; }
@@ -371,49 +349,35 @@ footer a { color: inherit; }
         dimension at a time: a place, a stretch of years, another measure to
         hold it against.
       </p>
-      <div class="stage">
-        <div class="cubebox">
-          <div class="scene" id="scene">
-            <div class="cube" id="cube">
-              <div class="face f-wealth" data-facet="wealth"><span class="lab">wealth</span><div class="q">The wealth held by the richest one percent.</div></div>
-              <div class="face f-income" data-facet="income"><span class="lab">income</span><div class="q">How unevenly income is shared out.</div></div>
-              <div class="face f-opportunity" data-facet="opportunity"><span class="lab">opportunity</span><div class="q">How much your parents' income sets your own.</div></div>
-              <div class="face f-health" data-facet="health"><span class="lab">health</span><div class="q">The life-expectancy gap, rich to poor.</div></div>
-              <div class="face f-interplay" data-facet="interplay"><span class="lab">interplay</span><div class="q">How the four inequalities line up.</div></div>
-              <div class="face f-scope" data-facet="scope"><span class="lab">scope</span><div class="q">The world, or one commuting zone.</div></div>
-            </div>
+      <div class="cubebox">
+        <div class="scene" id="scene">
+          <div class="cube" id="cube">
+            <div class="face f-wealth" data-facet="wealth"><span class="lab">wealth</span><div class="q">The wealth held by the richest one percent.</div></div>
+            <div class="face f-income" data-facet="income"><span class="lab">income</span><div class="q">How unevenly income is shared out.</div></div>
+            <div class="face f-opportunity" data-facet="opportunity"><span class="lab">opportunity</span><div class="q">How much your parents' income sets your own.</div></div>
+            <div class="face f-health" data-facet="health"><span class="lab">health</span><div class="q">How many more years the rich live than the poor.</div></div>
+            <div class="face f-interplay" data-facet="interplay"><span class="lab">interplay</span><div class="q">How the four inequalities line up.</div></div>
+            <div class="face f-scope" data-facet="scope"><span class="lab">scope</span><div class="q">The world, or one commuting zone.</div></div>
           </div>
-          <div class="facet-chips" id="facet-chips">
-            <button class="fchip w" data-facet="wealth" aria-pressed="true">wealth</button>
-            <button class="fchip i" data-facet="income" aria-pressed="false">income</button>
-            <button class="fchip o" data-facet="opportunity" aria-pressed="false">opportunity</button>
-            <button class="fchip h" data-facet="health" aria-pressed="false">health</button>
-          </div>
-          <div class="facet-chips meta-row">
-            <button class="fchip meta" data-facet="interplay" aria-pressed="false">interplay &uarr;</button>
-            <button class="fchip meta" data-facet="scope" aria-pressed="false">scope &darr;</button>
-          </div>
-          <div class="cube-hint">drag to spin &middot; or pick a facet</div>
         </div>
-        <div class="askcol">
-          <form class="askbox" id="ask-form">
-            <input id="q" type="text" autocomplete="off" spellcheck="false"
-                   placeholder="try: France, then over time, then vs life expectancy">
-            <button type="button" class="qmark" id="helpbtn" aria-label="What can I ask">?</button>
-            <span class="slash">/</span>
-          </form>
-          <div class="chips" id="chips"></div>
-          <div class="cell">
-            <div class="cell-h"><span class="cell-lead">the cell you're building</span></div>
-            <div class="ribs" id="ribs">
-              <div class="rib facet open" id="rib-facet"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div>
-              <div class="rib" id="rib-place"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span></div>
-              <div class="rib" id="rib-time"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span></div>
-              <div class="rib" id="rib-against"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span></div>
-            </div>
-          </div>
+        <div class="facet-chips" id="facet-chips">
+          <button class="fchip w" data-facet="wealth" aria-pressed="true">wealth</button>
+          <button class="fchip i" data-facet="income" aria-pressed="false">income</button>
+          <button class="fchip o" data-facet="opportunity" aria-pressed="false">opportunity</button>
+          <button class="fchip h" data-facet="health" aria-pressed="false">health</button>
+        </div>
+        <div class="facet-chips meta-row">
+          <button class="fchip meta" data-facet="interplay" aria-pressed="false">interplay &uarr;</button>
+          <button class="fchip meta" data-facet="scope" aria-pressed="false">scope &darr;</button>
         </div>
       </div>
+      <form class="askbox" id="ask-form">
+        <input id="q" type="text" autocomplete="off" spellcheck="false"
+               placeholder="ask: France, then over time, then against life expectancy">
+        <button type="button" class="qmark" id="helpbtn" aria-label="What can I ask">?</button>
+        <span class="slash">/</span>
+      </form>
+      <div class="chips" id="chips"></div>
       <div class="help" id="help" hidden>
         <p class="help-intro">Two steps. See how wealth and income inequality have split, then take an everyday measure and see which one it tracks.</p>
         <div class="help-row"><span class="help-k">The split</span><span class="help-v" data-qs="wealth vs income in the US;wealth vs income in France"></span></div>
@@ -427,7 +391,6 @@ footer a { color: inherit; }
 
     <section id="session" hidden>
       <div class="session-head">
-        <span class="label">Your chain</span>
         <div class="here" id="here" aria-hidden="true"><span class="here-cube" id="here-cube"></span><span class="here-label" id="here-label">wealth</span></div>
         <div class="session-actions">
           <button id="share">copy link</button>
@@ -1692,8 +1655,8 @@ const FACETS = {
   wealth:      { i: 0, side: true, color: 'var(--wealth)', metric: 'wealth_top1', sub: 'top 1% share' },
   income:      { i: 1, side: true, color: 'var(--income)', metric: 'income_gini', sub: 'income Gini' },
   opportunity: { i: 2, side: true, color: 'var(--opportunity)', metric: null, sub: 'commuting zones' },
-  health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'the life gap',
-                 note: 'Health inequality is the rich-poor gap in life expectancy. That measure is being wired in next.' },
+  health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'rich vs poor',
+                 note: 'Health inequality here is how many more years the rich live than the poor. That measure is being wired in next.' },
   interplay:   { i: -1, side: false, color: 'var(--ink-2)', sub: 'across the four',
                  note: 'Interplay holds two inequalities against each other across places. The scatter view is coming next.' },
   scope:       { i: -1, side: false, color: 'var(--ink-2)', sub: 'world to zone',
@@ -1813,8 +1776,8 @@ function oppAnswer(q) {
       .map(z => ({ name: z.name, x: z[g.key + '25'], y: z[g.key + '75'] }));
     const m25 = czMed(z => z[g.key + '25']), m75 = czMed(z => z[g.key + '75']);
     f.opp = { kind: 'gap', label: g.label, fmt: g.fmt, pts };
-    f.text = `Take a typical commuting zone. A child who started poor reaches a ${g.label} of <strong>${g.fmt(m25)}</strong>; ` +
-      `one who started rich in the same place, <strong>${g.fmt(m75)}</strong>. Same zone, different life.`;
+    f.text = `In the average commuting zone, children whose parents were in the bottom quarter reach a ${g.label} of ` +
+      `<strong>${g.fmt(m25)}</strong>. Children whose parents were in the top quarter reach <strong>${g.fmt(m75)}</strong>.`;
     return f;
   }
   const cov = /\bpoverty\b/.test(r) ? { key: 'pov', label: 'poverty rate' }
@@ -1824,14 +1787,15 @@ function oppAnswer(q) {
     const pts = zones.filter(z => z.mob != null && z[cov.key] != null).map(z => ({ name: z.name, x: z[cov.key], y: z.mob }));
     const rr = pearson(pts);
     f.opp = { kind: 'scatter', covLabel: cov.label, pts };
-    f.text = `Across ${pts.length} commuting zones, the odds a poor child climbs ${corrClause(rr, cov.label)}. <em>r = ${rr.toFixed(2)}</em>`;
+    f.text = `Across ${pts.length} US commuting zones, upward mobility is ${rr >= 0 ? 'higher' : 'lower'} where ` +
+      `${cov.label} is higher. <em>r = ${rr.toFixed(2)}</em>`;
     return f;
   }
   const ranked = zones.filter(z => z.mob != null).sort((a, b) => b.mob - a.mob);
   const top = ranked[0], bot = ranked[ranked.length - 1];
   f.opp = { kind: 'mobility', ranked };
-  f.text = `A child born poor reaches the <strong>${ord(Math.round(top.mob * 100))}</strong> income percentile by adulthood in ${esc(top.name)}, ` +
-    `but only the <strong>${ord(Math.round(bot.mob * 100))}</strong> in ${esc(bot.name)}. Where you grow up sets the odds.`;
+  f.text = `Across ${ranked.length} US commuting zones, the income percentile a child from a low-income family reaches by adulthood ` +
+    `runs from the <strong>${ord(Math.round(bot.mob * 100))}</strong> in ${esc(bot.name)} to the <strong>${ord(Math.round(top.mob * 100))}</strong> in ${esc(top.name)}.`;
   return f;
 }
 function drawOpp(f) {
@@ -1844,11 +1808,11 @@ function drawOpp(f) {
       { x: o.pts.map(p => p.x), y: o.pts.map(p => p.y), text: o.pts.map(p => p.name), mode: 'markers',
         marker: { color: AM, size: 6, opacity: 0.45 }, hovertemplate: '%{text}<extra></extra>' },
     ], Object.assign({}, BASE_LAYOUT, {
-      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: 'kids who started poor (p25)', type: 'linear', autorange: true }),
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: 'kids who started rich (p75)', type: 'linear', autorange: true }),
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: 'parents in the bottom quarter', type: 'linear', autorange: true }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: 'parents in the top quarter', type: 'linear', autorange: true }),
     }), CFG);
-    title.textContent = `The rich-poor gap in ${o.label}, by commuting zone`;
-    src.textContent = 'Each dot is a commuting zone; the line is equal outcomes. Source: Opportunity Insights.';
+    title.textContent = `${cap(o.label)} by parents' income, across commuting zones`;
+    src.textContent = 'Each dot is a commuting zone. The line marks the same outcome for both. Source: Opportunity Insights.';
   } else if (o.kind === 'scatter') {
     Plotly.react(el, [{ x: o.pts.map(p => p.x), y: o.pts.map(p => p.y), text: o.pts.map(p => p.name),
       mode: 'markers', marker: { color: AM, size: 6, opacity: 0.45 }, hovertemplate: '%{text}<extra></extra>' }],
@@ -1856,7 +1820,7 @@ function drawOpp(f) {
         xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: o.covLabel, type: 'linear', autorange: true }),
         yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: 'upward mobility (rank at p25)', type: 'linear', autorange: true }),
       }), CFG);
-    title.textContent = `Upward mobility against ${o.covLabel}, by commuting zone`;
+    title.textContent = `Upward mobility and ${o.covLabel}, by commuting zone`;
     src.textContent = 'Each dot is a US commuting zone. Source: Opportunity Insights.';
   } else {
     const rows = o.ranked.slice(-8).concat(o.ranked.slice(0, 8));
@@ -1868,8 +1832,8 @@ function drawOpp(f) {
         xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: 'income percentile a poor kid reaches', type: 'linear', autorange: true }),
         yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category', autorange: true }),
       }), CFG);
-    title.textContent = 'Where poor kids climb, and where they do not';
-    src.textContent = 'Top and bottom commuting zones by upward mobility. Source: Opportunity Insights (Chetty et al.).';
+    title.textContent = 'Upward mobility, highest and lowest commuting zones';
+    src.textContent = 'The income percentile a child from a low-income family reaches by adulthood. Source: Opportunity Insights.';
   }
 }
 
@@ -2082,7 +2046,7 @@ function drawChart() {
     title.textContent = `${cap(my.label)}, against ${isGdp ? 'prosperity' : wPctAxis ? 'wealth concentration' : 'wealth inequality'} and income` + (c.region ? ` (${REGION_LABEL[c.region]})` : '');
     src.textContent = isGdp
       ? `One country per dot. Left: against GDP per person (log scale), a level of prosperity, the national twin of local home values. Right: against income Gini. GDP: OWID. Income: World Bank PIP.`
-      : `One country per dot, the same measure against each gap. Income Gini: World Bank PIP.`;
+      : `One country per dot: the same measure against wealth concentration on the left, income on the right. Income Gini: World Bank PIP.`;
   }
 
   else if (mode === 'divergence') {
@@ -2304,7 +2268,7 @@ const START_CHIPS = ['wealth vs income in the US', 'life expectancy and inequali
 const FACET_CHIPS = {
   wealth: ['wealth vs income in the US', 'France', 'most concentrated', 'life expectancy and inequality'],
   income: ['most unequal', 'France', 'median income and inequality', 'poverty and inequality'],
-  opportunity: ['where poor kids climb', 'the credit gap', 'the mortgage gap', 'mobility vs income'],
+  opportunity: ['upward mobility', "credit by parents' income", "mortgages by parents' income", 'mobility and income'],
 };
 
 function updateChips() {
