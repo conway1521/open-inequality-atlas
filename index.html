@@ -147,7 +147,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   font: 500 15px 'Inter', system-ui, sans-serif;
   color: var(--ink); background: var(--surface);
   border: 1px solid var(--border); border-radius: 10px;
-  padding: 0 92px 0 38px;
+  padding: 0 130px 0 38px;
   outline: none;
   box-shadow: 0 1px 2px rgba(16,20,28,0.05), 0 8px 30px rgba(16,20,28,0.06);
   transition: border-color 0.12s, box-shadow 0.12s;
@@ -155,13 +155,19 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #q::placeholder { color: var(--ink-3); }
 #q:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
 .slash {
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: 42px; top: 50%; transform: translateY(-50%);
   font-family: var(--mono); font-size: 11px; color: var(--ink-3);
   border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
   background: var(--bg); pointer-events: none;
 }
-/* the tab-to-fill hint belongs to the empty box only; once you type, it steps aside */
-#q:not(:placeholder-shown) ~ .slash { visibility: hidden; }
+/* the up/down steppers: flick through the premade questions without the keyboard */
+.qnav { position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 2px; }
+.qnav button { background: none; border: none; cursor: pointer; color: var(--ink-3);
+  font-size: 8px; line-height: 1; padding: 2px 5px; }
+.qnav button:hover { color: var(--ink); }
+/* the hints belong to the empty box only; once you type, they step aside */
+#q:not(:placeholder-shown) ~ .slash, #q:not(:placeholder-shown) ~ .qnav { visibility: hidden; }
 .helpbtn {
   display: block; margin: 10px auto 0;
   font-family: var(--mono); font-size: 11px; color: var(--ink-3);
@@ -169,20 +175,19 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 }
 .helpbtn:hover, .helpbtn.on { color: var(--ink); }
 
+/* the ? panel is just the premade questions, each one runnable; one vocabulary */
 .help {
-  max-width: 560px; margin: 12px auto 0; text-align: left;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; padding: 14px 16px 10px;
+  max-width: 560px; margin: 10px auto 0; text-align: left;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px;
 }
-.help-row { display: flex; gap: 12px; align-items: baseline; padding: 5px 0; }
-.help-k {
-  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
-  letter-spacing: 0.07em; color: var(--ink-3); width: 118px; flex-shrink: 0;
+.help[hidden] { display: none; }
+.q-item {
+  background: none; border: none; cursor: pointer; text-align: left;
+  font: 400 12.5px 'Inter', system-ui, sans-serif; color: var(--ink-2);
+  padding: 4px 0; border-bottom: 1px solid var(--border);
 }
-.help-v { display: flex; flex-wrap: wrap; gap: 6px; }
-.help-intro { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
-.help-foot { font-size: 12px; color: var(--ink-3); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
-@media (max-width: 540px) { .help-row { flex-direction: column; gap: 4px; } .help-k { width: auto; } }
+.q-item:hover { color: var(--ink); }
+@media (max-width: 540px) { .help { grid-template-columns: 1fr; } }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px auto 0; max-width: 560px; justify-content: center; }
 .chip {
@@ -292,7 +297,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.engaged #session { padding-top: 12px; }
 
 /* ── the cell: a folded accordion, each dimension a fold that unfolds ── */
-.cell { max-width: 560px; margin: 22px auto 0; text-align: left; }
+.cell { max-width: 480px; margin: 18px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); margin-bottom: 8px; }
 /* a folded strip: each dimension is one flat fold, a hairline crease between them,
@@ -300,7 +305,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .ribs { border: 1px solid var(--border-2); border-radius: 6px; overflow: hidden; background: var(--surface); }
 .rib { position: relative; background: var(--surface); }
 .rib + .rib { border-top: 1px solid var(--border); }
-.rib-head { display: grid; grid-template-columns: 18px 84px 1fr auto auto; align-items: center; min-height: 44px; }
+.rib-head { display: grid; grid-template-columns: 13px 72px 1fr auto auto; align-items: center; min-height: 31px; }
 .rib[data-dim] .rib-head { cursor: pointer; }
 .rib[data-dim] .rib-head:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 /* the binding tab: a diagonal bar that flips every fold, so the left edge zigzags */
@@ -310,16 +315,20 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib.filled .spine, .rib.facet .spine { background: var(--rc, var(--ink-3)); }
 .rib.facet { --rc: var(--accent); display: block; border-radius: 0; padding: 0;
   font-size: inherit; gap: 0; border: 0; }
-.rib .dim { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--ink-3); padding-left: 12px; }
-.rib .val { font-size: 15px; color: var(--ink); padding: 13px 8px 13px 4px; }
+.rib .dim { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-3); padding-left: 10px; }
+.rib .val { font-size: 13px; color: var(--ink); padding: 7px 8px 7px 2px; }
 .rib .val .muted { color: var(--ink-3); }
 .rib.facet .val { font-weight: 600; }
+/* a filled value is the control: press it to swap the variable in place */
+.rib[data-dim].filled .val { cursor: pointer;
+  text-decoration: underline dotted color-mix(in srgb, var(--ink-3) 55%, transparent);
+  text-underline-offset: 3px; }
 .rib-x { font-family: var(--mono); background: none; border: none; cursor: pointer; color: var(--ink-3);
-  font-size: 15px; line-height: 1; padding: 0 4px; }
+  font-size: 13px; line-height: 1; padding: 0 4px; }
 .rib-x:hover { color: var(--ink); }
 .rib[data-dim]:not(.filled) .rib-x { display: none; }
-.rib .fold { font-size: 9px; color: var(--ink-3); padding-right: 12px; transition: transform .3s ease; }
+.rib .fold { font-size: 8px; color: var(--ink-3); padding-right: 10px; transition: transform .3s ease; }
 .rib.expanded .fold { transform: rotate(180deg); }
 /* a dimension only exists once you add it; the fold unravels open, and folds away when cleared */
 .rib[data-dim] { max-height: 0; opacity: 0; transition: max-height .42s cubic-bezier(.22,1,.36,1), opacity .3s ease; }
@@ -328,16 +337,18 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* the add row: pick which dimension to unfold next */
 .add-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 2px 0; }
 .add-row:empty { display: none; }
-.add-chip { font-family: var(--mono); font-size: 11px; color: var(--ink-3); background: transparent;
-  border: 1px dashed var(--border-2); border-radius: 100px; padding: 4px 11px; cursor: pointer; }
+.add-chip { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); background: transparent;
+  border: 1px dashed var(--border-2); border-radius: 100px; padding: 3px 9px; cursor: pointer; }
 .add-chip:hover { color: var(--ink); border-color: var(--ink-3); }
 /* the drawer that unfolds under a fold */
-.rib-opts { max-height: 0; opacity: 0; overflow: hidden; display: flex; flex-wrap: wrap; gap: 6px;
-  padding: 0 14px 0 22px; transition: max-height .38s cubic-bezier(.22,1,.36,1), opacity .26s ease; }
-.rib.expanded .rib-opts { max-height: 260px; opacity: 1; padding: 2px 14px 12px 22px; }
-.rib-opts .opt { font-size: 12.5px; padding: 5px 11px; border-radius: 100px; border: 1px solid var(--border);
+.rib-opts { max-height: 0; opacity: 0; overflow: hidden; display: flex; flex-wrap: wrap; gap: 5px;
+  padding: 0 12px 0 23px; transition: max-height .38s cubic-bezier(.22,1,.36,1), opacity .26s ease; }
+.rib.expanded .rib-opts { max-height: 260px; opacity: 1; padding: 2px 12px 10px 23px; }
+.rib-opts .opt { font-size: 11.5px; padding: 3px 9px; border-radius: 100px; border: 1px solid var(--border);
   background: var(--bg); color: var(--ink-2); cursor: pointer; }
 .rib-opts .opt:hover { color: var(--ink); border-color: var(--ink-3); }
+/* the option you're already on */
+.rib-opts .opt.on { border-color: var(--accent); color: var(--ink); }
 .deeper-rib .val { color: var(--ink-2); font-size: 13.5px; font-style: normal; }
 .deeper-rib .fold { transform: none; }
 .submeasure { font: 600 15px 'Inter', system-ui, sans-serif; color: var(--accent);
@@ -368,7 +379,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .facet .k { color: var(--ink-3); }
 .facet.lens { border-color: #c9d9ec; }
 .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-#chart { width: 100%; height: 460px; }
+#chart { width: 100%; height: 380px; }
 .chart-src {
   font-size: 12px; color: var(--ink-3);
   padding: 8px 2px 8px; border-top: 1px solid var(--border); margin-top: 4px;
@@ -507,8 +518,12 @@ footer a { color: inherit; }
       <form class="askbox" id="ask-form">
         <span class="car" aria-hidden="true">&rsaquo;</span>
         <input id="q" type="text" autocomplete="off" spellcheck="false"
-               placeholder="France" aria-label="Ask the atlas">
+               placeholder="how unequal is France?" aria-label="Ask the atlas">
         <span class="slash" id="fillhint">tab to fill</span>
+        <span class="qnav">
+          <button type="button" id="q-up" aria-label="previous question">&#9650;</button>
+          <button type="button" id="q-dn" aria-label="next question">&#9660;</button>
+        </span>
       </form>
       <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">? what can I ask</button>
       <div class="cell" id="cell">
@@ -520,12 +535,7 @@ footer a { color: inherit; }
         </div>
         <div class="add-row" id="add-row"></div>
       </div>
-      <div class="help" id="help" hidden>
-        <div class="help-row"><span class="help-k">a country</span><span class="help-v" data-qs="France;Brazil;happiest countries"></span></div>
-        <div class="help-row"><span class="help-k">a ranking</span><span class="help-v" data-qs="most concentrated;most unequal;who breaks the pattern"></span></div>
-        <div class="help-row"><span class="help-k">a relationship</span><span class="help-v" data-qs="life expectancy and inequality;poverty and inequality;among rich countries"></span></div>
-        <div class="help-row"><span class="help-k">over time</span><span class="help-v" data-qs="France over time;wealth vs income in the US"></span></div>
-      </div>
+      <div class="help" id="help" hidden></div>
       <div class="notice" id="notice" hidden></div>
     </section>
 
@@ -1890,32 +1900,32 @@ const FACETS = {
 // ten distinct things the accordion and chat can do; each cycles through the box, fillable
 const PROMPT_SETS = {
   default: [
-    'France',
-    'most concentrated',
-    'life expectancy and inequality',
+    'how unequal is France?',
+    'where is wealth most concentrated?',
+    'does life expectancy track inequality?',
     'wealth vs income in the US',
-    'France, then over time',
-    'poverty and inequality',
-    'happiest countries',
-    'who breaks the pattern',
-    'among rich countries',
-    'life satisfaction and inequality',
+    'how has France changed over time?',
+    'does poverty follow inequality?',
+    'which countries are happiest?',
+    'who breaks the pattern?',
+    'what about among rich countries?',
+    'does life satisfaction track inequality?',
   ],
   income: [
-    'Brazil',
-    'most unequal',
-    'life expectancy and inequality',
-    'Brazil, then over time',
-    'poverty and inequality',
-    'median income and inequality',
-    'who breaks the pattern',
-    'among rich countries',
+    'how unequal is Brazil?',
+    'where is income most unequal?',
+    'does life expectancy track inequality?',
+    'how has Brazil changed over time?',
+    'does poverty follow inequality?',
+    'does median income track inequality?',
+    'who breaks the pattern?',
+    'what about among rich countries?',
   ],
   opportunity: [
-    'upward mobility',
-    "credit by parents' income",
-    "mortgages by parents' income",
-    'mobility and income',
+    'where do children climb highest?',
+    "how does credit differ by parents' income?",
+    "how do mortgages differ by parents' income?",
+    'does mobility follow income?',
   ],
 };
 let promptIdx = 0;
@@ -2021,7 +2031,9 @@ function toggleRib(dim) {
   document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
   const list = dimOptions(dim), opts = document.getElementById('opts-' + dim);
   if (!list.length) { showNotice(curFacet === 'opportunity' ? 'Opportunity is the whole set of US commuting zones, so place is fixed.' : 'Nothing to add on that dimension yet.'); return; }
-  opts.innerHTML = list.map(o => `<button type="button" class="opt" data-val="${esc(o[1])}">${esc(o[0])}</button>`).join('');
+  const cur = dim === 'place' ? (cell.place || '') : dim === 'against' ? (cell.against || '') : null;
+  opts.innerHTML = list.map(o =>
+    `<button type="button" class="opt${o[1] === cur ? ' on' : ''}" data-val="${esc(o[1])}">${esc(o[0])}</button>`).join('');
   opts.querySelectorAll('.opt').forEach(btn => btn.addEventListener('click', () => {
     rib.classList.remove('expanded');
     if (curFacet === 'opportunity') ask(btn.dataset.val);   // opportunity runs the query as-is
@@ -2306,8 +2318,10 @@ const BASE_LAYOUT = {
   plot_bgcolor: 'rgba(0,0,0,0)',
   font: { family: 'Inter, system-ui, sans-serif', color: cssVar('--ink-2', '#555555'), size: 12 },
   margin: { t: 8, r: 8, b: 40, l: 46 },
-  xaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea' },
-  yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea' },
+  // axis type and range are sticky across Plotly.react, so every draw restates them:
+  // a bar chart's category axis must never leak into the next scatter
+  xaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', type: 'linear', autorange: true },
+  yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', type: 'linear', autorange: true },
   showlegend: false,
 };
 const CFG = { responsive: true, displayModeBar: false };
@@ -2354,7 +2368,8 @@ function drawChart() {
     }], Object.assign({}, BASE_LAYOUT, {
       margin: { t: 8, r: 70, b: 36, l: 150 },
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis,
-        isDelta ? {} : (m.giniFam ? { range: [0, 1.05] } : (isPct ? { ticksuffix: '%' } : {}))),
+        isDelta ? {} : (m.giniFam ? { range: [0, 1.05], autorange: false } : (isPct ? { ticksuffix: '%' } : {}))),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category' }),
       bargap: 0.35,
     }), CFG);
     const hl = bar.highlight && BY_ISO[bar.highlight];
@@ -2460,9 +2475,9 @@ function drawChart() {
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
       margin: { t: 24, r: 10, b: 42, l: 52 },
       annotations: [rTxt(c.rW, 0.23), rTxt(c.rI, 0.80)],
-      xaxis: { domain: [0, 0.46], type: c.wLog ? 'log' : 'linear', gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', ticksuffix: wPctAxis ? '%' : '', tickprefix: isGdp ? '$' : '', title: { text: wLabel, font: { size: 12 } } },
-      xaxis2: { domain: [0.54, 1], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'income Gini', font: { size: 12 } } },
-      yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' },
+      xaxis: { domain: [0, 0.46], type: c.wLog ? 'log' : 'linear', autorange: true, gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', ticksuffix: wPctAxis ? '%' : '', tickprefix: isGdp ? '$' : '', title: { text: wLabel, font: { size: 12 } } },
+      xaxis2: { domain: [0.54, 1], type: 'linear', autorange: true, gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'income Gini', font: { size: 12 } } },
+      yaxis: { type: 'linear', autorange: true, gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' },
     }), CFG);
     title.textContent = `${cap(my.label)}, against ${isGdp ? 'prosperity' : wPctAxis ? 'wealth concentration' : 'wealth inequality'} and income` + (c.region ? ` (${REGION_LABEL[c.region]})` : '');
     src.textContent = isGdp
@@ -2540,6 +2555,7 @@ function drawChart() {
     }], Object.assign({}, BASE_LAYOUT, {
       margin: { t: 8, r: 90, b: 36, l: 150 },
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis, isPct ? { ticksuffix: '%' } : {}),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category' }),
       bargap: 0.4,
     }), CFG);
     title.textContent = `${cap(my.label)} by ${ml.label} tier`;
@@ -2574,7 +2590,7 @@ function drawChart() {
       margin: { t: 8, r: 12, b: 40, l: 12 },
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: cap(m.label), font: { size: 12 } },
         ticksuffix: m.fmt === pc ? '%' : '' }),
-      yaxis: { visible: false, range: [-1, 1] },
+      yaxis: { visible: false, type: 'linear', range: [-1, 1], autorange: false },
     }), CFG);
     title.textContent = `${cap(m.label)}, every country` + (st.region ? ` in ${REGION_LABEL[st.region]}` : '');
     src.textContent = m.poolSrc || '';
@@ -2602,8 +2618,8 @@ function drawChart() {
       showlegend: traces.filter(t => t.showlegend !== false).length >= 2,
       legend: { orientation: 'h', y: 1.1, font: { size: 11 } },
       margin: { t: 8, r: 12, b: 44, l: 48 },
-      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: 'Share of population', font: { size: 12 } }, ticksuffix: '%', range: [0, 100] }),
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: 'Share of wealth', font: { size: 12 } }, ticksuffix: '%', range: [0, 100] }),
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: 'Share of population', font: { size: 12 } }, ticksuffix: '%', range: [0, 100], autorange: false }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: 'Share of wealth', font: { size: 12 } }, ticksuffix: '%', range: [0, 100], autorange: false }),
     }), CFG);
     title.textContent = 'Wealth Lorenz curve' + (lz.isos.length === 1 ? `, ${BY_ISO[lz.isos[0]].name}` : '');
     src.textContent = 'Source: WID. Anchored at the bottom 50%, top 10%, and top 1% shares. The further the curve bows from the diagonal, the more concentrated.';
@@ -3111,7 +3127,14 @@ function resetAll() {
 }
 
 function setHelp(open) {
-  document.getElementById('help').hidden = !open;
+  const el = document.getElementById('help');
+  if (open) {   // the panel is the premade questions themselves, click one to run it
+    const set = PROMPT_SETS[curFacet] || PROMPT_SETS.default;
+    el.innerHTML = set.map(q => `<button type="button" class="q-item">${esc(q)}</button>`).join('');
+    el.querySelectorAll('.q-item').forEach(b =>
+      b.addEventListener('click', () => { setHelp(false); runPrompt(b.textContent); }));
+  }
+  el.hidden = !open;
   document.getElementById('helpbtn').classList.toggle('on', open);
 }
 
@@ -3156,7 +3179,7 @@ function fillCoverage() {
 
 function boot() {
   updateChips();
-  document.querySelectorAll('.help-v, .try').forEach(v => {
+  document.querySelectorAll('.try').forEach(v => {
     v.innerHTML = v.dataset.qs.split(';')
       .map(q => `<button type="button" class="chip">${q}</button>`).join('');
     v.querySelectorAll('.chip').forEach(b =>
@@ -3186,6 +3209,10 @@ function boot() {
       e.preventDefault(); cyclePrompt(e.key === 'ArrowDown' ? 1 : -1);
     }
   });
+  // the on-screen steppers do the same as the arrow keys
+  const qup = document.getElementById('q-up'), qdn = document.getElementById('q-dn');
+  if (qup) qup.addEventListener('click', () => cyclePrompt(-1));
+  if (qdn) qdn.addEventListener('click', () => cyclePrompt(1));
   document.getElementById('clear').addEventListener('click', resetAll);
   // the prompt cycles through the premade questions on its own; arrows step it by hand
   setInterval(() => nextPrompt(false), 3800);
