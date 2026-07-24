@@ -147,7 +147,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   font: 500 15px 'Inter', system-ui, sans-serif;
   color: var(--ink); background: var(--surface);
   border: 1px solid var(--border); border-radius: 10px;
-  padding: 0 44px 0 38px;
+  padding: 0 92px 0 38px;
   outline: none;
   box-shadow: 0 1px 2px rgba(16,20,28,0.05), 0 8px 30px rgba(16,20,28,0.06);
   transition: border-color 0.12s, box-shadow 0.12s;
@@ -277,40 +277,51 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .here-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { .cube { transition: none; } }
 
-/* once a chain exists the cube shrinks to a compact marker; ask + cell lead */
-#view-ask.engaged .ask { padding: 22px 0 8px; }
+/* stage 2: once a question is asked the page splits. the graphs and the answer
+   take the centre; the cube, ask box and accordion move into a slim right rail
+   that stays put as you scroll, governing what the centre shows */
+#view-ask.engaged { max-width: 1180px; display: grid; align-items: start;
+  grid-template-columns: minmax(0, 1fr) 336px; gap: 46px; }
+#view-ask.engaged #session { grid-column: 1; grid-row: 1; min-width: 0; }
+#view-ask.engaged .ask { grid-column: 2; grid-row: 1; position: sticky; top: 18px;
+  align-self: start; padding: 0; }
 #view-ask.engaged .ask h1, #view-ask.engaged .ask .sub { display: none; }
+#view-ask.engaged .homebtn { display: inline-flex; }
 #view-ask.engaged .cubebox { margin: 0 auto 14px; gap: 8px; }
 #view-ask.engaged .scene { height: 104px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
 #view-ask.engaged .cube .face { justify-content: center; align-items: center; padding: 10px; }
 #view-ask.engaged .cube .face .q { display: none; }
 #view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
+#view-ask.engaged .askbox, #view-ask.engaged .cell, #view-ask.engaged .help { max-width: 100%; }
+#view-ask.engaged .meta-row { display: none; }
+/* home button: only present once engaged, sits atop the rail */
+.homebtn { display: none; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11px;
+  color: var(--ink-3); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 100px; padding: 4px 12px; cursor: pointer; margin: 0 auto 12px; }
+.homebtn:hover { color: var(--ink); border-color: var(--ink-3); }
+/* stack the rail under the centre on narrow screens */
+@media (max-width: 900px) {
+  #view-ask.engaged { display: block; max-width: 880px; }
+  #view-ask.engaged .ask { position: static; }
+  #view-ask.engaged #session { margin-top: 8px; }
+}
 
 /* ── the cell: a folded accordion, each dimension a fold that unfolds ── */
 .cell { max-width: 560px; margin: 22px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); margin-bottom: 8px; }
-/* one continuous folded strip of paper: each panel is a pleat tilted toward or
-   away from the light, so bands run bright-to-dark and flip on every fold; the
-   creases between them alternate ridge (bright line) and valley (dark line) */
-.ribs { border-top: 1px solid var(--border-2); border-bottom: 1px solid var(--border-2);
-  overflow: hidden; background: var(--surface); }
-.rib { position: relative; }
-.rib:nth-child(odd)  { background: linear-gradient(178deg,
-  var(--pleat-hi) 0%, var(--surface) 44%, color-mix(in srgb, var(--ink) 15%, var(--surface)) 100%); }
-.rib:nth-child(even) { background: linear-gradient(178deg,
-  color-mix(in srgb, var(--ink) 15%, var(--surface)) 0%, var(--surface) 56%, var(--pleat-hi) 100%); }
-/* the crease that owns each top border: valley under an even panel, ridge under an odd one */
-.rib + .rib { border-top: 1px solid transparent; }
-.rib:nth-child(even) { border-top-color: color-mix(in srgb, var(--ink) 34%, transparent); }
-.rib:nth-child(odd)  { border-top-color: var(--pleat-hi); }
-.rib-head { display: grid; grid-template-columns: 20px 86px 1fr auto auto; align-items: center; min-height: 46px; }
+/* a folded strip: each dimension is one flat fold, a hairline crease between them,
+   and a coloured tab on the left that zigzags down the pleated binding edge */
+.ribs { border: 1px solid var(--border-2); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.rib { position: relative; background: var(--surface); }
+.rib + .rib { border-top: 1px solid var(--border); }
+.rib-head { display: grid; grid-template-columns: 18px 84px 1fr auto auto; align-items: center; min-height: 44px; }
 .rib[data-dim] .rib-head { cursor: pointer; }
-.rib[data-dim] .rib-head:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
-/* the pleated left edge: a diagonal binding bar that flips every panel, zigzagging the spine */
-.rib .spine { align-self: stretch; background: var(--rc, color-mix(in srgb, var(--ink-3) 40%, transparent)); }
-.rib:nth-child(odd)  .spine { clip-path: polygon(0 0, 100% 0, 55% 100%, 0 100%); }
-.rib:nth-child(even) .spine { clip-path: polygon(0 0, 55% 0, 100% 100%, 0 100%); }
+.rib[data-dim] .rib-head:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+/* the binding tab: a diagonal bar that flips every fold, so the left edge zigzags */
+.rib .spine { align-self: stretch; background: var(--rc, color-mix(in srgb, var(--ink-3) 34%, transparent)); }
+.rib:nth-child(odd)  .spine { clip-path: polygon(0 0, 100% 0, 52% 100%, 0 100%); }
+.rib:nth-child(even) .spine { clip-path: polygon(0 0, 52% 0, 100% 100%, 0 100%); }
 .rib.filled .spine, .rib.facet .spine { background: var(--rc, var(--ink-3)); }
 .rib.facet { --rc: var(--accent); display: block; border-radius: 0; padding: 0;
   font-size: inherit; gap: 0; border: 0; }
@@ -486,6 +497,7 @@ footer a { color: inherit; }
     <section class="ask">
       <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality.</h1>
       <p class="sub">Wealth, income, opportunity, health. Pick a face and ask.</p>
+      <button type="button" class="homebtn" id="homebtn">&lsaquo; home</button>
       <div class="cubebox">
         <div class="scene" id="scene">
           <div class="cube" id="cube">
@@ -511,8 +523,8 @@ footer a { color: inherit; }
       <form class="askbox" id="ask-form">
         <span class="car" aria-hidden="true">&rsaquo;</span>
         <input id="q" type="text" autocomplete="off" spellcheck="false"
-               placeholder="ask: France, then over time, then against life expectancy" aria-label="Ask the atlas">
-        <span class="slash">/</span>
+               placeholder="France" aria-label="Ask the atlas">
+        <span class="slash" id="fillhint">tab to fill</span>
       </form>
       <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">? what can I ask</button>
       <div class="cell" id="cell">
@@ -1930,6 +1942,13 @@ function nextPrompt(jump) {
   else { if (el.value || document.activeElement === el) return; promptIdx += 1; }
   el.placeholder = set[promptIdx % set.length];
 }
+// step the suggestion by hand, so you can flick through the premade questions
+function cyclePrompt(dir) {
+  const el = document.getElementById('q'); if (!el || el.value) return;
+  const set = PROMPT_SETS[curFacet] || PROMPT_SETS.default;
+  promptIdx = (promptIdx + dir + set.length) % set.length;
+  el.placeholder = set[promptIdx];
+}
 function runPrompt(text) {
   // strip the verb, split a chained example into its steps, run them in order
   const steps = text.replace(/^\w+:\s*/, '').split(/,?\s+then\s+/);
@@ -3153,10 +3172,20 @@ function boot() {
     qEl.value = qEl.placeholder.replace(/^\w+:\s*/, '');
     qEl.focus(); qEl.setSelectionRange(qEl.value.length, qEl.value.length);
   }
-  // the example stays a grey placeholder; Tab drops it in to complete, click just puts the cursor there
-  qEl.addEventListener('keydown', e => { if (e.key === 'Tab' && !qEl.value) { e.preventDefault(); fillPrompt(); } });
+  // the example stays a grey placeholder; Tab drops it in to complete, arrows flick between them
+  const fillhint = document.getElementById('fillhint');
+  function syncHint() { if (fillhint) fillhint.style.visibility = qEl.value ? 'hidden' : 'visible'; }
+  qEl.addEventListener('input', syncHint);
+  qEl.addEventListener('keydown', e => {
+    if (e.key === 'Tab' && !qEl.value) { e.preventDefault(); fillPrompt(); syncHint(); }
+    else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !qEl.value) {
+      e.preventDefault(); cyclePrompt(e.key === 'ArrowDown' ? 1 : -1);
+    }
+  });
+  const homebtn = document.getElementById('homebtn');
+  if (homebtn) homebtn.addEventListener('click', resetAll);
   document.getElementById('clear').addEventListener('click', resetAll);
-  // the prompt cycles through the question verbs; press enter on the empty box to run one
+  // the prompt cycles through the premade questions on its own; arrows step it by hand
   setInterval(() => nextPrompt(false), 3800);
   // click the measure inside the facet row to swap it
   const vfacet = document.getElementById('v-facet');
