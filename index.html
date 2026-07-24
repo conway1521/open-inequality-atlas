@@ -65,7 +65,7 @@ body {
 .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
 
 /* the flip: atlas and US are two faces of the same cube, turning to the right */
-main { perspective: 1900px; perspective-origin: center 34%; }
+main { perspective: 1250px; perspective-origin: center 38%; }
 .flipping { transform-origin: center; backface-visibility: hidden; will-change: transform, opacity; }
 .us-back { display: flex; align-items: center; gap: 12px; padding: 16px 0 4px; }
 .us-back button { font: 500 13px 'Inter', system-ui, sans-serif; color: var(--ink-2);
@@ -286,14 +286,20 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .cell { max-width: 560px; margin: 22px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); margin-bottom: 8px; }
-.ribs { border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+/* the whole thing is one folded strip: panels alternate light and shadow like a bellows */
+.ribs { border: 1px solid var(--border-2); border-radius: 12px; overflow: hidden;
   background: var(--surface); box-shadow: var(--shadow); }
-.rib { border-bottom: 1px solid var(--border); overflow: hidden; }
-.rib:last-child { border-bottom: 0; }
+.rib { overflow: hidden; }
+/* the crease between panels: a shadow line above a highlight line */
+.rib + .rib { border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 85%, #fff); }
+/* each panel catches the light from an alternating angle */
+.rib:nth-child(odd)  { background-image: linear-gradient(176deg, color-mix(in srgb, var(--ink) 6%, transparent), transparent 62%); }
+.rib:nth-child(even) { background-image: linear-gradient(4deg,   color-mix(in srgb, var(--ink) 6%, transparent), transparent 62%); }
 .rib-head { display: grid; grid-template-columns: 8px 96px 1fr auto; align-items: center; min-height: 46px; }
 .rib[data-dim] .rib-head, .deeper-rib .rib-head { cursor: pointer; }
-.rib[data-dim] .rib-head:hover, .deeper-rib .rib-head:hover { background: var(--panel); }
-.rib .spine { align-self: stretch; background: var(--rc, var(--border)); transition: background .3s ease; }
+.rib[data-dim] .rib-head:hover, .deeper-rib .rib-head:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.rib .spine { align-self: stretch; background: var(--rc, transparent); transition: background .3s ease; }
 .rib.filled .spine, .rib.facet .spine { background: var(--rc, var(--ink-3)); }
 .rib.facet { --rc: var(--accent); }
 .rib .dim { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
@@ -303,11 +309,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib.facet .val { font-weight: 600; }
 .rib .fold { font-size: 9px; color: var(--ink-3); padding-right: 14px; transition: transform .3s ease; }
 .rib.expanded .fold { transform: rotate(180deg); }
-/* an unfilled dimension is a folded pleat: shorter, faint, diagonal texture */
-.rib[data-dim]:not(.filled) .rib-head { min-height: 36px; }
+/* an unfilled fold is pressed flat: shorter and faint until you open it */
+.rib[data-dim]:not(.filled) .rib-head { min-height: 34px; }
 .rib[data-dim]:not(.filled) .val { color: var(--ink-3); font-style: italic; }
-.rib[data-dim]:not(.filled):not(.expanded) {
-  background-image: repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--ink-3) 8%, transparent) 6px 7px); }
 /* the drawer that unfolds under a fold */
 .rib-opts { max-height: 0; opacity: 0; overflow: hidden; display: flex; flex-wrap: wrap; gap: 6px;
   padding: 0 14px 0 22px; transition: max-height .38s cubic-bezier(.22,1,.36,1), opacity .26s ease; }
@@ -1764,15 +1768,10 @@ function resetCtx() {
 function ask(q) {
   hideNotice();
   stopIdle(false);   // the cube stops drifting once you ask
-  chain.forEach(f => { f.changed = false; });   // clear stale badges on any new move
   const f = (curFacet === 'opportunity' && US_CZ) ? oppAnswer(q) : runQuery(q);
   if (!f) return;
-  const lineIsos = new Set(chain.filter(x => x.mode === 'lines').flatMap(x => x.isos));
-  f.isos.forEach(i => lineIsos.add(i));
-  if (f.mode === 'lines' && lineIsos.size > 8) {
-    showNotice('Eight lines is the cap so the chart stays readable. Remove a fact to add more.');
-    return;
-  }
+  // one editable cell: a new question refines it in place, it doesn't pile up
+  chain.length = 0;
   chain.push(f);
   render();
   document.getElementById('q').value = '';
@@ -1971,8 +1970,14 @@ function motionStep() {
     cubeApply();
   } else if (motion === 'wobble') {
     const s = (mClk - wob0) * 0.0048;   // starts at 0 so the wobble eases out of the snap
-    cRotY = baseY + Math.sin(s) * 14 + Math.sin(s * 0.57 + 1.2) * 6;
-    cRotX = baseX + Math.sin(s * 0.83 + 2.1) * 12 + Math.sin(s * 0.44) * 5;
+    if (Math.abs(baseX) > 45) {   // interplay / scope sit at the poles: wobble inward, never across
+      const dir = baseX < 0 ? 1 : -1;
+      cRotX = baseX + dir * Math.abs(Math.sin(s * 0.83)) * 15;
+      cRotY = baseY + Math.sin(s) * 9;
+    } else {
+      cRotY = baseY + Math.sin(s) * 14 + Math.sin(s * 0.57 + 1.2) * 6;
+      cRotX = baseX + Math.sin(s * 0.83 + 2.1) * 12 + Math.sin(s * 0.44) * 5;
+    }
     cubeApply();
   }
   motRAF = (motion === 'tumble' || motion === 'wobble') ? requestAnimationFrame(motionStep) : null;
@@ -2120,19 +2125,12 @@ function render() {
     return;
   }
   session.hidden = false;
-  // the newest answer carries the room; the rest fold into a quiet history
+  // one cell, one answer: the current reading of it
   const last = chain[chain.length - 1];
   const ansEl = document.getElementById('answer');
   ansEl.innerHTML = `<span class="t">${last.text}` +
-    `${last.changed ? ' <span class="upd">updated</span>' : ''}</span>` +
-    `<button class="x" data-id="${last.id}" title="remove">&times;</button>`;
-  const earlier = chain.slice(0, -1);
-  list.innerHTML = earlier.map((f, i) =>
-    `<li><span class="n">${i + 1}</span><span class="t">${f.text}` +
-    `${f.changed ? ' <span class="upd">updated</span>' : ''}</span>` +
-    `<button class="x" data-id="${f.id}" title="remove">&times;</button></li>`).join('');
-  document.querySelectorAll('#answer .x, #facts .x').forEach(b =>
-    b.addEventListener('click', () => removeFact(Number(b.dataset.id))));
+    `${last.changed ? ' <span class="upd">updated</span>' : ''}</span>`;
+  if (list) list.innerHTML = '';
   drawChart();
   updateCell();   // the cube stays on the facet you chose; only the cell coordinates move
 }
@@ -2146,23 +2144,25 @@ function setSlot(id, value, hint, color) {
     if (color) rib.style.setProperty('--rc', color); else rib.style.removeProperty('--rc');
   } else { rib.classList.remove('filled'); rib.classList.add('empty'); v.textContent = hint; rib.style.removeProperty('--rc'); }
 }
-// the cell shows all four coordinates at once; they fill in as you build the question
+// the cell is read off the answer on screen, so it never shows a stale coordinate
+const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence'];
 function updateCell() {
   document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
   const last = chain.length ? chain[chain.length - 1] : null;
   const isOpp = last && last.kind === 'opp';
   let place = null;
   if (isOpp) place = 'US commuting zones';
-  else if (ctx.lastIso && BY_ISO[ctx.lastIso]) place = esc(BY_ISO[ctx.lastIso].name);
+  else if (last && SINGLE_PLACE.includes(last.kind) && last.isos && last.isos.length)
+    place = last.isos.map(i => BY_ISO[i] ? esc(BY_ISO[i].name) : i).slice(0, 3).join(', ');
   else if (ctx.region) place = REGION_LABEL[ctx.region];
   else if (ctx.pool) place = esc(ctx.pool.label);
   else if (last) place = 'all countries';
   setSlot('place', place, 'a country, or all of them');
-  const timeOn = !isOpp && chain.some(f => ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind));
+  const timeOn = last && ['time', 'divergence', 'path', 'delta_rank'].includes(last.kind);
   setSlot('time', timeOn ? 'over the years' : null, 'a moment, or a run of years');
   let ag = null, agKey = null;
   if (isOpp) ag = last.opp.covLabel || last.opp.label || null;
-  else if (ctx.lastAspect && ctx.lastAspect !== ctx.metric && META[ctx.lastAspect]) { ag = META[ctx.lastAspect].label; agKey = ctx.lastAspect; }
+  else if (last && (last.mode === 'scatter') && last.scatter && last.scatter.y && META[last.scatter.y]) { ag = META[last.scatter.y].label; agKey = last.scatter.y; }
   setSlot('against', ag, 'another measure to hold it to', agKey ? metricColor(agKey) : (isOpp ? '#c98a2b' : null));
 }
 
@@ -2945,8 +2945,9 @@ function flipTo(name, back) {
   flipping = true;
   const cur = document.getElementById('view-' + curName), nxt = document.getElementById('view-' + name);
   const out = back ? 92 : -92, inn = back ? -92 : 92;
+  const EASE = 'transform .46s cubic-bezier(.5,0,.3,1), opacity .34s ease';   // the cube's own turn
   cur.classList.add('flipping');
-  cur.style.transition = 'transform .34s ease, opacity .3s ease';
+  cur.style.transition = EASE;
   cur.style.transform = `rotateY(${out}deg)`; cur.style.opacity = '0';
   setTimeout(() => {
     cur.hidden = true; cur.classList.remove('flipping');
@@ -2955,11 +2956,20 @@ function flipTo(name, back) {
     nxt.classList.add('flipping'); nxt.style.transition = 'none';
     nxt.style.transform = `rotateY(${inn}deg)`; nxt.style.opacity = '0';
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      nxt.style.transition = 'transform .36s ease, opacity .32s ease';
+      nxt.style.transition = EASE;
       nxt.style.transform = 'rotateY(0deg)'; nxt.style.opacity = '1';
-      setTimeout(() => { nxt.classList.remove('flipping'); nxt.style.transition = ''; nxt.style.transform = ''; nxt.style.opacity = ''; flipping = false; }, 400);
+      setTimeout(() => { nxt.classList.remove('flipping'); nxt.style.transition = ''; nxt.style.transform = ''; nxt.style.opacity = ''; flipping = false; }, 480);
     }));
-  }, 340);
+  }, 420);
+}
+
+// reset takes you all the way back to the home start: empty cell, drifting cube, top of the page
+function resetAll() {
+  const onUS = !document.getElementById('view-us').hidden;
+  chain.length = 0; facetMeasureIdx.wealth = 0; facetMeasureIdx.income = 0;
+  resetCtx(); render();
+  chooseFacet('wealth'); startIdle();
+  if (onUS) flipTo('ask', true); else window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 }
 
 function setHelp(open) {
@@ -3024,11 +3034,7 @@ function boot() {
     if (v) ask(v);
     else runPrompt(el.placeholder);   // enter on the empty box runs the example showing
   });
-  document.getElementById('clear').addEventListener('click', () => {
-    chain.length = 0; resetCtx();
-    render();
-    chooseFacet('wealth'); startIdle();   // back to the drifting home state
-  });
+  document.getElementById('clear').addEventListener('click', resetAll);
   // the prompt cycles through the question verbs; press enter on the empty box to run one
   setInterval(() => nextPrompt(false), 3800);
   // click the measure inside the facet row to swap it
