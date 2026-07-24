@@ -250,9 +250,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 
 /* ── the cube: the facet selector, centred with the stack beneath ─── */
 .cubebox { display: flex; flex-direction: column; align-items: center; gap: 12px;
-  margin: 52px auto 26px; user-select: none; -webkit-user-select: none; }
-.scene { width: 188px; height: 188px; perspective: 760px; touch-action: none; cursor: grab;
-  margin-bottom: 24px; }
+  margin: 26px auto 22px; user-select: none; -webkit-user-select: none; overflow: visible; }
+.scene { width: 232px; height: 232px; perspective: 760px; touch-action: none; cursor: grab;
+  margin-bottom: 8px; overflow: visible; }
 .scene:active { cursor: grabbing; }
 .cube { position: relative; width: 184px; height: 184px; transform-style: preserve-3d;
   transition: transform .6s cubic-bezier(.22,1.1,.36,1); }
@@ -296,7 +296,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.engaged .homebtn { display: inline-flex; position: absolute; left: 0; top: 10px; margin: 0; z-index: 2; }
 #view-ask.engaged .deck {
   position: sticky; top: 0; z-index: 20; background: var(--bg);
-  padding: 10px 0 12px; transition: padding .28s ease, box-shadow .28s ease;
+  padding: 26px 0 12px; transition: padding .28s ease, box-shadow .28s ease;
 }
 #view-ask.engaged .deck::after {           /* the shadow only once it is holding */
   content: ''; position: absolute; left: 50%; transform: translateX(-50%);
@@ -305,17 +305,16 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 }
 #view-ask.engaged .deck.condensed::after { opacity: 1; }
 #view-ask.engaged .cubebox { margin: 0 auto 10px; gap: 8px; }
-#view-ask.engaged .scene { height: 150px; margin-bottom: 6px; display: flex;
+#view-ask.engaged .scene { height: 188px; margin-bottom: 4px; display: flex;
   align-items: center; justify-content: center; transition: height .28s ease; }
 #view-ask.engaged .cube .face { justify-content: center; align-items: center; padding: 10px; }
 #view-ask.engaged .cube .face .q { display: none; }
 #view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
 /* condensed: the same cube, smaller, with the strip still attached */
-#view-ask.engaged .deck.condensed { padding: 4px 0 8px; }
-#view-ask.engaged .deck.condensed .scene { height: 74px; margin-bottom: 2px; }
+#view-ask.engaged .deck.condensed { padding: 16px 0 8px; }
+#view-ask.engaged .deck.condensed .scene { height: 104px; margin-bottom: 0; }
 #view-ask.engaged .deck.condensed .facet-chips,
-#view-ask.engaged .deck.condensed .helpbtn,
-#view-ask.engaged .deck.condensed .help { display: none; }
+#view-ask.engaged .deck.condensed .helpbtn { display: none; }
 #view-ask.engaged .deck.condensed .askbox { max-width: 420px; }
 #view-ask.engaged .deck.condensed #q { height: 38px; font-size: 13.5px; }
 #view-ask.engaged .deck.condensed .cell { margin-top: 8px; }
@@ -341,8 +340,10 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib { position: relative; flex: 1 1 0; min-width: 0; }
 .rib.facet { flex: 1.35 1 0; }
 /* the crease between two pleats, leaning like folded paper */
-.rib + .rib::before { content: ''; position: absolute; left: 0; top: 5px; bottom: 5px;
-  width: 1px; background: var(--border); transform: skewX(-13deg); }
+.rib + .rib::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+  width: 1px; background: color-mix(in srgb, var(--ink) 20%, transparent); transform: skewX(-13deg); }
+.rib + .rib::after { content: ''; position: absolute; left: 1.5px; top: 4px; bottom: 4px;
+  width: 1px; background: var(--pleat-hi); transform: skewX(-13deg); }
 .rib:nth-child(even) { background: color-mix(in srgb, var(--ink) 3%, transparent); }
 .rib-head { display: flex; flex-direction: column; gap: 1px; padding: 6px 10px 9px; min-height: 44px; }
 .rib[data-dim] .rib-head { cursor: pointer; }
@@ -442,7 +443,11 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .facet .k { color: var(--ink-3); }
 .facet.lens { border-color: #c9d9ec; }
 .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-#chart { width: 100%; height: 380px; }
+.chart-title::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 2px;
+  background: var(--accent); margin-right: 8px; vertical-align: baseline; transition: background .4s ease; }
+#view-ask.engaged .chart-title { position: sticky; top: var(--deckh, 0px); z-index: 10;
+  background: var(--bg); padding: 7px 0 9px; margin-bottom: 0; }
+#chart { width: 100%; height: 318px; }
 .chart-src {
   font-size: 12px; color: var(--ink-3);
   padding: 8px 2px 8px; border-top: 1px solid var(--border); margin-top: 4px;
@@ -576,10 +581,6 @@ footer a { color: inherit; }
           <button class="fchip i" data-facet="income" aria-pressed="false">income</button>
           <button class="fchip o" data-facet="opportunity" aria-pressed="false">opportunity</button>
           <button class="fchip h" data-facet="health" aria-pressed="false">health</button>
-        </div>
-        <div class="facet-chips meta-row">
-          <button class="fchip meta" data-facet="interplay" aria-pressed="false">interplay</button>
-          <button class="fchip meta" data-facet="scope" aria-pressed="false">scope</button>
         </div>
       </div>
       <form class="askbox" id="ask-form">
@@ -1394,7 +1395,8 @@ function seriesYears(iso, metric) {
 }
 function syncCellFromFact(f) {
   if (!f || f.kind === 'opp') { resetCell(); return; }
-  cell.against = (f.mode === 'scatter' && f.scatter && f.scatter.y && !isIneq(f.scatter.y)) ? f.scatter.y : null;
+  cell.against = (f.mode === 'scatter' && f.scatter && f.scatter.y && !isIneq(f.scatter.y)) ? f.scatter.y
+    : (f.mode === 'path' && f.path && f.path.y) ? f.path.y : null;
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
     : f.kind === 'point' ? 'moment' : null;
   cell.year = (f.kind === 'point' && f.marker) ? f.marker.year : null;
@@ -1409,7 +1411,11 @@ function runCell() {
   ctx.metric = facetIneqDefault();
   ctx.lastIso = cell.place; ctx.lastAspect = cell.against;
   let p, q;
-  if (cell.place && cell.span === 'moment' && cell.year) {   // one country, one year
+  if (cell.place && cell.against && META[cell.against] && cell.span === 'run') {
+    // a scatter that gains time becomes a trajectory: one country's path across the two
+    p = { kind: 'path', iso: cell.place, x: ctx.metric, y: cell.against };
+    q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} path`;
+  } else if (cell.place && cell.span === 'moment' && cell.year) {   // one country, one year
     p = { kind: 'point', iso: cell.place, year: cell.year, metric: ctx.metric };
     q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} in ${cell.year}`;
   } else if (cell.place && cell.span === 'run') {   // a run of years wins when a place is set
@@ -2409,11 +2415,14 @@ function syncDeck() {
   const view = document.getElementById('view-ask');
   if (!deck || !view) return;
   const want = view.classList.contains('engaged') && window.scrollY > 90;
-  if (want === deckCondensed) return;
-  deckCondensed = want;
-  deck.classList.toggle('condensed', want);
-  cubeScale = want ? 0.42 : 0.86;
-  cubeApply();
+  if (want !== deckCondensed) {
+    deckCondensed = want;
+    deck.classList.toggle('condensed', want);
+    cubeScale = want ? 0.5 : 0.95;
+    cubeApply();
+  }
+  document.documentElement.style.setProperty('--deckh',
+    Math.round(deck.getBoundingClientRect().height) + 'px');
 }
 function initCube() {
   const scene = document.getElementById('scene');
@@ -2438,6 +2447,7 @@ function initCube() {
     el.addEventListener('click', () => chooseFacet(el.dataset.facet)));
   paintFacet('wealth'); cubeApply(); startIdle();
   window.addEventListener('scroll', syncDeck, { passive: true });
+  window.addEventListener('resize', syncDeck);
 }
 
 /* ── opportunity: the commuting-zone layer (Opportunity Insights) ──── */
@@ -2537,7 +2547,8 @@ function render() {
     deckCondensed = false;
     const dk = document.getElementById('deck'); if (dk) dk.classList.remove('condensed');
   }
-  const wantScale = engaged ? (deckCondensed ? 0.42 : 0.86) : 1;   // the same cube, condensed
+  const wantScale = engaged ? (deckCondensed ? 0.5 : 0.95) : 1.08;   // the same cube, condensed
+  requestAnimationFrame(syncDeck);   // the deck's height drives where the graph's head sits
   if (wantScale !== cubeScale) { cubeScale = wantScale; cubeApply(); }
   if (chain.length === 0) {
     session.hidden = true;
@@ -3424,11 +3435,15 @@ function resetAll() {
   if (onUS) flipTo('ask', true); else window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 }
 
-function setHelp(open) {
+function setHelp(open, filter) {
   const el = document.getElementById('help');
-  if (open) {   // the panel is the premade questions themselves, click one to run it
+  if (open) {   // the written questions themselves, narrowed by whatever you've typed
     const set = PROMPT_SETS[curFacet] || PROMPT_SETS.default;
-    el.innerHTML = set.map(q => `<button type="button" class="q-item">${esc(q)}</button>`).join('');
+    const f = norm(filter || '');
+    const list = f ? set.filter(q => norm(q).includes(f)) : set;
+    el.innerHTML = list.length
+      ? list.map(q => `<button type="button" class="q-item">${esc(q)}</button>`).join('')
+      : '<p class="opt-note">Nothing written matches. Press enter to ask it as you typed it.</p>';
     el.querySelectorAll('.q-item').forEach(b =>
       b.addEventListener('click', () => { setHelp(false); runPrompt(b.textContent); }));
   }
@@ -3508,6 +3523,12 @@ function boot() {
     }
   });
   // the on-screen steppers do the same as the arrow keys
+  // the questions are a list you pick from, not just a reel you watch go by
+  let blurT = null;
+  qEl.addEventListener('focus', () => { clearTimeout(blurT); setHelp(true, qEl.value); });
+  qEl.addEventListener('input', () => setHelp(true, qEl.value));
+  qEl.addEventListener('blur', () => { blurT = setTimeout(() => setHelp(false), 160); });
+  qEl.addEventListener('keydown', e => { if (e.key === 'Escape') { setHelp(false); qEl.blur(); } });
   const qup = document.getElementById('q-up'), qdn = document.getElementById('q-dn');
   if (qup) qup.addEventListener('click', () => cyclePrompt(-1));
   if (qdn) qdn.addEventListener('click', () => cyclePrompt(1));
