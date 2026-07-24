@@ -137,17 +137,24 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .ask .sub { color: var(--ink-2); max-width: 500px; margin: 0 auto; }
 
 .askbox { position: relative; max-width: 560px; margin: 0 auto; text-align: left; }
-.askbox .car {
-  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
-  font-family: var(--mono); font-size: 17px; font-weight: 700;
-  color: var(--accent); transition: color .4s ease; pointer-events: none;
+/* the steppers stand where the caret used to: two arrows in the colour of the
+   face you're on, flicking up and down through the questions */
+.qsteps {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 1px;
 }
+.qsteps button {
+  background: none; border: none; cursor: pointer; padding: 1px 3px;
+  font-size: 9px; line-height: 1; color: var(--accent); opacity: .7;
+  transition: opacity .15s ease, color .4s ease;
+}
+.qsteps button:hover { opacity: 1; }
 #q {
   width: 100%; height: 52px;
   font: 500 15px 'Inter', system-ui, sans-serif;
   color: var(--ink); background: var(--surface);
   border: 1px solid var(--border); border-radius: 10px;
-  padding: 0 130px 0 38px;
+  padding: 0 92px 0 36px;
   outline: none;
   box-shadow: 0 1px 2px rgba(16,20,28,0.05), 0 8px 30px rgba(16,20,28,0.06);
   transition: border-color 0.12s, box-shadow 0.12s;
@@ -155,19 +162,13 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #q::placeholder { color: var(--ink-3); }
 #q:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
 .slash {
-  position: absolute; right: 42px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
   font-family: var(--mono); font-size: 11px; color: var(--ink-3);
   border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
   background: var(--bg); pointer-events: none;
 }
-/* the up/down steppers: flick through the premade questions without the keyboard */
-.qnav { position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-  display: flex; flex-direction: column; gap: 2px; }
-.qnav button { background: none; border: none; cursor: pointer; color: var(--ink-3);
-  font-size: 8px; line-height: 1; padding: 2px 5px; }
-.qnav button:hover { color: var(--ink); }
 /* the hints belong to the empty box only; once you type, they step aside */
-#q:not(:placeholder-shown) ~ .slash, #q:not(:placeholder-shown) ~ .qnav { visibility: hidden; }
+#q:not(:placeholder-shown) ~ .slash, #q:not(:placeholder-shown) ~ .qsteps { visibility: hidden; }
 .helpbtn {
   display: block; margin: 10px auto 0;
   font-family: var(--mono); font-size: 11px; color: var(--ink-3);
@@ -284,17 +285,51 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .here-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { .cube { transition: none; } }
 
-/* once a question is asked, the cube shrinks to a compact marker and the ask box,
-   accordion, then the answer and graphs all stack down the one centred column */
-#view-ask.engaged .ask { padding: 22px 0 8px; }
+/* stage 2: once a question is asked the page folds open. the cube, the ask box
+   and the accordion stay together on the left as the thing you drive; the answer
+   and its graph swing in on the right. no panels, no borders: the page itself folds */
+#view-ask.engaged {
+  max-width: 1240px; display: grid; align-items: start;
+  grid-template-columns: 392px minmax(0, 1fr); gap: 40px;
+}
+#view-ask.engaged .ask {
+  grid-column: 1; grid-row: 1; padding: 0; position: sticky; top: 18px;
+  transform-origin: right center; animation: fold-driver .55s cubic-bezier(.22, 1, .36, 1);
+}
+#view-ask.engaged #session {
+  grid-column: 2; grid-row: 1; min-width: 0; padding-top: 2px;
+  transform-origin: left center; animation: fold-face .55s cubic-bezier(.22, 1, .36, 1);
+}
+/* the driver settles back from a turn, the answer opens out like the next face */
+@keyframes fold-driver {
+  from { transform: rotateY(-26deg) translateX(30%); opacity: .3; }
+  to   { transform: none; opacity: 1; }
+}
+@keyframes fold-face {
+  from { transform: rotateY(24deg) translateX(-8%); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #view-ask.engaged .ask, #view-ask.engaged #session { animation: none; }
+}
 #view-ask.engaged .ask h1, #view-ask.engaged .ask .sub { display: none; }
+#view-ask.engaged .homebtn { display: inline-flex; }
 #view-ask.engaged .cubebox { margin: 0 auto 14px; gap: 8px; }
 #view-ask.engaged .scene { height: 104px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
 #view-ask.engaged .cube .face { justify-content: center; align-items: center; padding: 10px; }
 #view-ask.engaged .cube .face .q { display: none; }
 #view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
-/* keep the answer and its graph close under the accordion, so the chart is in view */
-#view-ask.engaged #session { padding-top: 12px; }
+#view-ask.engaged .askbox, #view-ask.engaged .help, #view-ask.engaged .cell { max-width: 100%; }
+/* the home button: only once you're working, sits above the cube */
+.homebtn { display: none; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11px;
+  color: var(--ink-3); background: none; border: none; cursor: pointer; margin: 0 auto 6px; padding: 2px 4px; }
+.homebtn:hover { color: var(--ink); }
+/* one column again when there isn't room for two */
+@media (max-width: 940px) {
+  #view-ask.engaged { display: block; max-width: 880px; }
+  #view-ask.engaged .ask { position: static; animation: none; padding: 22px 0 8px; }
+  #view-ask.engaged #session { animation: none; padding-top: 12px; }
+}
 
 /* ── the cell: a folded accordion, each dimension a fold that unfolds ── */
 .cell { max-width: 480px; margin: 18px auto 0; text-align: left; }
@@ -493,6 +528,7 @@ footer a { color: inherit; }
     <section class="ask">
       <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality.</h1>
       <p class="sub">Wealth, income, opportunity, health. Pick a face and ask.</p>
+      <button type="button" class="homebtn" id="homebtn">&lsaquo; home</button>
       <div class="cubebox">
         <div class="scene" id="scene">
           <div class="cube" id="cube">
@@ -516,16 +552,16 @@ footer a { color: inherit; }
         </div>
       </div>
       <form class="askbox" id="ask-form">
-        <span class="car" aria-hidden="true">&rsaquo;</span>
         <input id="q" type="text" autocomplete="off" spellcheck="false"
                placeholder="how unequal is France?" aria-label="Ask the atlas">
-        <span class="slash" id="fillhint">tab to fill</span>
-        <span class="qnav">
+        <span class="qsteps">
           <button type="button" id="q-up" aria-label="previous question">&#9650;</button>
           <button type="button" id="q-dn" aria-label="next question">&#9660;</button>
         </span>
+        <span class="slash" id="fillhint">tab to fill</span>
       </form>
       <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">? what can I ask</button>
+      <div class="help" id="help" hidden></div>
       <div class="cell" id="cell">
         <div class="ribs" id="ribs">
           <div class="rib facet" id="rib-facet"><div class="rib-head"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div></div>
@@ -535,7 +571,6 @@ footer a { color: inherit; }
         </div>
         <div class="add-row" id="add-row"></div>
       </div>
-      <div class="help" id="help" hidden></div>
       <div class="notice" id="notice" hidden></div>
     </section>
 
@@ -2367,8 +2402,11 @@ function drawChart() {
       hovertemplate: '%{y}: %{text}<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, {
       margin: { t: 8, r: 70, b: 36, l: 150 },
+      // a Gini sits on a fixed 0 to 1 axis; a share is already scaled to 0 to 100, so it
+      // keeps its own range, wears the per-cent sign, and leaves room for the end labels
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis,
-        isDelta ? {} : (m.giniFam ? { range: [0, 1.05], autorange: false } : (isPct ? { ticksuffix: '%' } : {}))),
+        isDelta ? {} : isPct ? { ticksuffix: '%', range: [0, Math.max(...vals) * 1.14], autorange: false }
+          : m.giniFam ? { range: [0, 1.05], autorange: false } : {}),
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category' }),
       bargap: 0.35,
     }), CFG);
@@ -3213,6 +3251,8 @@ function boot() {
   const qup = document.getElementById('q-up'), qdn = document.getElementById('q-dn');
   if (qup) qup.addEventListener('click', () => cyclePrompt(-1));
   if (qdn) qdn.addEventListener('click', () => cyclePrompt(1));
+  const homebtn = document.getElementById('homebtn');
+  if (homebtn) homebtn.addEventListener('click', resetAll);
   document.getElementById('clear').addEventListener('click', resetAll);
   // the prompt cycles through the premade questions on its own; arrows step it by hand
   setInterval(() => nextPrompt(false), 3800);
