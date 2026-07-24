@@ -14,7 +14,9 @@
 :root {
   --bg:      #fafafa;
   --surface: #ffffff;
+  --panel:   #f4f5f7;
   --border:  #eaeaea;
+  --border-2:#dcdee1;
   --ink:     #0a0a0a;
   --ink-2:   #555555;
   --ink-3:   #999999;
@@ -25,6 +27,28 @@
   --income:      #2f9e8f;
   --opportunity: #c98a2b;
   --health:      #c0607a;
+  --grid: #f0f0f0; --axis: #eaeaea;
+  --shadow: 0 1px 2px rgba(16,20,28,.05), 0 8px 30px rgba(16,20,28,.06);
+}
+/* dark, black-and-white at night; follows the OS unless the toggle overrides it */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c0d0f; --surface: #141619; --panel: #191c20;
+    --border: #24272c; --border-2: #30343a;
+    --ink: #f3f4f6; --ink-2: #a9aeb6; --ink-3: #6b7079;
+    --grid: #232629; --axis: #2b2f34;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 34px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="light"] {
+  --bg: #fafafa; --surface: #ffffff; --panel: #f4f5f7; --border: #eaeaea; --border-2: #dcdee1;
+  --ink: #0a0a0a; --ink-2: #555555; --ink-3: #999999; --grid: #f0f0f0; --axis: #eaeaea;
+  --shadow: 0 1px 2px rgba(16,20,28,.05), 0 8px 30px rgba(16,20,28,.06);
+}
+:root[data-theme="dark"] {
+  --bg: #0c0d0f; --surface: #141619; --panel: #191c20; --border: #24272c; --border-2: #30343a;
+  --ink: #f3f4f6; --ink-2: #a9aeb6; --ink-3: #6b7079; --grid: #232629; --axis: #2b2f34;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 34px rgba(0,0,0,.45);
 }
 
 html { scroll-behavior: smooth; }
@@ -50,6 +74,16 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   background: var(--surface); border: 1px solid var(--border); border-radius: 100px;
   padding: 4px 13px; cursor: pointer; }
 .deeper:hover, .deeper[aria-expanded="true"] { color: var(--ink); border-color: var(--ink-3); }
+.theme-toggle { background: none; border: none; cursor: pointer; color: var(--ink-3); font-size: 16px;
+  line-height: 1; padding: 2px; }
+.theme-toggle:hover { color: var(--ink); }
+#totop { position: fixed; bottom: 20px; right: 20px; z-index: 20;
+  font-family: var(--mono); font-size: 12px; color: var(--ink-2);
+  background: var(--surface); border: 1px solid var(--border-2); border-radius: 100px;
+  padding: 7px 13px; cursor: pointer; box-shadow: var(--shadow);
+  opacity: 0; pointer-events: none; transform: translateY(6px); transition: opacity .2s, transform .2s; }
+#totop.show { opacity: 1; pointer-events: auto; transform: none; }
+#totop:hover { color: var(--ink); border-color: var(--ink-3); }
 .tabs { border-top: 1px solid var(--border); background: var(--bg); }
 .tabs[hidden] { display: none; }
 .tabs .wrap { display: flex; gap: 4px; height: 46px; align-items: center; }
@@ -239,30 +273,45 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.engaged .cube .face .q { display: none; }
 #view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
 
-/* ── the cell: the coordinates of where you are, one row per dimension ─ */
+/* ── the cell: a folded accordion, each dimension a fold that unfolds ── */
 .cell { max-width: 560px; margin: 22px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--ink-3); margin-bottom: 8px; display: flex; gap: 8px; align-items: baseline; }
-.cell-note { text-transform: none; letter-spacing: 0; color: var(--ink-3); font-size: 11px; opacity: .8; }
-.ribs { border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
-  background: var(--surface); box-shadow: 0 1px 2px rgba(16,20,28,0.04); }
-.rib { display: grid; grid-template-columns: 5px 94px 1fr; align-items: stretch;
-  border-bottom: 1px solid var(--border); min-height: 44px; }
+  color: var(--ink-3); margin-bottom: 8px; }
+.ribs { border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+  background: var(--surface); box-shadow: var(--shadow); }
+.rib { border-bottom: 1px solid var(--border); overflow: hidden; }
 .rib:last-child { border-bottom: 0; }
-.rib .spine { background: var(--border); transition: background .3s ease; }
-.rib .dim { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase;
-  color: var(--ink-3); padding: 14px 0 14px 12px; }
-.rib .val { font-size: 14px; color: var(--ink); padding: 12px 12px; display: flex; align-items: center; }
-.rib .val .muted { color: var(--ink-3); }
-.rib.filled .spine { background: var(--rc, var(--ink-3)); }
-.rib.empty .val { color: var(--ink-3); font-style: italic; opacity: .7; }
+.rib-head { display: grid; grid-template-columns: 8px 96px 1fr auto; align-items: center; min-height: 46px; }
+.rib[data-dim] .rib-head, .deeper-rib .rib-head { cursor: pointer; }
+.rib[data-dim] .rib-head:hover, .deeper-rib .rib-head:hover { background: var(--panel); }
+.rib .spine { align-self: stretch; background: var(--rc, var(--border)); transition: background .3s ease; }
+.rib.filled .spine, .rib.facet .spine { background: var(--rc, var(--ink-3)); }
 .rib.facet { --rc: var(--accent); }
-.rib.facet .spine { background: var(--accent); }
-.rib.facet .val { font-weight: 600; color: var(--ink); font-style: normal; opacity: 1; }
-.submeasure { font: 600 14px 'Inter', system-ui, sans-serif; color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 9%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+.rib .dim { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-3); padding-left: 14px; }
+.rib .val { font-size: 15px; color: var(--ink); padding: 13px 8px 13px 4px; }
+.rib .val .muted { color: var(--ink-3); }
+.rib.facet .val { font-weight: 600; }
+.rib .fold { font-size: 9px; color: var(--ink-3); padding-right: 14px; transition: transform .3s ease; }
+.rib.expanded .fold { transform: rotate(180deg); }
+/* an unfilled dimension is a folded pleat: shorter, faint, diagonal texture */
+.rib[data-dim]:not(.filled) .rib-head { min-height: 36px; }
+.rib[data-dim]:not(.filled) .val { color: var(--ink-3); font-style: italic; }
+.rib[data-dim]:not(.filled):not(.expanded) {
+  background-image: repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--ink-3) 8%, transparent) 6px 7px); }
+/* the drawer that unfolds under a fold */
+.rib-opts { max-height: 0; opacity: 0; overflow: hidden; display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 0 14px 0 22px; transition: max-height .38s cubic-bezier(.22,1,.36,1), opacity .26s ease; }
+.rib.expanded .rib-opts { max-height: 160px; opacity: 1; padding: 2px 14px 12px 22px; }
+.rib-opts .opt { font-size: 12.5px; padding: 5px 11px; border-radius: 100px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--ink-2); cursor: pointer; }
+.rib-opts .opt:hover { color: var(--ink); border-color: var(--ink-3); }
+.deeper-rib .val { color: var(--ink-2); font-size: 13.5px; font-style: normal; }
+.deeper-rib .fold { transform: none; }
+.submeasure { font: 600 15px 'Inter', system-ui, sans-serif; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
   border-radius: 6px; padding: 2px 8px; cursor: pointer; transition: background .12s; }
-.submeasure:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.submeasure:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 
 /* the current answer, then the chart, then the quiet history */
 .answer { display: flex; gap: 10px; align-items: baseline; font-size: 15.5px; margin: 2px 2px 4px; }
@@ -371,12 +420,14 @@ footer a { color: inherit; }
 </style>
 </head>
 <body>
+<script>try{var t=localStorage.getItem('oia-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 
 <header>
   <div class="wrap">
     <button class="wordmark" data-view="ask" id="home">Open Inequality Atlas</button>
     <button class="deeper" id="deeper" aria-expanded="false">deeper &rsaquo;</button>
     <div class="top-links">
+      <button class="theme-toggle" id="theme" aria-label="Toggle dark mode" title="Light / dark">&#9681;</button>
       <span class="ver">v0.4.0</span>
       <a href="https://github.com/conway1521/wealth_ineq" target="_blank" rel="noopener">GitHub</a>
     </div>
@@ -434,12 +485,13 @@ footer a { color: inherit; }
       </form>
       <div class="chips" id="chips"></div>
       <div class="cell" id="cell">
-        <div class="cell-lead">the cell you're on <span class="cell-note">the cube sets the facet; asking fills the rest</span></div>
+        <div class="cell-lead">the cell you're on</div>
         <div class="ribs" id="ribs">
-          <div class="rib facet" id="rib-facet"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div>
-          <div class="rib" id="rib-place"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span></div>
-          <div class="rib" id="rib-time"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span></div>
-          <div class="rib" id="rib-against"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span></div>
+          <div class="rib facet" id="rib-facet"><div class="rib-head"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div></div>
+          <div class="rib" id="rib-place" data-dim="place"><div class="rib-head"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-place"></div></div>
+          <div class="rib" id="rib-time" data-dim="time"><div class="rib-head"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-time"></div></div>
+          <div class="rib" id="rib-against" data-dim="against"><div class="rib-head"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-against"></div></div>
+          <div class="rib deeper-rib" id="rib-deeper"><div class="rib-head"><span class="spine"></span><span class="dim">deeper</span><span class="val">go into the US, county by county</span><span class="fold">&#9656;</span></div></div>
         </div>
       </div>
       <div class="help" id="help" hidden>
@@ -705,6 +757,8 @@ footer a { color: inherit; }
     <a href="https://github.com/conway1521/wealth_ineq" target="_blank" rel="noopener">github.com/conway1521/wealth_ineq</a>
   </div>
 </footer>
+
+<button id="totop" aria-label="Back to the top">&#8593; top</button>
 
 <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.27.0/plotly.min.js"></script>
 <script>
@@ -1826,6 +1880,37 @@ function paintFacet(name) {
   if (hl) hl.textContent = name;
   if (typeof updateCell === 'function') updateCell();   // keep the coordinates current
 }
+// the accordion is the navigation: a fold unfolds to offer that dimension's choices
+function dimOptions(dim) {
+  if (curFacet === 'opportunity') {
+    if (dim === 'against') return [["credit by parents' income", "credit by parents' income"],
+      ["mortgages by parents' income", "mortgages by parents' income"], ['mobility and income', 'mobility and income']];
+    return [];
+  }
+  if (dim === 'place') return [['France', 'France'], ['Brazil', 'Brazil'], ['Germany', 'Germany'],
+    ['United States', 'wealth vs income in the US'], ['India', 'India'], ['Nigeria', 'Nigeria']];
+  if (dim === 'time') return [['over time', 'over time'], ['since 2000', 'since 2000']];
+  if (dim === 'against') return Object.keys(ASPECT_CHIP).filter(k => SERIES[k]).map(k => [META[k].label, ASPECT_CHIP[k]]);
+  return [];
+}
+function toggleRib(dim) {
+  const rib = document.getElementById('rib-' + dim); if (!rib) return;
+  if (rib.classList.contains('expanded')) { rib.classList.remove('expanded'); return; }
+  document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
+  const list = dimOptions(dim), opts = document.getElementById('opts-' + dim);
+  if (!list.length) { showNotice(curFacet === 'opportunity' ? 'Opportunity is the whole set of US commuting zones, so place is fixed.' : 'Nothing to add on that dimension yet.'); return; }
+  opts.innerHTML = list.map(o => `<button type="button" class="opt" data-q="${esc(o[1])}">${esc(o[0])}</button>`).join('');
+  opts.querySelectorAll('.opt').forEach(btn => btn.addEventListener('click', () => { rib.classList.remove('expanded'); ask(btn.dataset.q); }));
+  rib.classList.add('expanded');
+}
+function wireCell() {
+  ['place', 'time', 'against'].forEach(dim => {
+    const head = document.querySelector('#rib-' + dim + ' .rib-head');
+    if (head) head.addEventListener('click', () => toggleRib(dim));
+  });
+  const dh = document.querySelector('#rib-deeper .rib-head');
+  if (dh) dh.addEventListener('click', () => setView('us'));
+}
 // click the measure in the accordion to swap it, e.g. top 1% share to wealth Gini
 function cycleMeasure() {
   const list = FACET_MEASURES[curFacet]; if (!list || list.length < 2) return;
@@ -1993,7 +2078,7 @@ function drawOpp(f) {
     const rows = o.ranked.slice(-8).concat(o.ranked.slice(0, 8));
     Plotly.react(el, [{ type: 'bar', orientation: 'h', y: rows.map(z => z.name), x: rows.map(z => Math.round(z.mob * 100)),
       marker: { color: rows.map((z, i) => i < 8 ? '#e0c194' : AM) },
-      text: rows.map(z => Math.round(z.mob * 100)), textposition: 'outside', textfont: { size: 11, color: '#555555' }, hoverinfo: 'skip' }],
+      text: rows.map(z => Math.round(z.mob * 100)), textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') }, hoverinfo: 'skip' }],
       Object.assign({}, BASE_LAYOUT, {
         margin: { t: 8, r: 26, b: 40, l: 150 },
         xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: 'income percentile a poor kid reaches', type: 'linear', autorange: true }),
@@ -2048,6 +2133,7 @@ function setSlot(id, value, hint, color) {
 }
 // the cell shows all four coordinates at once; they fill in as you build the question
 function updateCell() {
+  document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
   const last = chain.length ? chain[chain.length - 1] : null;
   const isOpp = last && last.kind === 'opp';
   let place = null;
@@ -2069,15 +2155,27 @@ function updateCell() {
 const BASE_LAYOUT = {
   paper_bgcolor: 'rgba(0,0,0,0)',
   plot_bgcolor: 'rgba(0,0,0,0)',
-  font: { family: 'Inter, system-ui, sans-serif', color: '#555555', size: 12 },
+  font: { family: 'Inter, system-ui, sans-serif', color: cssVar('--ink-2', '#555555'), size: 12 },
   margin: { t: 8, r: 8, b: 40, l: 46 },
   xaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea' },
   yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea' },
   showlegend: false,
 };
 const CFG = { responsive: true, displayModeBar: false };
+// pull the grid/axis/text colours from the live theme so charts go dark too
+function cssVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+function syncChartTheme() {
+  const grid = cssVar('--grid', '#f0f0f0'), axis = cssVar('--axis', '#eaeaea'), font = cssVar('--ink-2', '#555555');
+  BASE_LAYOUT.font.color = font;
+  BASE_LAYOUT.xaxis.gridcolor = grid; BASE_LAYOUT.xaxis.linecolor = axis;
+  BASE_LAYOUT.yaxis.gridcolor = grid; BASE_LAYOUT.yaxis.linecolor = axis;
+}
 
 function drawChart() {
+  syncChartTheme();
   const drawable = chain.slice().reverse().find(f => !f.noChart) || chain[chain.length - 1];
   const mode = drawable.mode;
   const el = document.getElementById('chart');
@@ -2102,7 +2200,7 @@ function drawChart() {
       x: vals,
       marker: { color: rows.map(r => r.geo_id === bar.highlight ? '#eb6834' : metricColor(isDelta ? bar.metric : bar.key)) },
       text: labels,
-      textposition: 'outside', textfont: { size: 11, color: '#555555' },
+      textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
       hovertemplate: '%{y}: %{text}<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, {
       margin: { t: 8, r: 70, b: 36, l: 150 },
@@ -2175,7 +2273,7 @@ function drawChart() {
     if (named.length) traces.push({
       type: 'scatter', mode: 'markers+text', ...mk(named),
       marker: { color: named.map(p => focusSet.has(p.iso) ? '#eb6834' : metricColor(sc.y)), size: 11, line: { color: '#fff', width: 1.5 } },
-      textposition: 'top center', textfont: { size: 11, color: '#1a2744' },
+      textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
       hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
     });
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
@@ -2200,7 +2298,7 @@ function drawChart() {
       const bg = pts.filter(p => !foc.has(p.iso)), fg = pts.filter(p => foc.has(p.iso));
       const mk = (a, hl) => ({ type: 'scatter', mode: hl ? 'markers+text' : 'markers', xaxis, yaxis: 'y',
         x: a.map(p => sx(p.x)), y: a.map(p => scy(p.y)), text: a.map(p => hl ? p.name : ''),
-        customdata: a.map(p => p.name), textposition: 'top center', textfont: { size: 10, color: '#1a2744' },
+        customdata: a.map(p => p.name), textposition: 'top center', textfont: { size: 10, color: cssVar('--ink', '#1a2744') },
         marker: { color: hl ? '#eb6834' : color, size: hl ? 10 : 6, opacity: hl ? 1 : 0.55, line: hl ? { color: '#fff', width: 1.5 } : {} },
         hovertemplate: '%{customdata}<br>%{x:.2f} · ' + my.label + ' %{y}<extra></extra>', showlegend: false });
       return fg.length ? [mk(bg, false), mk(fg, true)] : [mk(bg, false)];
@@ -2208,7 +2306,7 @@ function drawChart() {
     const isGdp = c.wealthLens === 'gdp_pc';
     const traces = [...panel(c.wPts, 'x', ACC(), wPctAxis ? (v => v * 100) : (v => v)), ...panel(c.iPts, 'x2', '#98a4b8', v => v)];
     const rTxt = (r, dom) => ({ x: dom, y: 1.06, xref: 'paper', yref: 'paper', xanchor: 'center',
-      text: r == null ? '' : `r = ${r.toFixed(2)}`, showarrow: false, font: { size: 12, color: '#1a2744' } });
+      text: r == null ? '' : `r = ${r.toFixed(2)}`, showarrow: false, font: { size: 12, color: cssVar('--ink', '#1a2744') } });
     const wLabel = isGdp ? 'GDP per person' : wPctAxis ? 'top 1% wealth share' : 'wealth Gini';
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
       margin: { t: 24, r: 10, b: 42, l: 52 },
@@ -2266,7 +2364,7 @@ function drawChart() {
     }];
     const ann = [[0, 'start'], [pts.length - 1, 'latest']].map(([i]) => ({
       x: xs[i], y: ys[i], text: '' + pts[i].year, showarrow: false,
-      yshift: 12, font: { size: 11, color: '#1a2744' },
+      yshift: 12, font: { size: 11, color: cssVar('--ink', '#1a2744') },
     }));
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
       margin: { t: 8, r: 16, b: 44, l: 56 }, annotations: ann,
@@ -2288,7 +2386,7 @@ function drawChart() {
       y: rows.map(r => r.label), x: vals,
       marker: { color: ['#1baf7a', '#c9d3e0', '#eb6834'] },
       text: rows.map(r => my.fmt(r.val) + '  ·  ' + r.n),
-      textposition: 'outside', textfont: { size: 11, color: '#555555' },
+      textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
       hovertemplate: '%{y}: %{text} countries<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, {
       margin: { t: 8, r: 90, b: 36, l: 150 },
@@ -2319,7 +2417,7 @@ function drawChart() {
       type: 'scatter', mode: 'markers+text',
       x: fg.map(r => scale(r.val)), y: yj(fg, 99),
       text: fg.map(r => r.geo_name), customdata: fg.map(r => m.fmt(r.val)),
-      textposition: 'top center', textfont: { size: 11, color: '#1a2744' },
+      textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
       marker: { color: '#eb6834', size: 11, line: { color: '#fff', width: 1.5 } },
       hovertemplate: '%{text}: %{customdata}<extra></extra>',
     });
@@ -2418,7 +2516,7 @@ function drawChart() {
     const annotations = labelable.length <= 4 ? labelable.map(t => ({
       x: t.x[t.x.length - 1], y: t.y[t.y.length - 1], xanchor: 'left', xshift: 6,
       text: t.name, showarrow: false,
-      font: { size: 11, color: '#555555' },
+      font: { size: 11, color: cssVar('--ink-2', '#555555') },
     })) : [];
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
       showlegend: traces.filter(t => t.showlegend !== false).length >= 2,
@@ -2454,28 +2552,19 @@ function updateChips() {
   else if (!chain.length) list = (typeof curFacet !== 'undefined' && FACET_CHIPS[curFacet]) || START_CHIPS;
   else {
     const last = chain[chain.length - 1];
-    if (last.kind === 'divergence')
+    if (last.kind === 'divergence' || last.mode === 'divergence')
       list = ['life expectancy and inequality', 'life satisfaction and inequality', 'poverty and inequality'];
-    else if (last.kind === 'contrast') {
-      const overTime = ctx.lastIso ? `${BY_ISO[ctx.lastIso].name} over time` : 'wealth vs income in France';
-      list = [...otherAspects(ctx.lastAspect).slice(0, 2), overTime, 'the United States'];
-    }
-    else if (last.kind === 'divergence' || last.mode === 'divergence')
-      list = otherAspects(null).slice(0, 3).concat(['the United States']);
     else if (last.kind === 'time')
-      list = [...otherAspects(ctx.lastAspect).slice(0, 2), 'wealth vs income in the US', 'the United States'];
+      list = [...otherAspects(ctx.lastAspect).slice(0, 2), 'wealth vs income in the US', 'most concentrated'];
     else
-      list = ['wealth vs income in the US', ...otherAspects(ctx.lastAspect).slice(0, 2), 'the United States'];
+      list = ['wealth vs income in the US', ...otherAspects(ctx.lastAspect).slice(0, 2), 'most concentrated'];
   }
   // don't re-offer a question the chain has already asked: the cube should keep moving
   const asked = new Set(chain.map(f => norm(f.query)));
   list = list.filter(e => !asked.has(norm(e)));
   if (!list.length) list = START_CHIPS.filter(e => !asked.has(norm(e)));
   el.innerHTML = list.map(e => `<button type="button" class="chip">${e}</button>`).join('');
-  el.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
-    if (/\bunited states\b|\bus up close\b/i.test(b.textContent)) setView('us');
-    else ask(b.textContent);
-  }));
+  el.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => ask(b.textContent)));
 }
 
 /* ── notices, views, wiring ────────────────────────────────────────── */
@@ -2742,7 +2831,7 @@ function usDrawChart() {
       type: 'bar', orientation: 'h', y: rows.map(r => usName(r.fips)), x: rows.map(r => r.v),
       marker: { color: rows.map(r => r.fips === f.bar.highlight ? '#eb6834' : '#2a78d6') },
       text: rows.map(r => fmt(r.v)), textposition: 'outside',
-      textfont: { size: 11, color: '#555' }, hovertemplate: '%{y}: %{text}<extra></extra>',
+      textfont: { size: 11, color: cssVar('--ink-2', '#555555') }, hovertemplate: '%{y}: %{text}<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, { margin: { t: 8, r: 80, b: 30, l: 190 }, bargap: 0.35 }), CFG);
     title.textContent = `${cap(usLabel[f.bar.key])}, ${f.bar.dir === 'high' ? 'highest' : 'lowest'} counties`;
   }
@@ -2751,7 +2840,7 @@ function usDrawChart() {
     Plotly.react(el, [{
       type: 'bar', orientation: 'h', y: rows.map(r => r.label), x: rows.map(r => r.v),
       marker: { color: ['#1baf7a', '#c9d3e0', '#eb6834'] },
-      text: rows.map(r => fmt(r.v) + '  ·  ' + r.n), textposition: 'outside', textfont: { size: 11, color: '#555' },
+      text: rows.map(r => fmt(r.v) + '  ·  ' + r.n), textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
       hovertemplate: '%{y}: %{text} counties<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, { margin: { t: 8, r: 90, b: 30, l: 190 }, bargap: 0.4 }), CFG);
     title.textContent = `${cap(usLabel[f.tiers.y])} by ${usLabel[f.tiers.x]} tier`;
@@ -2772,7 +2861,7 @@ function usDrawChart() {
     }
     if (named.length) traces.push({ type: 'scatter', mode: 'markers+text', ...mk(named),
       marker: { color: '#eb6834', size: 10, line: { color: '#fff', width: 1.5 } },
-      textposition: 'top center', textfont: { size: 10, color: '#1a2744' },
+      textposition: 'top center', textfont: { size: 10, color: cssVar('--ink', '#1a2744') },
       hovertemplate: '%{text}<br>' + usLabel[sc.x] + ': %{customdata[0]}<br>' + usLabel[sc.y] + ': %{customdata[1]}<extra></extra>' });
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
       margin: { t: 8, r: 12, b: 44, l: 60 },
@@ -2790,7 +2879,7 @@ function usDrawChart() {
       hovertemplate: '%{customdata}<br>%{x} · ' + usLabel[uc.y] + ' %{y}<extra></extra>' }];
     const traces = [...panel(uc.wPts, 'x', '#2a78d6'), ...panel(uc.iPts, 'x2', '#98a4b8')];
     const rTxt = (r, dom) => ({ x: dom, y: 1.06, xref: 'paper', yref: 'paper', xanchor: 'center',
-      text: r == null ? '' : `r = ${r.toFixed(2)}`, showarrow: false, font: { size: 12, color: '#1a2744' } });
+      text: r == null ? '' : `r = ${r.toFixed(2)}`, showarrow: false, font: { size: 12, color: cssVar('--ink', '#1a2744') } });
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
       margin: { t: 24, r: 10, b: 42, l: 58 },
       annotations: [rTxt(uc.rW, 0.23), rTxt(uc.rI, 0.80)],
@@ -2881,11 +2970,7 @@ function boot() {
     v.innerHTML = v.dataset.qs.split(';')
       .map(q => `<button type="button" class="chip">${q}</button>`).join('');
     v.querySelectorAll('.chip').forEach(b =>
-      b.addEventListener('click', () => {
-        setHelp(false);
-        if (/\bunited states\b/i.test(b.textContent)) { setView('us'); return; }
-        setView('ask'); ask(b.textContent);
-      }));
+      b.addEventListener('click', () => { setHelp(false); setView('ask'); ask(b.textContent); }));
   });
   document.getElementById('helpbtn').addEventListener('click', () =>
     setHelp(document.getElementById('help').hidden));
@@ -2907,6 +2992,22 @@ function boot() {
   // click the measure inside the facet row to swap it
   const vfacet = document.getElementById('v-facet');
   if (vfacet) vfacet.addEventListener('click', e => { if (e.target.closest('.submeasure')) cycleMeasure(); });
+  wireCell();
+  // theme toggle: follow the OS, or override it and remember
+  const themeBtn = document.getElementById('theme');
+  if (themeBtn) themeBtn.addEventListener('click', () => {
+    const dark = !(document.documentElement.getAttribute('data-theme') === 'dark' ||
+      (!document.documentElement.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches));
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    try { localStorage.setItem('oia-theme', dark ? 'dark' : 'light'); } catch (e) {}
+    if (chain.length) drawChart();
+  });
+  // back to the top (and the cube) once you've scrolled into the visuals
+  const toTop = document.getElementById('totop');
+  if (toTop) {
+    toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }));
+    window.addEventListener('scroll', () => toTop.classList.toggle('show', window.scrollY > 320));
+  }
   // the cube, and the folded-away deeper views
   initCube();
   const tabsEl = document.getElementById('tabs'), deeperBtn = document.getElementById('deeper');
