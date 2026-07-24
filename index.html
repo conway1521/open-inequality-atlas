@@ -3097,9 +3097,18 @@ function boot() {
     const el = document.getElementById('q');
     const v = el.value.trim();
     setHelp(false);
-    if (v) ask(v);
+    if (v) { if (/,?\s+then\s+/.test(v)) { runPrompt(v); el.value = ''; } else ask(v); }
     else runPrompt(el.placeholder);   // enter on the empty box runs the example showing
   });
+  // pull the cycling example into the box to complete it: Tab, or click the empty prompt
+  const qEl = document.getElementById('q');
+  function fillPrompt() {
+    if (qEl.value) return;
+    qEl.value = qEl.placeholder.replace(/^\w+:\s*/, '');
+    qEl.focus(); qEl.setSelectionRange(qEl.value.length, qEl.value.length);
+  }
+  qEl.addEventListener('keydown', e => { if (e.key === 'Tab' && !qEl.value) { e.preventDefault(); fillPrompt(); } });
+  qEl.addEventListener('click', () => { if (!qEl.value) fillPrompt(); });
   document.getElementById('clear').addEventListener('click', resetAll);
   // the prompt cycles through the question verbs; press enter on the empty box to run one
   setInterval(() => nextPrompt(false), 3800);
