@@ -1,0 +1,54 @@
+{
+  "level": "us_county",
+  "metrics": [
+    {
+      "id": "us_cohesion",
+      "counties": 3089,
+      "states": 51,
+      "higher_is_worse": false
+    },
+    {
+      "id": "us_econ_conn",
+      "counties": 3018,
+      "states": 51,
+      "higher_is_worse": false
+    },
+    {
+      "id": "us_house_value",
+      "counties": 3138,
+      "states": 51,
+      "higher_is_worse": false
+    },
+    {
+      "id": "us_income_gini",
+      "counties": 3036,
+      "states": 51,
+      "higher_is_worse": true
+    },
+    {
+      "id": "us_le_gap",
+      "counties": 1559,
+      "states": 51,
+      "higher_is_worse": true
+    },
+    {
+      "id": "us_life_exp",
+      "counties": 1559,
+      "states": 51,
+      "higher_is_worse": false
+    },
+    {
+      "id": "us_mobility",
+      "counties": 3208,
+      "states": 52,
+      "higher_is_worse": false
+    },
+    {
+      "id": "us_volunteering",
+      "counties": 3089,
+      "states": 51,
+      "higher_is_worse": false
+    }
+  ],
+  "counties_total": 3220
+}

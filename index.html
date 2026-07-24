@@ -1,0 +1,3329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open Inequality Atlas</title>
+<meta name="description" content="Wealth and income inequality, life expectancy, and emissions for 213 countries and territories. Ask short questions, chain the answers, take the data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #fafafa;
+  --surface: #ffffff;
+  --panel:   #f4f5f7;
+  --border:  #eaeaea;
+  --border-2:#dcdee1;
+  --ink:     #0a0a0a;
+  --ink-2:   #555555;
+  --ink-3:   #999999;
+  --accent:  #2a78d6;
+  --mono:    ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* the four facets of inequality */
+  --wealth:      #2a78d6;
+  --income:      #2f9e8f;
+  --opportunity: #c98a2b;
+  --health:      #c0607a;
+  --grid: #f0f0f0; --axis: #eaeaea;
+  --pleat-hi: #ffffff;
+  --shadow: 0 1px 2px rgba(16,20,28,.05), 0 8px 30px rgba(16,20,28,.06);
+}
+/* dark, black-and-white at night; follows the OS unless the toggle overrides it */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c0d0f; --surface: #141619; --panel: #191c20;
+    --border: #24272c; --border-2: #30343a;
+    --ink: #f3f4f6; --ink-2: #a9aeb6; --ink-3: #6b7079;
+    --grid: #232629; --axis: #2b2f34;
+    --pleat-hi: #1e2228;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 34px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="light"] {
+  --bg: #fafafa; --surface: #ffffff; --panel: #f4f5f7; --border: #eaeaea; --border-2: #dcdee1;
+  --ink: #0a0a0a; --ink-2: #555555; --ink-3: #999999; --grid: #f0f0f0; --axis: #eaeaea;
+  --pleat-hi: #ffffff;
+  --shadow: 0 1px 2px rgba(16,20,28,.05), 0 8px 30px rgba(16,20,28,.06);
+}
+:root[data-theme="dark"] {
+  --bg: #0c0d0f; --surface: #141619; --panel: #191c20; --border: #24272c; --border-2: #30343a;
+  --ink: #f3f4f6; --ink-2: #a9aeb6; --ink-3: #6b7079; --grid: #232629; --axis: #2b2f34;
+  --pleat-hi: #1e2228;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 34px rgba(0,0,0,.45);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+
+/* the flip: atlas and US are two faces of the same cube, turning to the right */
+main { perspective: 1250px; perspective-origin: center 38%; }
+.flipping { transform-origin: center; backface-visibility: hidden; will-change: transform, opacity; }
+.us-back { display: flex; align-items: center; gap: 12px; padding: 16px 0 4px; }
+.us-back button { font: 500 13px 'Inter', system-ui, sans-serif; color: var(--ink-2);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 100px; padding: 5px 14px; cursor: pointer; }
+.us-back button:hover { color: var(--ink); border-color: var(--ink-3); }
+.us-back .tag { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .09em; color: var(--ink-3); }
+
+/* header */
+header { border-bottom: 1px solid var(--border); background: var(--surface); }
+header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
+.wordmark { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; white-space: nowrap;
+  background: none; border: none; cursor: pointer; color: var(--ink); font-family: inherit; padding: 0; }
+.wordmark span { color: var(--ink-3); font-weight: 400; }
+.deeper { margin-left: auto; font: 500 12.5px 'Inter', system-ui, sans-serif; color: var(--ink-2);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 100px;
+  padding: 4px 13px; cursor: pointer; }
+.deeper:hover, .deeper[aria-expanded="true"] { color: var(--ink); border-color: var(--ink-3); }
+.us-enter { margin-left: auto; font: 500 12.5px 'Inter', system-ui, sans-serif; color: var(--ink-2);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 100px; padding: 4px 13px; cursor: pointer; }
+.us-enter + .deeper { margin-left: 8px; }
+.us-enter:hover { color: var(--ink); border-color: var(--ink-3); }
+.theme-toggle { background: none; border: none; cursor: pointer; color: var(--ink-3); font-size: 16px;
+  line-height: 1; padding: 2px; }
+.theme-toggle:hover { color: var(--ink); }
+#totop { position: fixed; bottom: 20px; right: 20px; z-index: 20;
+  font-family: var(--mono); font-size: 12px; color: var(--ink-2);
+  background: var(--surface); border: 1px solid var(--border-2); border-radius: 100px;
+  padding: 7px 13px; cursor: pointer; box-shadow: var(--shadow);
+  opacity: 0; pointer-events: none; transform: translateY(6px); transition: opacity .2s, transform .2s; }
+#totop.show { opacity: 1; pointer-events: auto; transform: none; }
+#totop:hover { color: var(--ink); border-color: var(--ink-3); }
+.tabs { border-top: 1px solid var(--border); background: var(--bg); }
+.tabs[hidden] { display: none; }
+.tabs .wrap { display: flex; gap: 4px; height: 46px; align-items: center; }
+.tab {
+  font: 500 13px 'Inter', system-ui, sans-serif;
+  color: var(--ink-2); background: none; border: none; cursor: pointer;
+  padding: 6px 12px; border-radius: 7px;
+}
+.tab:hover { color: var(--ink); }
+.tab.on { color: var(--ink); background: var(--surface); }
+.top-links { display: flex; gap: 16px; align-items: center; font-size: 13px; }
+.top-links a { color: var(--ink-2); text-decoration: none; }
+.top-links a:hover { color: var(--ink); }
+.ver { font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  border: 1px solid var(--border); border-radius: 100px; padding: 2px 8px; }
+
+/* header on narrow screens */
+@media (max-width: 720px) {
+  header .wrap { gap: 12px; }
+  .top-links { font-size: 12px; }
+  .tabs .wrap { flex-wrap: wrap; height: auto; gap: 4px; padding-top: 8px; padding-bottom: 8px; }
+  .tab { padding: 6px 10px; }
+  .ask { padding: 32px 0 12px; }
+}
+.ask h1 .turn { color: var(--accent); transition: color .4s ease; }
+
+/* ask view */
+.ask { padding: 52px 0 12px; text-align: center; }
+.ask h1 {
+  font-size: clamp(28px, 5vw, 38px);
+  font-weight: 700; letter-spacing: -0.03em; line-height: 1.15;
+  margin-bottom: 10px; text-wrap: balance;
+}
+.ask .sub { color: var(--ink-2); max-width: 500px; margin: 0 auto; }
+
+.askbox { position: relative; max-width: 560px; margin: 0 auto; text-align: left; }
+.askbox .car {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  font-family: var(--mono); font-size: 17px; font-weight: 700;
+  color: var(--accent); transition: color .4s ease; pointer-events: none;
+}
+#q {
+  width: 100%; height: 52px;
+  font: 500 15px 'Inter', system-ui, sans-serif;
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 0 92px 0 38px;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(16,20,28,0.05), 0 8px 30px rgba(16,20,28,0.06);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+#q::placeholder { color: var(--ink-3); }
+#q:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+.slash {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
+  background: var(--bg); pointer-events: none;
+}
+/* the tab-to-fill hint belongs to the empty box only; once you type, it steps aside */
+#q:not(:placeholder-shown) ~ .slash { visibility: hidden; }
+.helpbtn {
+  display: block; margin: 10px auto 0;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  background: none; border: none; cursor: pointer; letter-spacing: .03em;
+}
+.helpbtn:hover, .helpbtn.on { color: var(--ink); }
+
+.help {
+  max-width: 560px; margin: 12px auto 0; text-align: left;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px 10px;
+}
+.help-row { display: flex; gap: 12px; align-items: baseline; padding: 5px 0; }
+.help-k {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--ink-3); width: 118px; flex-shrink: 0;
+}
+.help-v { display: flex; flex-wrap: wrap; gap: 6px; }
+.help-intro { font-size: 12px; color: var(--ink-2); margin-bottom: 8px; }
+.help-foot { font-size: 12px; color: var(--ink-3); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+@media (max-width: 540px) { .help-row { flex-direction: column; gap: 4px; } .help-k { width: auto; } }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px auto 0; max-width: 560px; justify-content: center; }
+.chip {
+  font: 400 13px 'Inter', system-ui, sans-serif;
+  color: var(--ink-2); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 100px;
+  padding: 5px 12px; cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.chip:hover { border-color: var(--ink-3); color: var(--ink); }
+
+.notice {
+  max-width: 500px; margin: 12px auto 0; text-align: center;
+  font-size: 13px; color: var(--ink-3); line-height: 1.5;
+}
+
+/* chain */
+#session { padding: 32px 0 64px; }
+.session-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.session-head .label {
+  font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--ink-3);
+}
+.session-actions { display: flex; gap: 14px; }
+.session-actions button {
+  font: 400 12px 'Inter', system-ui, sans-serif; color: var(--ink-3);
+  background: none; border: none; cursor: pointer; padding: 0;
+}
+.session-actions button:hover { color: var(--ink); }
+
+#facts, #us-facts { list-style: none; }
+#facts li, #us-facts li {
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+#facts li .n, #us-facts li .n { font-family: var(--mono); font-size: 11px; color: var(--ink-3); flex-shrink: 0; width: 18px; }
+#facts li .t, #us-facts li .t { flex: 1; color: var(--ink-2); }
+#facts li .t strong, #us-facts li .t strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+#facts li .t em, #us-facts li .t em { font-style: normal; color: var(--ink-3); }
+.upd { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--accent); border: 1px solid #c9d9ec; border-radius: 4px; padding: 0 4px; margin-left: 4px; vertical-align: 1px; }
+#facts li .x, #us-facts li .x {
+  font-family: var(--mono); background: none; border: none; cursor: pointer;
+  color: var(--ink-3); font-size: 13px; padding: 0 2px; flex-shrink: 0;
+}
+#facts li .x:hover, #us-facts li .x:hover { color: var(--ink); }
+
+.chart-card {
+  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 18px 18px 8px;
+  position: relative;
+}
+
+/* ── the cube: the facet selector, centred with the stack beneath ─── */
+.cubebox { display: flex; flex-direction: column; align-items: center; gap: 12px;
+  margin: 52px auto 26px; user-select: none; -webkit-user-select: none; }
+.scene { width: 188px; height: 188px; perspective: 760px; touch-action: none; cursor: grab;
+  margin-bottom: 24px; }
+.scene:active { cursor: grabbing; }
+.cube { position: relative; width: 184px; height: 184px; transform-style: preserve-3d;
+  transition: transform .6s cubic-bezier(.22,1.1,.36,1); }
+.cube.drag { transition: none; }
+.cube .face { position: absolute; width: 184px; height: 184px; border-radius: 14px;
+  border: 1px solid var(--border); background: var(--surface);
+  display: flex; flex-direction: column; justify-content: space-between; padding: 17px;
+  backface-visibility: hidden; pointer-events: none; }
+.cube .face .lab { font-family: var(--mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--fc, var(--ink-3)); }
+.cube .face .q { font-size: 16px; font-weight: 560; letter-spacing: -.01em; color: var(--ink);
+  line-height: 1.34; height: calc(3 * 1.34em); overflow: hidden;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.cube .f-wealth      { --fc: var(--wealth);      transform: translateZ(92px); }
+.cube .f-income      { --fc: var(--income);      transform: rotateY(90deg) translateZ(92px); }
+.cube .f-opportunity { --fc: var(--opportunity); transform: rotateY(180deg) translateZ(92px); }
+.cube .f-health      { --fc: var(--health);      transform: rotateY(-90deg) translateZ(92px); }
+.cube .f-interplay   { --fc: var(--ink-2);       transform: rotateX(90deg) translateZ(92px); }
+.cube .f-scope       { --fc: var(--ink-2);       transform: rotateX(-90deg) translateZ(92px); }
+.cube .face.lit { border-color: var(--fc); box-shadow: 0 0 0 1px var(--fc); }
+.facet-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.fchip { font-size: 12.5px; padding: 4px 12px; border-radius: 100px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.fchip:hover { color: var(--ink); border-color: var(--ink-3); }
+.fchip[aria-pressed="true"] { color: #fff; background: var(--fc); border-color: var(--fc); }
+.fchip.w { --fc: var(--wealth); } .fchip.i { --fc: var(--income); }
+.fchip.o { --fc: var(--opportunity); } .fchip.h { --fc: var(--health); }
+.fchip.meta { --fc: var(--ink-2); font-size: 11px; color: var(--ink-3); border-style: dashed; background: transparent; }
+.fchip.meta[aria-pressed="true"] { color: var(--ink); background: var(--bg); border-style: solid; border-color: var(--ink-3); }
+/* the facet reminder in the results header: a small cube face + its name */
+.here { display: flex; align-items: center; gap: 8px; margin-left: 14px; margin-right: auto; }
+.here-cube { width: 18px; height: 18px; border-radius: 4px; background: var(--accent);
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--accent) 35%, transparent); flex-shrink: 0; }
+.here-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
+@media (prefers-reduced-motion: reduce) { .cube { transition: none; } }
+
+/* once a question is asked, the cube shrinks to a compact marker and the ask box,
+   accordion, then the answer and graphs all stack down the one centred column */
+#view-ask.engaged .ask { padding: 22px 0 8px; }
+#view-ask.engaged .ask h1, #view-ask.engaged .ask .sub { display: none; }
+#view-ask.engaged .cubebox { margin: 0 auto 14px; gap: 8px; }
+#view-ask.engaged .scene { height: 104px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
+#view-ask.engaged .cube .face { justify-content: center; align-items: center; padding: 10px; }
+#view-ask.engaged .cube .face .q { display: none; }
+#view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
+/* keep the answer and its graph close under the accordion, so the chart is in view */
+#view-ask.engaged #session { padding-top: 12px; }
+
+/* ── the cell: a folded accordion, each dimension a fold that unfolds ── */
+.cell { max-width: 560px; margin: 22px auto 0; text-align: left; }
+.cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 8px; }
+/* a folded strip: each dimension is one flat fold, a hairline crease between them,
+   and a coloured tab on the left that zigzags down the pleated binding edge */
+.ribs { border: 1px solid var(--border-2); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.rib { position: relative; background: var(--surface); }
+.rib + .rib { border-top: 1px solid var(--border); }
+.rib-head { display: grid; grid-template-columns: 18px 84px 1fr auto auto; align-items: center; min-height: 44px; }
+.rib[data-dim] .rib-head { cursor: pointer; }
+.rib[data-dim] .rib-head:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+/* the binding tab: a diagonal bar that flips every fold, so the left edge zigzags */
+.rib .spine { align-self: stretch; background: var(--rc, color-mix(in srgb, var(--ink-3) 34%, transparent)); }
+.rib:nth-child(odd)  .spine { clip-path: polygon(0 0, 100% 0, 52% 100%, 0 100%); }
+.rib:nth-child(even) .spine { clip-path: polygon(0 0, 52% 0, 100% 100%, 0 100%); }
+.rib.filled .spine, .rib.facet .spine { background: var(--rc, var(--ink-3)); }
+.rib.facet { --rc: var(--accent); display: block; border-radius: 0; padding: 0;
+  font-size: inherit; gap: 0; border: 0; }
+.rib .dim { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-3); padding-left: 12px; }
+.rib .val { font-size: 15px; color: var(--ink); padding: 13px 8px 13px 4px; }
+.rib .val .muted { color: var(--ink-3); }
+.rib.facet .val { font-weight: 600; }
+.rib-x { font-family: var(--mono); background: none; border: none; cursor: pointer; color: var(--ink-3);
+  font-size: 15px; line-height: 1; padding: 0 4px; }
+.rib-x:hover { color: var(--ink); }
+.rib[data-dim]:not(.filled) .rib-x { display: none; }
+.rib .fold { font-size: 9px; color: var(--ink-3); padding-right: 12px; transition: transform .3s ease; }
+.rib.expanded .fold { transform: rotate(180deg); }
+/* a dimension only exists once you add it; the fold unravels open, and folds away when cleared */
+.rib[data-dim] { max-height: 0; opacity: 0; transition: max-height .42s cubic-bezier(.22,1,.36,1), opacity .3s ease; }
+.rib[data-dim].filled, .rib[data-dim].expanded { max-height: 320px; opacity: 1; }
+
+/* the add row: pick which dimension to unfold next */
+.add-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 2px 0; }
+.add-row:empty { display: none; }
+.add-chip { font-family: var(--mono); font-size: 11px; color: var(--ink-3); background: transparent;
+  border: 1px dashed var(--border-2); border-radius: 100px; padding: 4px 11px; cursor: pointer; }
+.add-chip:hover { color: var(--ink); border-color: var(--ink-3); }
+/* the drawer that unfolds under a fold */
+.rib-opts { max-height: 0; opacity: 0; overflow: hidden; display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 0 14px 0 22px; transition: max-height .38s cubic-bezier(.22,1,.36,1), opacity .26s ease; }
+.rib.expanded .rib-opts { max-height: 260px; opacity: 1; padding: 2px 14px 12px 22px; }
+.rib-opts .opt { font-size: 12.5px; padding: 5px 11px; border-radius: 100px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--ink-2); cursor: pointer; }
+.rib-opts .opt:hover { color: var(--ink); border-color: var(--ink-3); }
+.deeper-rib .val { color: var(--ink-2); font-size: 13.5px; font-style: normal; }
+.deeper-rib .fold { transform: none; }
+.submeasure { font: 600 15px 'Inter', system-ui, sans-serif; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 6px; padding: 2px 8px; cursor: pointer; transition: background .12s; }
+.submeasure:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+
+/* the current answer, then the chart, then the quiet history */
+.answer { display: flex; gap: 10px; align-items: baseline; font-size: 15.5px; margin: 2px 2px 4px; }
+.answer:empty { display: none; }
+.answer .t { flex: 1; color: var(--ink-2); }
+.answer .t strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.answer .t em { font-style: normal; color: var(--ink-3); }
+.answer .x { font-family: var(--mono); background: none; border: none; cursor: pointer;
+  color: var(--ink-3); font-size: 13px; padding: 0 2px; flex-shrink: 0; }
+.answer .x:hover { color: var(--ink); }
+#facts { margin-top: 14px; }
+#facts li { font-size: 13px; }
+#facts li .t { color: var(--ink-3); }
+#facts li .t strong { color: var(--ink-2); }
+
+/* the US view keeps a compact strip (its own deeper page) */
+.facets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; align-items: center; }
+.facets:empty { display: none; }
+.facet-lead { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); margin-right: 2px; }
+.facet { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; }
+.facet .k { color: var(--ink-3); }
+.facet.lens { border-color: #c9d9ec; }
+.chart-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+#chart { width: 100%; height: 460px; }
+.chart-src {
+  font-size: 12px; color: var(--ink-3);
+  padding: 8px 2px 8px; border-top: 1px solid var(--border); margin-top: 4px;
+}
+
+/* database view */
+.db { padding: 48px 0 72px; }
+.db h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+.db .sub { color: var(--ink-2); max-width: 620px; margin-bottom: 28px; }
+
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+@media (max-width: 720px) { .grid3 { grid-template-columns: 1fr; } }
+.block {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px;
+}
+.block h2 { font-size: 14px; font-weight: 600; margin-bottom: 8px; letter-spacing: -0.01em; }
+.block p { font-size: 13px; color: var(--ink-2); }
+.block p + p { margin-top: 8px; }
+.block code {
+  font-family: var(--mono); font-size: 12px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 4px; padding: 0 4px;
+}
+
+.table-card, .data-row {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 20px; margin-bottom: 20px;
+}
+.table-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.table-head h2 { font-size: 14px; font-weight: 600; }
+#tfilter {
+  font: 400 13px 'Inter', system-ui, sans-serif;
+  border: 1px solid var(--border); border-radius: 7px;
+  padding: 6px 10px; outline: none; width: 200px; background: var(--surface);
+}
+#tfilter:focus { border-color: var(--accent); }
+.tscroll { overflow: auto; max-height: 430px; border: 1px solid var(--border); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  position: sticky; top: 0; background: var(--bg);
+  text-align: right; font-weight: 500; color: var(--ink-2);
+  padding: 8px 12px; border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none; white-space: nowrap;
+}
+thead th:first-child { text-align: left; }
+thead th .dir { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
+tbody td {
+  padding: 6px 12px; border-bottom: 1px solid var(--border);
+  text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2);
+}
+tbody td:first-child { text-align: left; color: var(--ink); }
+tbody tr:last-child td { border-bottom: none; }
+.tnote { font-size: 12px; color: var(--ink-3); margin-top: 10px; }
+
+.data-row h2 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.data-row .meta { font-size: 13px; color: var(--ink-2); margin-bottom: 14px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.btn {
+  font: 500 13px 'Inter', system-ui, sans-serif;
+  text-decoration: none; border-radius: 7px; padding: 7px 14px;
+  border: 1px solid var(--border); color: var(--ink);
+  background: var(--surface);
+  transition: border-color 0.12s, background 0.12s;
+}
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+.btn.primary:hover { background: #333; }
+.cite {
+  font-family: var(--mono); font-size: 12px; line-height: 1.7;
+  color: var(--ink-2); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px;
+}
+.data-row .foot { font-size: 12px; color: var(--ink-3); margin-top: 10px; }
+.try { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px !important; }
+
+footer { border-top: 1px solid var(--border); padding: 20px 0 40px; font-size: 12px; color: var(--ink-3); }
+footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+footer a { color: inherit; }
+</style>
+</head>
+<body>
+<script>try{var t=localStorage.getItem('oia-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+
+<header>
+  <div class="wrap">
+    <button class="wordmark" data-view="ask" id="home">Open Inequality Atlas</button>
+    <button class="us-enter" id="us-enter">United States &rsaquo;</button>
+    <button class="deeper" id="deeper" aria-expanded="false">deeper &rsaquo;</button>
+    <div class="top-links">
+      <button class="theme-toggle" id="theme" aria-label="Toggle dark mode" title="Light / dark">&#9681;</button>
+      <span class="ver">v0.4.0</span>
+      <a href="https://github.com/conway1521/wealth_ineq" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs" hidden>
+    <div class="wrap">
+      <button class="tab" data-view="wealth">Wealth</button>
+      <button class="tab" data-view="income">Income</button>
+      <button class="tab" data-view="wellbeing">Wellbeing</button>
+      <button class="tab" data-view="us">United States</button>
+      <button class="tab" data-view="db">Database</button>
+    </div>
+  </nav>
+</header>
+
+<main>
+
+  <div id="view-ask" class="wrap">
+    <section class="ask">
+      <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality.</h1>
+      <p class="sub">Wealth, income, opportunity, health. Pick a face and ask.</p>
+      <div class="cubebox">
+        <div class="scene" id="scene">
+          <div class="cube" id="cube">
+            <div class="face f-wealth" data-facet="wealth"><span class="lab">wealth</span><div class="q">The wealth held by the richest one percent.</div></div>
+            <div class="face f-income" data-facet="income"><span class="lab">income</span><div class="q">How unevenly income is shared out.</div></div>
+            <div class="face f-opportunity" data-facet="opportunity"><span class="lab">opportunity</span><div class="q">How much your parents' income sets your own.</div></div>
+            <div class="face f-health" data-facet="health"><span class="lab">health</span><div class="q">How much longer the rich live than the poor.</div></div>
+            <div class="face f-interplay" data-facet="interplay"><span class="lab">interplay</span><div class="q">How the four inequalities line up.</div></div>
+            <div class="face f-scope" data-facet="scope"><span class="lab">scope</span><div class="q">The world, or one commuting zone.</div></div>
+          </div>
+        </div>
+        <div class="facet-chips" id="facet-chips">
+          <button class="fchip w" data-facet="wealth" aria-pressed="true">wealth</button>
+          <button class="fchip i" data-facet="income" aria-pressed="false">income</button>
+          <button class="fchip o" data-facet="opportunity" aria-pressed="false">opportunity</button>
+          <button class="fchip h" data-facet="health" aria-pressed="false">health</button>
+        </div>
+        <div class="facet-chips meta-row">
+          <button class="fchip meta" data-facet="interplay" aria-pressed="false">interplay</button>
+          <button class="fchip meta" data-facet="scope" aria-pressed="false">scope</button>
+        </div>
+      </div>
+      <form class="askbox" id="ask-form">
+        <span class="car" aria-hidden="true">&rsaquo;</span>
+        <input id="q" type="text" autocomplete="off" spellcheck="false"
+               placeholder="France" aria-label="Ask the atlas">
+        <span class="slash" id="fillhint">tab to fill</span>
+      </form>
+      <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">? what can I ask</button>
+      <div class="cell" id="cell">
+        <div class="ribs" id="ribs">
+          <div class="rib facet" id="rib-facet"><div class="rib-head"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div></div>
+          <div class="rib" id="rib-place" data-dim="place"><div class="rib-head"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span><button class="rib-x" data-clear="place" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-place"></div></div>
+          <div class="rib" id="rib-time" data-dim="time"><div class="rib-head"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span><button class="rib-x" data-clear="time" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-time"></div></div>
+          <div class="rib" id="rib-against" data-dim="against"><div class="rib-head"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span><button class="rib-x" data-clear="against" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-against"></div></div>
+        </div>
+        <div class="add-row" id="add-row"></div>
+      </div>
+      <div class="help" id="help" hidden>
+        <div class="help-row"><span class="help-k">a country</span><span class="help-v" data-qs="France;Brazil;happiest countries"></span></div>
+        <div class="help-row"><span class="help-k">a ranking</span><span class="help-v" data-qs="most concentrated;most unequal;who breaks the pattern"></span></div>
+        <div class="help-row"><span class="help-k">a relationship</span><span class="help-v" data-qs="life expectancy and inequality;poverty and inequality;among rich countries"></span></div>
+        <div class="help-row"><span class="help-k">over time</span><span class="help-v" data-qs="France over time;wealth vs income in the US"></span></div>
+      </div>
+      <div class="notice" id="notice" hidden></div>
+    </section>
+
+    <section id="session" hidden>
+      <div class="session-head">
+        <div class="here" id="here" aria-hidden="true"><span class="here-cube" id="here-cube"></span><span class="here-label" id="here-label">wealth</span></div>
+        <div class="session-actions">
+          <button id="share">copy link</button>
+          <button id="clear">clear</button>
+        </div>
+      </div>
+      <div class="answer" id="answer"></div>
+      <div class="chart-card">
+        <div class="chart-title" id="chart-title"></div>
+        <div id="chart"></div>
+        <p class="chart-src" id="chart-src"></p>
+      </div>
+      <ol id="facts"></ol>
+    </section>
+  </div>
+
+  <div id="view-wealth" class="wrap db" hidden>
+    <h1>Wealth</h1>
+    <p class="sub">
+      Wealth concentrates harder than income. The same country often has a wealth
+      Gini twenty points above its income Gini, and the gap between the two has
+      widened. This is the series the atlas is built on, harmonized from five
+      sources with each row tagged for comparability.
+    </p>
+    <div class="grid3">
+      <div class="block">
+        <h2>Wealth Gini</h2>
+        <p>WID series, per-adult equal-split basis, negative net wealth zeroed.
+        <span id="cov-wealth"></span></p>
+        <p class="try" data-qs="least equal;most unequal in Europe;Sweden over time"></p>
+      </div>
+      <div class="block">
+        <h2>Distribution shares</h2>
+        <p>Top 1%, top 10%, and bottom 50% shares of household net wealth. Draw
+        the Lorenz curve for any country to see the concentration directly.</p>
+        <p class="try" data-qs="Lorenz curve for the United States;top 1% share;bottom 50% share"></p>
+      </div>
+      <div class="block">
+        <h2>Against everyday life</h2>
+        <p>Take an everyday measure and see it against how concentrated wealth
+        is and how unequal income is. Two scatters, side by side, both
+        correlations shown.</p>
+        <p class="try" data-qs="life expectancy and inequality;poverty and inequality"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-income" class="wrap db" hidden>
+    <h1>Income</h1>
+    <p class="sub">
+      Income inequality rose through the 1980s and 1990s in many rich economies,
+      then flattened. Wealth kept concentrating. Ask for the divergence in any
+      country to see both on one chart.
+    </p>
+    <div class="grid3">
+      <div class="block">
+        <h2>Income Gini</h2>
+        <p>World Bank Poverty and Inequality Platform, national survey rows:
+        income where surveys measure it, consumption where they measure that
+        instead. <span id="cov-income"></span></p>
+        <p class="try" data-qs="wealth vs income in the US;wealth vs income in France;least equal on income"></p>
+      </div>
+      <div class="block">
+        <h2>Median income and GDP</h2>
+        <p>Median daily income from the same surveys, and GDP per person as the
+        backdrop. <span id="cov-median"></span></p>
+        <p class="try" data-qs="highest median income;GDP per person against inequality;median income in Brazil over time"></p>
+      </div>
+      <div class="block">
+        <h2>Wealth against income</h2>
+        <p>Ask one, then the other, without losing your place: the chain keeps
+        the country and switches the measure. PIP via OWID, CC BY 4.0; sparse
+        surveys draw point by point.</p>
+        <p class="try" data-qs="France;income inequality;wealth inequality against income inequality"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-wellbeing" class="wrap db" hidden>
+    <h1>Wellbeing</h1>
+    <p class="sub">
+      How long people live, how satisfied they say they are, what their
+      economies emit. Each shown against how concentrated wealth is and how
+      unequal income is, side by side, both correlations left to stand.
+    </p>
+    <div class="grid3">
+      <div class="block">
+        <h2>Life expectancy</h2>
+        <p>At birth, both sexes. UN World Population Prospects with Clio Infra
+        and Riley backfill, via Our World in Data.
+        <span id="cov-life"></span></p>
+        <p class="try" data-qs="life expectancy in France;highest life expectancy;least equal"></p>
+      </div>
+      <div class="block">
+        <h2>Poverty and emissions</h2>
+        <p>Share below $2.15 a day, and territorial CO2 per person in tonnes,
+        both via Our World in Data. <span id="cov-poverty"></span> <span id="cov-co2"></span></p>
+        <p class="try" data-qs="most poverty;poverty against inequality;highest CO2 per person"></p>
+      </div>
+      <div class="block">
+        <h2>Life satisfaction</h2>
+        <p>The Cantril ladder, 0 to 10, from the Gallup World Poll behind the
+        World Happiness Report. <span id="cov-sat"></span></p>
+        <p class="try" data-qs="life satisfaction against inequality;happiest countries;life satisfaction in France over time"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-us" class="wrap db" hidden>
+    <div class="us-back">
+      <button id="us-back" type="button">&#8592; back to the atlas</button>
+      <span class="tag">the US face &middot; county by county</span>
+    </div>
+    <h1>The United States, up close</h1>
+    <p class="sub">
+      The same question, one level down. No county has a wealth Gini, so housing
+      stands in for local wealth: home values, and who owns. For mobility, health,
+      and the rich-poor life gap, does a county track its housing wealth or its
+      income inequality? Data from Opportunity Insights, county by county.
+    </p>
+
+    <div class="grid3">
+      <div class="block">
+        <h2>The local wealth signal</h2>
+        <p>No county has a wealth Gini, so housing stands in for it: homeownership
+        rate and median home value, alongside the county income Gini as the
+        inequality lens.</p>
+      </div>
+      <div class="block">
+        <h2>What it touches</h2>
+        <p>Upward mobility for a child raised poor, economic connectedness across
+        class, cohesion, poverty, single-parent share, and where available life
+        expectancy and financial distress.</p>
+      </div>
+      <div class="block">
+        <h2>Sources</h2>
+        <p>Opportunity Insights (the Opportunity Atlas and the Social Capital
+        Atlas with Meta) and the county covariates. County and state level, public
+        and privacy-protected.</p>
+        <p><a href="https://opportunityinsights.org/data/" target="_blank" rel="noopener" style="color:var(--accent)">opportunityinsights.org/data</a></p>
+      </div>
+    </div>
+
+    <div id="us-loaded" hidden>
+      <form class="askbox" id="us-form" style="max-width:640px;margin-top:8px">
+        <input id="us-q" type="text" autocomplete="off" spellcheck="false" placeholder="mobility against home values">
+        <span class="slash">/</span>
+      </form>
+      <div class="chips" id="us-chips"></div>
+      <div class="notice" id="us-notice" hidden></div>
+
+      <div id="us-session" hidden>
+        <div class="session-head" style="margin-top:28px">
+          <span class="label">Your chain</span>
+          <div class="session-actions"><button id="us-clear">clear</button></div>
+        </div>
+        <ol id="us-facts"></ol>
+        <div class="chart-card">
+          <div class="facets" id="us-facets"></div>
+          <div class="chart-title" id="us-chart-title"></div>
+          <div id="us-chart" style="width:100%;height:420px"></div>
+          <p class="chart-src" id="us-chart-src"></p>
+        </div>
+      </div>
+      <p class="meta" id="us-coverage" style="margin-top:20px"></p>
+    </div>
+
+    <div class="data-row" id="us-empty">
+      <h2>Coverage</h2>
+      <p class="meta">The county data is not loaded yet. Once the Opportunity
+      Insights and Social Capital files are processed into
+      <code>us_county.json</code>, the question box opens here and the measures
+      light up.</p>
+    </div>
+  </div>
+
+  <div id="view-db" class="wrap db" hidden>
+    <h1>The database</h1>
+    <p class="sub">
+      Five source families in one long panel: WID, the ECB household survey (HFCS),
+      the Luxembourg Wealth Study, the US Survey of Consumer Finances, and the Fed's
+      Distributional Financial Accounts. 10,783 rows with a non-null Gini, ISO3 keys,
+      1800 to 2025 in the release files.
+    </p>
+
+    <div class="grid3">
+      <div class="block">
+        <h2>Comparability flags</h2>
+        <p>Every row carries <code>comparability_tier</code> (A for harmonized
+        surveys, B for mixed methodology) and <code>top_tail_flag</code> (survey
+        only, or enhanced with administrative data).</p>
+        <p>Filtering to like-for-like rows is one line of pandas.</p>
+      </div>
+      <div class="block">
+        <h2>What the ask tab reads</h2>
+        <p>The WID Gini series (1990 to 2024, per-adult equal-split, negative
+        wealth zeroed), latest distribution shares by country, and the US
+        long-run series back to 1989.</p>
+      </div>
+      <div class="block">
+        <h2>Method</h2>
+        <p>Sources are merged with explicit priority, documented in the methods
+        note. The pipeline is Python and rebuilds the release files from raw
+        inputs.</p>
+        <p><a href="https://github.com/conway1521/wealth_ineq/blob/main/docs/methods.md" target="_blank" rel="noopener" style="color:var(--accent)">Read the methods note</a></p>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-head">
+        <h2>Latest year by country</h2>
+        <input id="tfilter" type="text" placeholder="Filter countries" autocomplete="off">
+      </div>
+      <div class="tscroll">
+        <table id="dbtable">
+          <thead><tr>
+            <th data-k="geo_name">Country <span class="dir"></span></th>
+            <th data-k="year">Year <span class="dir"></span></th>
+            <th data-k="wealth_gini">Gini <span class="dir"></span></th>
+            <th data-k="top1_wealth_share">Top 1% <span class="dir"></span></th>
+            <th data-k="top10_wealth_share">Top 10% <span class="dir"></span></th>
+            <th data-k="bottom50_wealth_share">Bottom 50% <span class="dir"></span></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="tnote">Latest available year per country, WID basis. Click a column to sort. The full panel is in the release files below.</p>
+    </div>
+
+    <div class="data-row">
+      <h2>Releases</h2>
+      <p class="meta">Data is CC BY 4.0, the pipeline is MIT. Parquet files are about a tenth the size of the CSVs.</p>
+      <div class="btns">
+        <a class="btn primary" href="https://raw.githubusercontent.com/conway1521/wealth_ineq/main/data/release/wealth_gini_atlas_v0.4.0.csv" download>Gini panel, CSV (2.6 MB)</a>
+        <a class="btn" href="https://raw.githubusercontent.com/conway1521/wealth_ineq/main/data/release/wealth_gini_atlas_v0.4.0.parquet" download>Parquet</a>
+        <a class="btn" href="https://raw.githubusercontent.com/conway1521/wealth_ineq/main/data/release/wealth_moments_atlas_v0.4.0.csv" download>Moments panel, CSV (1.1 MB)</a>
+        <a class="btn" href="https://raw.githubusercontent.com/conway1521/wealth_ineq/main/data/release/wealth_moments_atlas_v0.4.0.parquet" download>Parquet</a>
+        <a class="btn" href="https://github.com/conway1521/wealth_ineq" target="_blank" rel="noopener">Pipeline &amp; code</a>
+      </div>
+      <div class="cite">Conway (2026). Open Inequality Atlas: Wealth, v0.4.0.<br>
+      Harmonized panel of household net wealth inequality.<br>
+      https://github.com/conway1521/wealth_ineq</div>
+      <p class="foot">The moments panel adds top-1%, top-10%, and bottom-50% shares plus mean and median wealth for 53 countries. A Zenodo DOI comes with v1.0; until then, cite the GitHub URL and version tag.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Open Inequality Atlas &middot; v0.4.0 &middot; CC BY 4.0 data &middot; MIT code</span>
+    <a href="https://github.com/conway1521/wealth_ineq" target="_blank" rel="noopener">github.com/conway1521/wealth_ineq</a>
+  </div>
+</footer>
+
+<button id="totop" aria-label="Back to the top">&#8593; top</button>
+
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.27.0/plotly.min.js"></script>
+<script>
+'use strict';
+
+/* ── data stores ───────────────────────────────────────────────────── */
+let LATEST = null, US = null;
+let BY_ISO = {};            // iso -> wealth snapshot row + name
+const SERIES = {};          // metric -> iso -> [{year, v}]
+
+/* ── palette: validated categorical slots, fixed order ─────────────── */
+const SLOTS = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#e34948'];
+const colorOf = {};
+let nextSlot = 0;
+function assignColor(key) {
+  if (!(key in colorOf)) { colorOf[key] = SLOTS[nextSlot % SLOTS.length]; nextSlot++; }
+  return colorOf[key];
+}
+
+/* ── regions ───────────────────────────────────────────────────────── */
+const REGION_DEF = {
+  europe:  'ALB AND AUT BEL BGR BIH BLR CHE CYP CZE DEU DNK ESP EST FIN FRA FRO GBR GGY GIB GRC HRV HUN IMN IRL ISL ITA JEY LIE LTU LUX LVA MCO MDA MKD MLT MNE NLD NOR POL PRT ROU RUS SMR SRB SVK SVN SWE UKR XKX',
+  africa:  'AGO BDI BEN BFA BWA CAF CIV CMR COD COG COM CPV DJI DZA EGY ERI ESH ETH GAB GHA GIN GMB GNB GNQ KEN LBR LBY LSO MAR MDG MLI MOZ MRT MUS MWI MYT NAM NER NGA REU RWA SDN SEN SHN SLE SOM SSD STP SWZ SYC TCD TGO TUN TZA UGA ZAF ZMB ZWE',
+  asia:    'AFG ARE ARM AZE BGD BHR BRN BTN CHN GEO HKG IDN IND IRN IRQ ISR JOR JPN KAZ KGZ KHM KOR KWT LAO LBN LKA MAC MDV MMR MNG MYS NPL OMN PAK PHL PRK PSE QAT SAU SGP SYR THA TJK TKM TLS TUR TWN UZB VNM YEM',
+  oceania: 'ASM AUS COK FJI FSM GUM KIR MHL MNP NCL NIU NRU NZL PLW PNG PYF SLB TKL TON TUV VUT WLF WSM',
+  latam:   'ABW AIA ARG ATG BES BHS BLZ BOL BRA BRB CHL COL CRI CUB CUW CYM DMA DOM ECU GLP GRD GTM GUF GUY HND HTI JAM KNA LCA MAF MEX MSR MTQ NIC PAN PER PRI PRY SLV SPM SUR SXM TCA TTO URY VCT VEN VGB',
+  northam: 'BMU CAN GRL USA',
+  mideast: 'ARE BHR EGY IRN IRQ ISR JOR KWT LBN OMN PSE QAT SAU SYR TUR YEM',
+};
+REGION_DEF.americas = REGION_DEF.latam + ' ' + REGION_DEF.northam;
+const REGION_SET = {};
+for (const k in REGION_DEF) REGION_SET[k] = new Set(REGION_DEF[k].split(' '));
+const REGION_TOKENS = [
+  [/\blatin america(n)?\b|\bsouth america(n)?\b|\bcaribbean\b|\blatam\b/, 'latam', 'Latin America'],
+  [/\bnorth america(n)?\b/, 'northam', 'North America'],
+  [/\bthe americas\b|\bamericas\b/, 'americas', 'the Americas'],
+  [/\bmiddle east(ern)?\b|\bmideast\b/, 'mideast', 'the Middle East'],
+  [/\beurope(an)?\b/, 'europe', 'Europe'],
+  [/\bafrica(n)?\b/, 'africa', 'Africa'],
+  [/\basia(n)?\b/, 'asia', 'Asia'],
+  [/\boceania\b|\bpacific\b/, 'oceania', 'Oceania'],
+];
+const REGION_LABEL = {};
+for (const [, k, label] of REGION_TOKENS) REGION_LABEL[k] = label;
+function inRegion(iso, region) { return !region || REGION_SET[region].has(iso); }
+
+/* ── country matching ──────────────────────────────────────────────── */
+const ALIASES = {
+  'usa':'USA','us':'USA','u s':'USA','america':'USA','united states':'USA','the states':'USA',
+  'uk':'GBR','britain':'GBR','great britain':'GBR','united kingdom':'GBR',
+  'south korea':'KOR','korea':'KOR','north korea':'PRK',
+  'russia':'RUS','czech republic':'CZE','czechia':'CZE',
+  'ivory coast':'CIV','cote d ivoire':'CIV',
+  'drc':'COD','dr congo':'COD','democratic republic of the congo':'COD',
+  'holland':'NLD','netherlands':'NLD',
+  'uae':'ARE','emirates':'ARE','united arab emirates':'ARE',
+  'vietnam':'VNM','viet nam':'VNM','laos':'LAO','syria':'SYR','iran':'IRN',
+  'tanzania':'TZA','bolivia':'BOL','moldova':'MDA','macedonia':'MKD',
+  'swaziland':'SWZ','eswatini':'SWZ','cape verde':'CPV','cabo verde':'CPV',
+  'burma':'MMR','myanmar':'MMR','turkey':'TUR','turkiye':'TUR',
+  'hong kong':'HKG','taiwan':'TWN','palestine':'PSE','venezuela':'VEN',
+};
+let NAME_INDEX = [];
+
+function norm(s) {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9%.]+/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+function buildIndex() {
+  const seen = new Set();
+  for (const iso in BY_ISO) {
+    const n = norm(BY_ISO[iso].name);
+    if (n && !seen.has(n)) { NAME_INDEX.push({ norm: n, iso }); seen.add(n); }
+  }
+  for (const [alias, iso] of Object.entries(ALIASES)) {
+    if (BY_ISO[iso] && !seen.has(alias)) { NAME_INDEX.push({ norm: alias, iso }); seen.add(alias); }
+  }
+  NAME_INDEX.sort((a, b) => b.norm.length - a.norm.length);
+}
+
+// which series metrics a country actually has, in a sensible priority order
+const METRIC_PRIORITY = ['wealth_gini', 'income_gini', 'life_exp', 'life_satisfaction',
+  'poverty_rate', 'median_income', 'gdp_pc', 'co2_pc'];
+function firstMetricFor(iso) {
+  for (const m of METRIC_PRIORITY) {
+    if (latestValOf(m, iso)) return m;
+  }
+  return null;
+}
+
+function findCountries(text) {
+  let t = ' ' + norm(text) + ' ';
+  const found = [];
+  for (const { norm: n, iso } of NAME_INDEX) {
+    const needle = ' ' + n + ' ';
+    const at = t.indexOf(needle);
+    if (at !== -1) {
+      if (!found.some(f => f.iso === iso)) found.push({ iso, at });
+      t = t.slice(0, at) + ' '.repeat(needle.length) + t.slice(at + needle.length);
+    }
+  }
+  found.sort((a, b) => a.at - b.at);
+  return { isos: found.map(f => f.iso), residual: t };
+}
+
+/* ── formatting ────────────────────────────────────────────────────── */
+const g2 = v => v == null ? 'n/a' : v.toFixed(2);
+const g3 = v => v == null ? 'n/a' : v.toFixed(3);
+const pc = v => v == null ? 'n/a' : (v * 100).toFixed(1) + '%';
+const yrs1 = v => v == null ? 'n/a' : v.toFixed(1) + ' years';
+const t1 = v => v == null ? 'n/a' : v.toFixed(1) + ' t';
+const usd0 = v => v == null ? 'n/a' : '$' + Math.round(v).toLocaleString('en-US');
+const usdDay = v => v == null ? 'n/a' : '$' + v.toFixed(1) + '/day';
+function ord(n) {
+  const s = ['th','st','nd','rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function cap(s) { return s[0].toUpperCase() + s.slice(1); }
+function medianOf(arr) {
+  const v = arr.slice().sort((a, b) => a - b);
+  return v[Math.floor(v.length / 2)];
+}
+
+/* ── metric registry ───────────────────────────────────────────────── */
+const META = {
+  wealth_gini: {
+    label: 'wealth Gini', topic: 'wealth', series: true, giniFam: true, fmt: g2, fmtD: g3, hover: '%{y:.3f}',
+    lineSrc: 'Source: WID, 1990 to 2024. Per-adult equal-split basis, negative net wealth zeroed. Gaps are years without published data.',
+    poolSrc: 'Source: WID, latest available year per country.',
+  },
+  income_gini: {
+    label: 'income Gini', topic: 'income', series: true, giniFam: true, file: 'data/income_gini.json',
+    fmt: g2, fmtD: g3, hover: '%{y:.3f}',
+    lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. Income where surveys measure it, consumption otherwise.',
+    poolSrc: 'Source: World Bank PIP via OWID, latest survey per country.',
+  },
+  life_exp: {
+    label: 'life expectancy', topic: 'wellbeing', series: true, file: 'data/life_expectancy.json',
+    fmt: yrs1, fmtD: yrs1, hover: '%{y:.1f}',
+    lineSrc: 'Source: UN WPP, Clio Infra, and Riley, via Our World in Data. Life expectancy at birth, both sexes.',
+    poolSrc: 'Source: UN WPP and predecessors via OWID, latest year per country.',
+  },
+  co2_pc: {
+    label: 'CO2 per person', topic: 'wellbeing', series: true, file: 'data/co2_per_capita.json',
+    fmt: t1, fmtD: t1, hover: '%{y:.1f}',
+    lineSrc: 'Source: Global Carbon Budget, via Our World in Data. Territorial emissions per person, tonnes of CO2.',
+    poolSrc: 'Source: Global Carbon Budget via OWID, latest year per country.',
+  },
+  poverty_rate: {
+    label: 'poverty rate', topic: 'wellbeing', series: true, file: 'data/poverty_rate.json',
+    higherWorse: true, fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. Share below $2.15 a day (2017 PPP).',
+    poolSrc: 'Source: World Bank PIP via OWID. Share below the international poverty line, latest survey per country.',
+  },
+  wealth_top1: {
+    label: 'wealth concentration', topic: 'wealth', series: true, giniFam: true, concFam: true, file: 'data/wealth_top1.json',
+    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    lineSrc: 'Source: WID. Share of household net wealth held by the top 1%.',
+    poolSrc: 'Source: WID, top 1% wealth share, latest year per country.',
+  },
+  wealth_bottom50: {
+    label: 'bottom 50% wealth share', topic: 'wealth', series: true, file: 'data/wealth_bottom50.json',
+    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    lineSrc: 'Source: WID. Share of household net wealth held by the bottom 50%.',
+    poolSrc: 'Source: WID, bottom 50% wealth share, latest year per country.',
+  },
+  life_satisfaction: {
+    label: 'life satisfaction', topic: 'wellbeing', series: true, file: 'data/life_satisfaction.json',
+    fmt: v => v == null ? 'n/a' : v.toFixed(2), fmtD: v => v == null ? 'n/a' : v.toFixed(2), hover: '%{y:.2f}',
+    lineSrc: 'Source: World Happiness Report, Cantril ladder from 0 to 10, Gallup World Poll. Panel 2005 to 2022.',
+    poolSrc: 'Source: World Happiness Report, Cantril ladder (0 to 10), latest year per country.',
+  },
+  median_income: {
+    label: 'median income', topic: 'income', series: true, file: 'data/median_income.json',
+    fmt: usdDay, fmtD: usdDay, hover: '$%{y:.1f}/day',
+    lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. Median daily income or consumption, 2017 PPP.',
+    poolSrc: 'Source: World Bank PIP via OWID, latest survey per country.',
+  },
+  gdp_pc: {
+    label: 'GDP per person', topic: 'income', series: true, file: 'data/gdp_pc.json',
+    fmt: usd0, fmtD: usd0, hover: '$%{y:,.0f}',
+    lineSrc: 'Source: Maddison and World Bank via the Global Carbon Budget dataset. GDP per person, international dollars.',
+    poolSrc: 'Source: GDP per person via OWID, latest year per country.',
+  },
+  top1_wealth_share: { label: 'top 1% share', topic: 'wealth', snap: true, us: 'top1_share', fmt: pc, fmtD: pc },
+  top10_wealth_share: { label: 'top 10% share', topic: 'wealth', snap: true, us: 'top10_share', fmt: pc, fmtD: pc },
+  bottom50_wealth_share: { label: 'bottom 50% share', topic: 'wealth', snap: true, us: 'bottom50_share', fmt: pc, fmtD: pc },
+};
+
+const poolCache = {};
+function poolOf(metric) {
+  if (poolCache[metric]) return poolCache[metric];
+  const m = META[metric];
+  let pool;
+  if (m.snap) {
+    pool = LATEST.filter(r => r[metric] != null)
+      .map(r => ({ geo_id: r.geo_id, geo_name: r.geo_name, val: r[metric], year: r.year }));
+  } else {
+    pool = [];
+    const s = SERIES[metric] || {};
+    for (const iso in s) {
+      const pts = s[iso];
+      if (!pts.length || !BY_ISO[iso]) continue;
+      const last = pts[pts.length - 1];
+      pool.push({ geo_id: iso, geo_name: BY_ISO[iso].name, val: last.v, year: last.year });
+    }
+  }
+  return (poolCache[metric] = pool);
+}
+function rankedPool(metric, dir, region) {
+  return poolOf(metric).filter(r => inScope(r.geo_id, region)).slice()
+    .sort((a, b) => dir === 'low' ? a.val - b.val : b.val - a.val);
+}
+function rankOf(iso, metric) {
+  const pool = rankedPool(metric, 'high', null);
+  const i = pool.findIndex(r => r.geo_id === iso);
+  return { rank: i + 1, of: pool.length, row: i >= 0 ? pool[i] : null };
+}
+function seriesOf(metric, iso) { return (SERIES[metric] || {})[iso] || []; }
+
+const medianCache = {};
+function medianSeriesOf(metric, region) {
+  const key = metric + '|' + (region || 'world') + '|' + (ctx.region || '') + '|' + (medianCache.gen || 0);
+  if (medianCache[key]) return medianCache[key];
+  const byYear = {};
+  const s = SERIES[metric] || {};
+  for (const iso in s) {
+    if (!inScope(iso, region)) continue;
+    for (const p of s[iso]) (byYear[p.year] = byYear[p.year] || []).push(p.v);
+  }
+  const min = region ? 5 : 10;
+  const out = Object.keys(byYear).map(Number).sort((a, b) => a - b)
+    .filter(y => byYear[y].length >= min)
+    .map(y => ({ year: y, v: medianOf(byYear[y]) }));
+  return (medianCache[key] = out);
+}
+
+/* ── conversation context ──────────────────────────────────────────── */
+const ctx = { lastIso: null, metric: 'wealth_top1', lastRankDir: null, lastRegion: null,
+  lastAspect: null, pool: null, lastQuery: null, region: null };
+function setRegion(r) { if (r !== ctx.region) { ctx.region = r; medianCache.gen = (medianCache.gen || 0) + 1; } }
+function focusIsos() {
+  const set = [];
+  chain.forEach(f => (f.isos || []).forEach(i => { if (!set.includes(i)) set.push(i); }));
+  return set;
+}
+
+/* ── Pool: the ambient "who counts as everyone" condition (the AMONG move) ── */
+// ctx.pool = { label, metric, dir } → a tercile of some metric; null = all countries.
+let POOL_SET = null;   // Set of allowed isos, or null for all
+function computePool() {
+  if (!ctx.pool) { POOL_SET = null; medianCache.gen = (medianCache.gen || 0) + 1; return; }
+  const pool = poolOf(ctx.pool.metric).slice().sort((a, b) => b.val - a.val);
+  const n = pool.length, cut = Math.floor(n / 3);
+  const keep = ctx.pool.dir === 'high' ? pool.slice(0, cut) : pool.slice(n - cut);
+  POOL_SET = new Set(keep.map(r => r.geo_id));
+  medianCache.gen = (medianCache.gen || 0) + 1;   // pool change invalidates cached medians
+}
+function inScope(iso, region) {
+  return inRegion(iso, region) && inRegion(iso, ctx.region) && (POOL_SET === null || POOL_SET.has(iso));
+}
+
+/* ── parsing ───────────────────────────────────────────────────────── */
+function detectMetrics(r) {
+  const found = [];
+  const push = (re, key) => { if (re.test(r) && !found.includes(key)) found.push(key); };
+  push(/\btop\s*10\b|\b10%|\b10\s*(per\s*cent|percent|pct)\b/, 'top10_wealth_share');
+  push(/\btop\s*1\b|\b1%|\btop\s*one\b|\b1\s*(per\s*cent|percent|pct)\b|\brich(est)?\b/, 'top1_wealth_share');
+  push(/\bbottom\s*(50|half)\b|\b50%|\bpoor(est)?\s*half\b/, 'bottom50_wealth_share');
+  push(/\blife expectancy\b|\blongevity\b|\blifespan\b|\bhealth\b/, 'life_exp');
+  push(/\bco2\b|\bcarbon\b|\bemissions?\b|\benvironment\w*\b|\bclimate\b/, 'co2_pc');
+  push(/\bpoverty\b|\bpoor\b(?!\s*(est\s*)?half)/, 'poverty_rate');
+  push(/\bmedian income\b|\bmedian\b|\btypical income\b|\bmiddle\b/, 'median_income');
+  push(/\bgdp\b|\boutput\b|\bprosper\w*\b|\beconomic size\b/, 'gdp_pc');
+  push(/\bincome inequality\b|\bincome gini\b/, 'income_gini');
+  push(/\bwealth gini\b/, 'wealth_gini');                                   // explicit Gini, for experts
+  push(/\bwealth (inequality|concentration)\b|\bconcentration\b/, 'wealth_top1');  // default wealth measure = concentration
+  // bare "income"/"wealth" only if no more specific income/wealth metric already matched
+  if (!found.some(k => META[k].topic === 'income') && /\bincome\b|\bearnings\b|\bwages?\b/.test(r)) found.push('income_gini');
+  if (!found.some(k => k === 'wealth_gini' || k === 'wealth_top1' || META[k].snap) && /\bwealth\b/.test(r)) found.push('wealth_top1');
+  push(/\bhappiness\b|\bhappy\b|\blife satisfaction\b|\bsatisfaction\b|\bcantril\b|\bladder\b/, 'life_satisfaction');
+  if (/\bwell\s?being\b/.test(r) && !found.length) found.push('life_satisfaction');
+  // bare "inequality"/"unequal" with nothing else: the concentration measure (fixes the dead front door)
+  if (/\binequalit\w*\b|\bunequal\b/.test(r) && !found.some(k => isIneq(k) || k === 'wealth_top1')) found.push(facetIneqDefault());
+  if (/\bgini\b/.test(r) && !found.length) found.push(META[ctx.metric] && META[ctx.metric].giniFam ? ctx.metric : 'wealth_gini');
+  return found;
+}
+function detectMetric(r) {
+  const m = detectMetrics(r);
+  return m.length ? m[0] : null;
+}
+const INEQ_METRICS = ['wealth_gini', 'wealth_top1', 'income_gini'];
+function isIneq(key) { return INEQ_METRICS.includes(key); }
+// each facet offers a few measures; the accordion lets you click between them
+const FACET_MEASURES = {
+  wealth: [['wealth_top1', 'top 1% share'], ['wealth_gini', 'wealth Gini'], ['wealth_bottom50', 'bottom 50% share']],
+  income: [['income_gini', 'income Gini']],
+};
+const facetMeasureIdx = { wealth: 0, income: 0 };
+function facetMeasure(name) {
+  const list = FACET_MEASURES[name]; if (!list) return null;
+  return list[(facetMeasureIdx[name] || 0) % list.length][0];
+}
+function facetMeasureLabel(name) {
+  const list = FACET_MEASURES[name]; if (!list) return null;
+  return list[(facetMeasureIdx[name] || 0) % list.length][1];
+}
+// a bare "inequality" means the currently chosen measure of the facet you're on
+function facetIneqDefault() {
+  const m = (typeof curFacet !== 'undefined') && facetMeasure(curFacet);
+  if (m && (SERIES[m] || m === 'wealth_gini')) return m;
+  return SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini';
+}
+
+function parse(raw) {
+  let text = norm(raw);
+  let region = null;
+  for (const [re, key] of REGION_TOKENS) {
+    if (re.test(text)) { region = key; text = text.replace(re, ' '); break; }
+  }
+  const { isos, residual: r } = findCountries(text);
+  const years = (r.match(/\b(?:19|20)\d{2}\b/g) || []).map(Number).filter(y => y >= 1950 && y <= 2025);
+  const metrics = detectMetrics(r);
+  const metric = metrics.length ? metrics[0] : null;
+  if (metrics.includes('PENDING')) return { kind: 'pending' };
+
+  // BREAK: who defies the current relationship
+  if (/\bbreaks? the pattern\b|\bbreaks? the trend\b|\boutliers?\b|\boff the (trend|line|pattern)\b|\bexceptions?\b|\bdefy\w*\b|\bover[- ]?perform\w*\b|\bunder[- ]?perform\w*\b|\bbeat the (trend|pattern)\b|\bpunch\w* above\b/.test(r))
+    return { kind: 'break', metrics };
+
+  // AMONG: change the pool. "among rich countries", "all countries" (region is handled above)
+  if (/\ball countries\b|\beveryone\b|\bwhole world\b|\bdrop the (filter|condition|pool)\b|\bunrestrict\w*\b|\bworldwide\b/.test(r) && !isos.length)
+    return { kind: 'among', pool: null };
+  {
+    const cue = /\bamong\b|\bonly\b|\brestrict\w*\b|\bjust the\b|\bconditional\b/.test(r);
+    const rich = /\brich(er|est)?\b|\bhigh[- ]?income\b|\bwealthy\b|\bdeveloped\b|\baffluent\b/.test(r);
+    const poor = /\bpoor(er|est)?\b|\blow[- ]?income\b|\bdeveloping\b/.test(r);
+    if (cue && (rich || poor) && !isos.length)
+      return { kind: 'among', pool: { label: rich ? 'richer countries' : 'poorer countries',
+        metric: 'gdp_pc', dir: rich ? 'high' : 'low' }, region };
+  }
+
+  // DIVERGENCE: the two inequalities pulling apart over time (the spine of the atlas)
+  const bothIneq = metrics.includes('wealth_gini') && metrics.includes('income_gini');
+  if (bothIneq || /\bdivergence\b|\btwo inequalit\w*\b|\bwealth (and|vs\.?|versus) income\b|\bincome (and|vs\.?|versus) wealth\b/.test(r)) {
+    const iso = isos[0] || (ctx.lastIso && ctx.lastIso !== 'reg' ? ctx.lastIso : null) || 'USA';
+    return { kind: 'divergence', iso };
+  }
+
+  // PATH: one place's journey through lens x aspect space over the years
+  if (/\bpath\b|\btrajectory\b|\bjourney\b|\bhas travell?ed\b/.test(r)) {
+    const iso = isos[0] || ctx.lastIso;
+    if (iso) {
+      const y = metrics.find(m => !isIneq(m) && META[m].series) || ctx.lastAspect || 'life_exp';
+      const x = metrics.find(isIneq) || (isIneq(ctx.metric) ? ctx.metric : 'wealth_gini');
+      return { kind: 'path', iso, x, y };
+    }
+  }
+
+  // correlate: relate two measures across countries
+  const wantsCorr = /\bagainst\b|\bvs\b|\bversus\b|\bcorrelat\w*\b|\brelationship\b|\brelate[sd]?\b|\btrack[s]?\b|\btied to\b|\blinked to\b|\bpredict\w*\b/.test(r) && !isos.length;
+  const wantsTiers = /\btiers?\b|\bbands?\b|\bterciles?\b|\bquartiles?\b|\bgroup(ed|s)?\b|\bhigh (vs|versus|and) low\b|\bunequal (vs|versus|and)\b/.test(r);
+  if (wantsTiers) {
+    const aspect = metrics.find(m => !isIneq(m) && META[m].series) ||
+      (META[ctx.metric].series && !isIneq(ctx.metric) ? ctx.metric : null) ||
+      ctx.lastAspect || 'life_exp';
+    const lens = metrics.find(isIneq) || facetIneqDefault();
+    return { kind: 'tiers', aspect, lens, region: region };
+  }
+  const aspectHere = metrics.find(m => !isIneq(m) && META[m].series);
+  const ineqWord = /\binequality\b|\bunequal\b|\bgini\b|\bconcentrat\w*\b/.test(r);
+  if (wantsCorr || (aspectHere && ineqWord)) {
+    const y = aspectHere || (META[ctx.metric].series && !isIneq(ctx.metric) ? ctx.metric : ctx.lastAspect) || 'life_exp';
+    const wealthOnly = /\bwealth (inequality|gini|concentration)\b/.test(r) && !/\bincome\b/.test(r);
+    const incomeOnly = /\bincome (inequality|gini)\b/.test(r) && !/\bwealth\b/.test(r);
+    if (wealthOnly) return { kind: 'correlate', x: SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini', y, region };
+    if (incomeOnly) return { kind: 'correlate', x: 'income_gini', y, region };
+    // otherwise it runs against the inequality of the facet you're on
+    return { kind: 'correlate', x: facetIneqDefault(), y, region };
+  }
+
+  const hasEqual = /\bequal\b/.test(r), hasUnequal = /\bunequal\b|\binequality\b/.test(r);
+  const most = /\bmost\b|\bhighest\b|\bworst\b/.test(r), least = /\bleast\b|\blowest\b/.test(r);
+  let rankDir = null;
+  if ((most && hasUnequal) || (least && hasEqual) || /\bhighest\b|\bworst\b/.test(r)) rankDir = 'high';
+  if ((most && hasEqual) || (least && hasUnequal) || /\blowest\b/.test(r)) rankDir = 'low';
+  if (!rankDir && (most || least) && !isos.length) rankDir = most ? 'high' : 'low';
+
+  // metric-specific superlatives ("happiest", "healthiest", "greenest")
+  const SUPER = [
+    [/\bhappiest\b/, 'life_satisfaction', 'high'], [/\bunhappiest\b|\bsaddest\b|\bleast happy\b/, 'life_satisfaction', 'low'],
+    [/\bhealthiest\b|\blongest[- ]liv\w*\b/, 'life_exp', 'high'], [/\bunhealthiest\b|\bshortest[- ]liv\w*\b/, 'life_exp', 'low'],
+    [/\bgreenest\b|\bcleanest\b|\blowest emitters?\b/, 'co2_pc', 'low'], [/\bdirtiest\b|\bmost polluting\b|\bbiggest emitters?\b/, 'co2_pc', 'high'],
+  ];
+  for (const [re, mk, dir] of SUPER) if (re.test(r) && !isos.length) return { kind: 'rank', dir, region, metric: mk };
+
+  const riser = /\brisers?\b|\brisen\b|\bincreas\w*\b|\bclimb\w*\b|\bgrown\b|\bworsen\w*\b|\bjump\w*\b/.test(r);
+  const faller = /\bfallers?\b|\bfallen\b|\bdrop\w*\b|\bdeclin\w*\b|\bdecreas\w*\b|\bimprov\w*\b/.test(r);
+  const th = r.match(/\b(above|over|below|under)\s+(\d{1,3}(?:\.\d+)?|\.\d+)\b/);
+  const giniWords = hasEqual || hasUnequal;
+
+  if (/\bother (end|extreme|side)\b|\bopposite\b|\bflip\b/.test(r))
+    return { kind: 'rank', dir: ctx.lastRankDir === 'high' ? 'low' : 'high',
+             region: region || ctx.lastRegion, metric, giniWords };
+  if ((riser || faller) && isos.length === 0)
+    return { kind: 'delta_rank', dir: riser ? 'up' : 'down', year: years[0] || 1995, region, metric };
+  if (th)
+    return { kind: 'threshold', op: (th[1] === 'above' || th[1] === 'over') ? 'above' : 'below',
+             val: parseFloat(th[2]), region, metric };
+  if (/\blorenz\b|\bconcentration curve\b/.test(r) || (/\bdistribution\b|\bshares?\b/.test(r) && isos.length && !metric))
+    return { kind: 'lorenz', isos: isos.length ? isos : focusIsos() };
+  if (/\bspread\b|\bdistribution\b|\brange\b|\bhow varied\b|\bacross countries\b/.test(r) && isos.length === 0)
+    return { kind: 'spread', metric, region };
+  if (rankDir && isos.length === 0) return { kind: 'rank', dir: rankDir, region, metric, giniWords };
+  if (/\bcompared to (whom|what|who)\b|^\s*compared\s*$|\bneighbou?rs\b/.test(r))
+    return { kind: 'context' };
+  if (/\baverage\b|\bworld\b|\bmedian\b|\btypical\b|\boverall\b/.test(r) && isos.length === 0)
+    return { kind: 'world', region, metric };
+  if (/\bover time\b|\btrend\b|\bhistory\b|\bevolution\b/.test(r) || (/\bsince\b/.test(r) && years.length))
+    return { kind: 'time', isos, year: years[0] || null, region, metric };
+  // a country, a year, and a named series metric: read that one cell ("wealth gini France 2010")
+  if (metric && isos.length === 1 && years.length && META[metric].series)
+    return { kind: 'point', iso: isos[0], year: years[0], metric };
+  if (metric) {
+    if (META[metric].us && !isos.length && !ctx.lastIso) return { kind: 'us_shares', metric };
+    if (META[metric].series && !isos.length && !ctx.lastIso) return { kind: 'world', metric };
+    return { kind: 'metric', metric, isos };
+  }
+  if (isos.length >= 2) return { kind: 'compare', isos: isos.slice(0, 4) };
+  if (isos.length === 1 && years.length) return { kind: 'point', iso: isos[0], year: years[0], metric };
+  if (isos.length === 1) return { kind: 'profile', iso: isos[0] };
+  if (region) return { kind: 'world', region };
+  return { kind: 'unknown' };
+}
+
+/* pick the metric a question should run on */
+function resolveMetric(p) {
+  let key = p.metric || ctx.metric;
+  if (p.giniWords && !META[key].giniFam) key = facetIneqDefault();   // "most unequal" follows the facet you're on
+  return key;
+}
+function latestValOf(metric, iso) {
+  if (META[metric].snap) {
+    const r = BY_ISO[iso] && BY_ISO[iso].latest;
+    return r && r[metric] != null ? { val: r[metric], year: r.year } : null;
+  }
+  const s = seriesOf(metric, iso);
+  return s.length ? { val: s[s.length - 1].v, year: s[s.length - 1].year } : null;
+}
+
+/* ── cross-metric helpers ──────────────────────────────────────────── */
+function pairedPoints(xMetric, yMetric, region) {
+  const out = [];
+  for (const iso in BY_ISO) {
+    if (!inScope(iso, region)) continue;
+    const xv = latestValOf(xMetric, iso), yv = latestValOf(yMetric, iso);
+    if (xv && yv) out.push({ iso, name: BY_ISO[iso].name, x: xv.val, y: yv.val, xy: yv.year });
+  }
+  return out;
+}
+// the wealth-concentration series for a country: the US gets the DFA top-1% share (the sharper gauge), others the WID wealth Gini
+function wealthConc(iso) {
+  if (iso === 'USA' && US) {
+    const s = US.filter(r => r.top1_share != null).map(r => ({ year: r.year, v: r.top1_share }));
+    if (s.length) return { series: s, label: 'top 1% wealth share', fmt: pc };
+  }
+  // the WID top 1% share, the same concentration measure the rest of the atlas now leads with
+  if (SERIES.wealth_top1 && SERIES.wealth_top1[iso] && SERIES.wealth_top1[iso].length)
+    return { series: seriesOf('wealth_top1', iso), label: 'top 1% wealth share', fmt: pc };
+  return { series: seriesOf('wealth_gini', iso), label: 'wealth Gini', fmt: g2 };
+}
+
+// robust line: Theil-Sen slope (median pairwise) + median intercept. Outliers can't define their own baseline.
+function theilSen(pts) {
+  const n = pts.length; if (n < 3) return null;
+  const slopes = [];
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const dx = pts[j].x - pts[i].x;
+    if (dx !== 0) slopes.push((pts[j].y - pts[i].y) / dx);
+  }
+  if (!slopes.length) return null;
+  const slope = medianOf(slopes);
+  const intercept = medianOf(pts.map(p => p.y - slope * p.x));
+  return { slope, intercept };
+}
+function pearson(pts) {
+  const n = pts.length; if (n < 3) return null;
+  let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+  for (const p of pts) { sx += p.x; sy += p.y; sxx += p.x * p.x; syy += p.y * p.y; sxy += p.x * p.y; }
+  const cov = n * sxy - sx * sy;
+  const dx = Math.sqrt(n * sxx - sx * sx), dy = Math.sqrt(n * syy - sy * sy);
+  if (dx === 0 || dy === 0) return null;
+  return cov / (dx * dy);
+}
+function corrClause(r, xlabel) {
+  const a = Math.abs(r);
+  if (a < 0.15) return `barely moves with ${xlabel}`;
+  const lo = r < 0 ? 'lower' : 'higher';
+  if (a < 0.35) return `tends to run ${lo} where ${xlabel} is higher`;
+  if (a < 0.6) return `runs ${lo} where ${xlabel} is higher`;
+  return `runs much ${lo} where ${xlabel} is higher`;
+}
+function terciles(lensMetric, region) {
+  const pool = rankedPool(lensMetric, 'high', region).map(r => r.val);
+  const n = pool.length;
+  return { hi: pool[Math.floor(n / 3)], lo: pool[Math.floor(2 * n / 3)] };
+}
+
+/* ── answering ─────────────────────────────────────────────────────── */
+let factSeq = 0;
+const chain = [];
+function poolNote() { return ctx.pool ? ` <em>among ${ctx.pool.label}</em>` : ''; }
+
+// the one editable cell: its coordinates are what's on screen. chat and the accordion
+// both write to it, and runCell rebuilds the answer keeping every other coordinate.
+const cell = { place: null, time: false, against: null };
+function resetCell() { cell.place = null; cell.time = false; cell.against = null; }
+function syncCellFromFact(f) {
+  if (!f || f.kind === 'opp') { resetCell(); return; }
+  cell.against = (f.mode === 'scatter' && f.scatter && f.scatter.y && !isIneq(f.scatter.y)) ? f.scatter.y : null;
+  cell.time = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind);
+  const focus = (f.scatter && f.scatter.focus) || f.isos || [];
+  cell.place = (SINGLE_PLACE.includes(f.kind) && f.isos && f.isos.length) ? f.isos[f.isos.length - 1]
+    : (focus.length ? focus[focus.length - 1] : null);
+}
+// build the answer straight from the cell's coordinates, keeping the others intact
+function runCell() {
+  if (curFacet === 'opportunity') return;   // the US-zone facet has its own path
+  ctx.metric = facetIneqDefault();
+  ctx.lastIso = cell.place; ctx.lastAspect = cell.against;
+  let p, q;
+  if (cell.place && cell.time) {   // over time wins when a place is set, so the toggle always shows
+    p = { kind: 'time', isos: [cell.place], year: null, region: null, metric: ctx.metric };
+    q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} over time`;
+  } else if (cell.against && META[cell.against]) {
+    p = { kind: 'correlate', x: ctx.metric, y: cell.against, region: ctx.region };
+    q = `${META[cell.against].label} and inequality`;
+  } else if (cell.place) {
+    p = { kind: 'profile', iso: cell.place };
+    q = BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place;
+  } else if (cell.time) {
+    p = { kind: 'time', isos: [], year: null, region: ctx.region, metric: ctx.metric };
+    q = 'over time';
+  } else {
+    p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true };
+    q = 'most concentrated';
+  }
+  const prev = chain.slice();
+  chain.length = 0;   // so the highlight comes from the cell, not the answer we're replacing
+  const f = buildAnswer(p, q);
+  if (!f) { chain.push(...prev); render(); return; }
+  chain.push(f); ctx.lastQuery = q; render();
+}
+// set one coordinate from the accordion and rebuild
+function applyDim(dim, val) {
+  if (dim === 'place') cell.place = val || null;
+  else if (dim === 'time') cell.time = (val === 'true');
+  else if (dim === 'against') cell.against = val || null;
+  runCell();
+}
+// re-read the current cell under a changed facet or measure (never drops back to the landing)
+function rerunCurrent() {
+  if (!chain.length) return;
+  if (curFacet === 'opportunity') {
+    if (!US_CZ) return;
+    const f = oppAnswer('upward mobility');   // a global cell doesn't translate, so open the zone view
+    if (f) { chain.length = 0; chain.push(f); render(); }
+    return;
+  }
+  runCell();
+}
+
+function answer(q) { return buildAnswer(parse(q), q); }
+// build an answer from a parse object; runCell constructs the same shape from the cell's coordinates
+function buildAnswer(p, q) {
+  if (p.kind === 'unknown') {
+    showNotice('Could not read that one. Try a country, "least equal", "over time", "income inequality", or "life expectancy".');
+    return null;
+  }
+  if (p.kind === 'pending') {
+    showNotice('Subjective wellbeing is on the way. Life expectancy and CO2 per person are in; try those.');
+    return null;
+  }
+
+  if (p.region) setRegion(p.region);   // a named region becomes the standing geography
+
+  let f = { id: ++factSeq, query: q, kind: p.kind, isos: [], mode: 'lines', bar: null, metric: null, marker: null };
+
+  if (p.kind === 'contrast') {
+    const y = p.y, my = META[y];
+    // wealth axis is the top 1% share: real wealth concentration, measured across all 213 countries by WID
+    const wealthLens = SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini';
+    const wLog = false;
+    const wPts = [], iPts = [];
+    for (const iso in BY_ISO) {
+      if (!inScope(iso, p.region)) continue;
+      const yv = latestValOf(y, iso), wv = latestValOf(wealthLens, iso), iv = latestValOf('income_gini', iso);
+      if (yv && wv && (!wLog || wv.val > 0)) wPts.push({ iso, name: BY_ISO[iso].name, x: wv.val, y: yv.val });
+      if (yv && iv) iPts.push({ iso, name: BY_ISO[iso].name, x: iv.val, y: yv.val });
+    }
+    const rW = pearson(wLog ? wPts.map(p2 => ({ x: Math.log(p2.x), y: p2.y })) : wPts), rI = pearson(iPts);
+    if (rW == null && rI == null) return miss();
+    ctx.metric = wealthLens; ctx.lastAspect = y;
+    const focus = focusIsos().filter(i => wPts.some(p2 => p2.iso === i) || iPts.some(p2 => p2.iso === i));
+    if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
+    f.mode = 'contrast';
+    f.contrast = { y, wPts, iPts, rW, rI, focus, region: p.region, wealthLens, wLog };
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    // lead with a plain reading of the wealth axis; keep the r's as a quiet second layer
+    const wLabel = wealthLens === 'wealth_top1' ? 'the top 1% share' : 'the wealth Gini';
+    const lead = rW != null
+      ? `Across ${wPts.length} countries${where}, ${my.label} ${corrClause(rW, wLabel)}.`
+      : `Across ${iPts.length} countries${where}, ${my.label} ${corrClause(rI, 'the income Gini')}.`;
+    const stats = [];
+    if (rW != null) stats.push(`wealth r = ${rW.toFixed(2)}`);
+    if (rI != null) stats.push(`income r = ${rI.toFixed(2)}`);
+    f.text = `${lead} <em>${stats.join(', ')}</em>`;
+  }
+
+  else if (p.kind === 'correlate') {
+    const mx = META[p.x], my = META[p.y];
+    const pts = pairedPoints(p.x, p.y, p.region);
+    const r = pearson(pts);
+    if (!pts.length || r == null) return miss();
+    ctx.metric = p.x; if (!isIneq(p.y)) ctx.lastAspect = p.y;
+    const focus = [...new Set([ctx.lastIso, ...focusIsos()].filter(Boolean))].filter(i => pts.some(pt => pt.iso === i));
+    if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
+    f.mode = 'scatter';
+    f.scatter = { x: p.x, y: p.y, pts, r, region: p.region, focus };
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    let t = `Across ${pts.length} countries${where}, ${my.label} ${corrClause(r, mx.label)} ` +
+      `(r = ${r.toFixed(2)}).`;
+    if (focus.length === 1) {
+      const pt = pts.find(x => x.iso === focus[0]);
+      t += ` ${esc(pt.name)} is the highlighted point.`;
+    }
+    // a weak global link often sharpens among rich countries: point there instead of leaving it flat
+    if (Math.abs(r) < 0.22 && !p.region && !ctx.pool && SERIES.gdp_pc && pts.length > 30) {
+      const rich = new Set(rankedPool('gdp_pc', 'high').slice(0, 60).map(rr => rr.geo_id));
+      const rr = pearson(pts.filter(pt => rich.has(pt.iso)));
+      if (rr != null && Math.abs(rr) - Math.abs(r) >= 0.12)
+        t += ` <em>Among rich countries it sharpens to r = ${rr.toFixed(2)}.</em>`;
+    }
+    f.text = t;
+  }
+
+  else if (p.kind === 'break') {
+    // fit the current relationship, name who sits furthest from the robust line
+    let x, y;
+    const lastSc = chain.slice().reverse().find(ff => ff.scatter);
+    if (lastSc) { x = lastSc.scatter.x; y = lastSc.scatter.y; }
+    else { x = isIneq(ctx.metric) ? ctx.metric : facetIneqDefault(); y = ctx.lastAspect; }
+    const aspNamed = p.metrics.find(m => !isIneq(m) && META[m].series);
+    if (aspNamed) y = aspNamed;
+    if (!y) y = SERIES.life_exp ? 'life_exp' : 'income_gini';   // a sensible relationship to break by default
+    const mx = META[x], my = META[y];
+    const pts = pairedPoints(x, y, null);
+    const fit = theilSen(pts);
+    if (!fit || pts.length < 8) return miss();
+    for (const pt of pts) pt.resid = pt.y - (fit.slope * pt.x + fit.intercept);
+    const sorted = pts.slice().sort((a, b) => b.resid - a.resid);
+    const over = sorted.slice(0, 2), under = sorted.slice(-2).reverse();
+    ctx.metric = x; if (!isIneq(y)) ctx.lastAspect = y;
+    const focus = focusIsos().filter(i => pts.some(pt => pt.iso === i));
+    const labelIsos = [...over, ...under].map(p => p.iso);
+    if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
+    f.mode = 'scatter';
+    f.scatter = { x, y, pts, r: pearson(pts), region: null, focus, fit, labelIsos };
+    const say = a => `${esc(a.name)} <strong>${my.fmtD(Math.abs(a.resid))}</strong> ${a.resid >= 0 ? 'above' : 'below'}`;
+    let t = `Against ${mx.label}, the countries furthest off the line: ` +
+      `${say(over[0])} and ${say(over[1])} what their inequality predicts on ${my.label}; ` +
+      `${say(under[0])} and ${say(under[1])}.`;
+    if (focus.length === 1) {
+      const pt = pts.find(x => x.iso === focus[0]);
+      t += ` ${esc(pt.name)} sits <strong>${my.fmtD(Math.abs(pt.resid))}</strong> ${pt.resid >= 0 ? 'above' : 'below'} the line.`;
+    }
+    f.text = t;
+  }
+
+  else if (p.kind === 'divergence') {
+    const iso = p.iso;
+    const w = wealthConc(iso), inc = seriesOf('income_gini', iso);
+    if (!w.series.length || inc.length < 2) {
+      const alt = iso === 'USA' ? '' : ' Try the United States, where both series are long.';
+      showNotice(`Not enough overlapping wealth and income data for ${esc(BY_ISO[iso] ? BY_ISO[iso].name : iso)}.${alt}`);
+      return null;
+    }
+    const wFirst = w.series[0], wEnd = w.series[w.series.length - 1];
+    const iFirst = inc[0], iEnd = inc[inc.length - 1];
+    // shared indexing origin: the first income year at or after wealth starts (income is the sparser series)
+    const base = (inc.find(d => d.year >= wFirst.year) || iFirst).year;
+    const wPct = Math.round((wEnd.v / wFirst.v - 1) * 100), iPct = Math.round((iEnd.v / iFirst.v - 1) * 100);
+    ctx.metric = SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini'; ctx.lastIso = iso; f.isos = [iso];
+    f.mode = 'divergence'; f.diverge = { iso, w, inc, base };
+    f.text = `<strong>${esc(BY_ISO[iso] ? BY_ISO[iso].name : iso)}</strong>: ${w.label} rose from ` +
+      `<strong>${w.fmt(wFirst.v)}</strong> in ${wFirst.year} to <strong>${w.fmt(wEnd.v)}</strong> ` +
+      `(${wPct >= 0 ? '+' : ''}${wPct}%); income Gini went <strong>${g2(iFirst.v)}</strong> in ${iFirst.year} ` +
+      `to <strong>${g2(iEnd.v)}</strong> (${iPct >= 0 ? '+' : ''}${iPct}%).`;
+  }
+
+  else if (p.kind === 'path') {
+    const mx = META[p.x], my = META[p.y];
+    const sx = seriesOf(p.x, p.iso), sy = seriesOf(p.y, p.iso);
+    const yv = {}; for (const d of sy) yv[d.year] = d.v;
+    const pts = sx.filter(d => yv[d.year] != null).map(d => ({ year: d.year, x: d.v, y: yv[d.year] }));
+    if (pts.length < 3) return miss();
+    ctx.metric = p.x; ctx.lastAspect = p.y; ctx.lastIso = p.iso; f.isos = [p.iso];
+    f.mode = 'path'; f.path = { iso: p.iso, x: p.x, y: p.y, pts };
+    const a = pts[0], z = pts[pts.length - 1];
+    f.text = `<strong>${esc(BY_ISO[p.iso].name)}</strong>'s path, ${a.year} to ${z.year}: as ${mx.label} went ` +
+      `<strong>${mx.fmt(a.x)}</strong> to <strong>${mx.fmt(z.x)}</strong>, ${my.label} went ` +
+      `<strong>${my.fmt(a.y)}</strong> to <strong>${my.fmt(z.y)}</strong>.`;
+  }
+
+  else if (p.kind === 'among') {
+    ctx.pool = p.pool; computePool();
+    if (p.pool === null) setRegion(null);   // "all countries" also drops any region
+    // always apply the pool to a real question: the last one, or the everyday health cut
+    const base = ctx.lastQuery || (ctx.lastAspect && ASPECT_CHIP[ctx.lastAspect]) || 'life expectancy and inequality';
+    const inner = answer(base);
+    if (!inner) { ctx.pool = null; computePool(); return null; }
+    inner.id = f.id; inner.query = q;      // this line represents the AMONG move
+    const label = p.pool ? p.pool.label : 'all countries';
+    if (!/among /i.test(inner.text)) inner.text = inner.text.replace(/\s*$/, '') + ` <em>among ${label}</em>`;
+    return inner;
+  }
+
+  else if (p.kind === 'tiers') {
+    const my = META[p.aspect], ml = META[p.lens];
+    const { hi, lo } = terciles(p.lens, p.region);
+    const groups = { high: [], mid: [], low: [] };
+    for (const iso in BY_ISO) {
+      if (!inScope(iso, p.region)) continue;
+      const lv = latestValOf(p.lens, iso), av = latestValOf(p.aspect, iso);
+      if (!lv || !av) continue;
+      const g = lv.val >= hi ? 'high' : lv.val <= lo ? 'low' : 'mid';
+      groups[g].push(av.val);
+    }
+    if (!groups.high.length || !groups.low.length) return miss();
+    if (!isIneq(p.aspect)) ctx.lastAspect = p.aspect;
+    const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+    const mh = mean(groups.high), mm = mean(groups.mid), mlo = mean(groups.low);
+    ctx.metric = p.lens;
+    f.mode = 'tiers';
+    f.tiers = { aspect: p.aspect, lens: p.lens, rows: [
+      { label: `Most unequal third`, val: mh, n: groups.high.length },
+      { label: `Middle third`, val: mm, n: groups.mid.length },
+      { label: `Least unequal third`, val: mlo, n: groups.low.length },
+    ] };
+    const dir = mh > mlo ? 'higher' : 'lower';
+    f.text = `Grouping countries by ${ml.label}: the most unequal third average ` +
+      `<strong>${my.fmt(mh)}</strong> on ${my.label}, the least unequal third <strong>${my.fmt(mlo)}</strong> ` +
+      `(${dir} where inequality is greater).`;
+  }
+
+  else if (p.kind === 'lorenz') {
+    const isos = (p.isos || []).filter(i => BY_ISO[i] && BY_ISO[i].latest.bottom50_wealth_share != null).slice(0, 5);
+    if (!isos.length) { showNotice('Name a country to draw its wealth Lorenz curve.'); return null; }
+    f.mode = 'lorenz'; f.isos = isos; ctx.lastIso = isos[isos.length - 1];
+    f.lorenz = { isos };
+    const c = BY_ISO[isos[0]].latest;
+    f.text = `<strong>${esc(BY_ISO[isos[0]].name)}</strong> wealth Lorenz: the bottom half hold ` +
+      `<strong>${pc(c.bottom50_wealth_share)}</strong>, the top 10% hold <strong>${pc(c.top10_wealth_share)}</strong>.`;
+  }
+
+  else if (p.kind === 'spread') {
+    const key = p.metric && META[p.metric].series ? p.metric : (META[ctx.metric].series ? ctx.metric : 'wealth_gini');
+    ctx.metric = key;
+    const m = META[key];
+    const pool = rankedPool(key, 'high', p.region);
+    if (pool.length < 3) return miss();
+    const med = medianOf(pool.map(r => r.val));
+    const foc = focusIsos().filter(i => pool.some(r => r.geo_id === i));
+    if (foc.length) { f.isos = foc; ctx.lastIso = foc[foc.length - 1]; }
+    f.mode = 'strip';
+    f.strip = { key, pool, region: p.region, focus: foc };
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    f.text = `${cap(m.label)}${where} ranges from <strong>${m.fmt(pool[pool.length - 1].val)}</strong> ` +
+      `(${esc(pool[pool.length - 1].geo_name)}) to <strong>${m.fmt(pool[0].val)}</strong> ` +
+      `(${esc(pool[0].geo_name)}), median <strong>${m.fmt(med)}</strong>.`;
+  }
+
+  else if (p.kind === 'profile') {
+    const c = BY_ISO[p.iso]; if (!c) return miss();
+    let key = ctx.metric;
+    if (!latestValOf(key, p.iso)) key = firstMetricFor(p.iso);   // fall back to what this country has
+    if (!key) { showNotice(`No data yet for ${esc(c.name)} in this atlas.`); return null; }
+    ctx.metric = key;
+    const m = META[key];
+    const lv = latestValOf(key, p.iso); if (!lv) return miss();
+    const rk = rankOf(p.iso, key);
+    f.isos = [p.iso]; ctx.lastIso = p.iso; f.metricUsed = m.series ? key : 'wealth_gini';
+    const rankBit = m.concFam ? `${ord(rk.rank)} most concentrated of ${rk.of}`
+      : m.giniFam ? `${ord(rk.rank)} most unequal of ${rk.of}` : `${ord(rk.rank)} of ${rk.of}`;
+    if (key === 'wealth_top1')
+      f.text = `<strong>${esc(c.name)}</strong>: the top 1% hold <strong>${m.fmt(lv.val)}</strong> of the wealth (${lv.year}), ${rankBit}.`;
+    else {
+      f.text = `<strong>${esc(c.name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> in ${lv.year}, ${rankBit}.`;
+      if (key === 'wealth_gini' && c.latest && c.latest.top1_wealth_share != null)
+        f.text += ` The top 1% hold <strong>${pc(c.latest.top1_wealth_share)}</strong>.`;
+    }
+    if (!m.series) f.mode = 'bars', f.bar = barFor(key, p.iso);
+  }
+
+  else if (p.kind === 'compare') {
+    const key = META[ctx.metric].series || META[ctx.metric].snap ? ctx.metric : 'wealth_gini';
+    const m = META[key];
+    const rows = p.isos.map(i => ({ iso: i, lv: latestValOf(key, i) })).filter(x => x.lv);
+    if (rows.length < 2) return miss();
+    f.isos = rows.map(x => x.iso); ctx.lastIso = f.isos[f.isos.length - 1];
+    f.metricUsed = m.series ? key : 'wealth_gini';
+    const parts = rows.map(x => `${esc(BY_ISO[x.iso].name)} <strong>${m.fmt(x.lv.val)}</strong>`).join(' vs ');
+    const spread = Math.max(...rows.map(x => x.lv.val)) - Math.min(...rows.map(x => x.lv.val));
+    f.text = `On ${m.label}: ${parts}. Spread: <strong>${m.fmtD(spread)}</strong>.`;
+    if (!m.series) { f.mode = 'bars'; f.bar = barFor(key, rows[0].iso); }
+  }
+
+  else if (p.kind === 'rank') {
+    const key = resolveMetric(p);
+    ctx.metric = key;
+    const m = META[key];
+    const pool = rankedPool(key, p.dir, p.region);
+    if (!pool.length) return miss();
+    const top = pool.slice(0, 10);
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    const three = top.slice(0, 3).map(r => `${esc(r.geo_name)} <strong>${m.fmt(r.val)}</strong>`).join(', ');
+    ctx.lastRankDir = p.dir; ctx.lastIso = top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
+    f.isos = [top[0].geo_id];
+    f.mode = 'bars';
+    f.bar = { key, dir: p.dir, rows: top, highlight: null, note: where };
+    f.text = `${p.dir === 'high' ? 'Highest' : 'Lowest'} ${m.label}${where}, latest year: ${three}.`;
+  }
+
+  else if (p.kind === 'delta_rank') {
+    const key = p.metric && META[p.metric].series ? p.metric : (META[ctx.metric].series ? ctx.metric : 'wealth_gini');
+    ctx.metric = key;
+    const m = META[key];
+    const pool = [];
+    const s = SERIES[key] || {};
+    for (const iso in s) {
+      if (!inScope(iso, p.region) || !BY_ISO[iso]) continue;
+      const pts = s[iso];
+      if (!pts.length) continue;
+      const from = pts.find(d => d.year >= p.year) || pts[0];
+      const to = pts[pts.length - 1];
+      if (to.year - from.year < 10) continue;
+      pool.push({ geo_id: iso, geo_name: BY_ISO[iso].name, val: to.v - from.v });
+    }
+    if (!pool.length) return miss();
+    pool.sort((a, b) => p.dir === 'up' ? b.val - a.val : a.val - b.val);
+    const top = pool.slice(0, 10);
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    const rose = pool.filter(x => x.val > 0).length, fell = pool.filter(x => x.val < 0).length;
+    const three = top.slice(0, 3).map(x =>
+      `${esc(x.geo_name)} ${x.val >= 0 ? '+' : ''}<strong>${m.fmtD(Math.abs(x.val))}</strong>`.replace('+<strong>', '+<strong>')).join(', ');
+    ctx.lastIso = top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
+    f.isos = [top[0].geo_id];
+    f.mode = 'bars';
+    f.bar = { key: 'delta', metric: key, dir: p.dir, rows: top, highlight: null,
+              note: `${where}, ${m.label} since ${p.year}` };
+    f.text = `Biggest ${p.dir === 'up' ? 'rises' : 'falls'} in ${m.label}${where} since ${p.year}: ${three}. ` +
+      `Overall ${rose} rose and ${fell} fell.`;
+  }
+
+  else if (p.kind === 'threshold') {
+    const key = p.metric || ctx.metric;
+    ctx.metric = key;
+    const m = META[key];
+    const pool = rankedPool(key, p.op === 'above' ? 'high' : 'low', p.region);
+    if (!pool.length) return miss();
+    const val = m.snap && p.val > 1 ? p.val / 100 : p.val;
+    const hits = pool.filter(r => p.op === 'above' ? r.val >= val : r.val <= val);
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    ctx.lastRegion = p.region || ctx.lastRegion;
+    if (hits.length) { ctx.lastIso = hits[0].geo_id; f.isos = [hits[0].geo_id]; }
+    f.mode = 'bars';
+    f.bar = { key, dir: p.op === 'above' ? 'high' : 'low', rows: hits.slice(0, 10), highlight: null, note: where };
+    const three = hits.slice(0, 3).map(r => `${esc(r.geo_name)} <strong>${m.fmt(r.val)}</strong>`).join(', ');
+    f.text = `<strong>${hits.length}</strong> of ${pool.length} countries${where} are ${p.op} ${p.val} on ${m.label}` +
+      (three ? `: ${three}` : '') + (hits.length > 3 ? ', and more in the chart.' : '.');
+  }
+
+  else if (p.kind === 'context') {
+    if (!ctx.lastIso) { showNotice('Ask about a country first, then "compared to whom".'); return null; }
+    const key = ctx.metric, m = META[key];
+    const pool = rankedPool(key, 'high', null);
+    const i = pool.findIndex(r => r.geo_id === ctx.lastIso);
+    if (i === -1) return miss();
+    const lo = Math.max(0, i - 4), win = pool.slice(lo, lo + 9);
+    const c = pool[i], above = pool[i - 1], below = pool[i + 1];
+    const med = medianOf(pool.map(r => r.val));
+    f.mode = 'bars'; f.isos = [ctx.lastIso];
+    f.bar = { key, dir: 'high', rows: win, highlight: ctx.lastIso };
+    f.text = `<strong>${esc(c.geo_name)}</strong> sits ${ord(i + 1)} of ${pool.length} on ${m.label}` +
+      (above ? `, just below ${esc(above.geo_name)} <strong>${m.fmt(above.val)}</strong>` : '') +
+      (below ? `, just above ${esc(below.geo_name)} <strong>${m.fmt(below.val)}</strong>` : '') +
+      `. World median: <strong>${m.fmt(med)}</strong>.`;
+  }
+
+  else if (p.kind === 'world') {
+    if (p.metric && META[p.metric].series) ctx.metric = p.metric;
+    const key = META[ctx.metric].series ? ctx.metric : 'wealth_gini';
+    const m = META[key];
+    const regLabel = p.region ? REGION_LABEL[p.region] : '';
+    const label = p.region ? `${cap(regLabel)} median` : 'World median';
+    const pool = rankedPool(key, 'high', p.region);
+    if (!pool.length) return miss();
+    const med = medianOf(pool.map(r => r.val));
+    if (p.region) { f.regionKey = p.region; ctx.lastRegion = p.region; } else f.world = true;
+    f.metricUsed = key;
+    const foc = ctx.lastIso && latestValOf(key, ctx.lastIso);
+    if (foc && !pool.every(r => r.geo_id === ctx.lastIso)) {
+      const d = foc.val - med;
+      f.isos = [ctx.lastIso];
+      f.text = `${label} ${m.label}: <strong>${m.fmt(med)}</strong>. ` +
+        `${esc(BY_ISO[ctx.lastIso].name)} is <strong>${m.fmtD(Math.abs(d))}</strong> ${d >= 0 ? 'above' : 'below'} it.`;
+    } else {
+      f.text = `${label} ${m.label}: <strong>${m.fmt(med)}</strong>, across ${pool.length} countries and territories.`;
+    }
+  }
+
+  else if (p.kind === 'time') {
+    const key = p.metric && META[p.metric].series ? p.metric : (META[ctx.metric].series ? ctx.metric : 'wealth_gini');
+    ctx.metric = key;
+    const m = META[key];
+    const isos = p.isos.length ? p.isos : focusIsos().length ? focusIsos() : (ctx.lastIso ? [ctx.lastIso] : []);
+    const reg = p.region || (!isos.length ? ctx.lastRegion : null);
+    if (!isos.length && reg) {
+      const series = medianSeriesOf(key, reg);
+      if (!series.length) return miss();
+      const from = p.year ? (series.find(d => d.year >= p.year) || series[0]) : series[0];
+      const to = series[series.length - 1];
+      const d = to.v - from.v;
+      f.regionKey = reg; f.fromYear = p.year || null; f.metricUsed = key; ctx.lastRegion = reg;
+      f.text = `${REGION_LABEL[reg]} median ${m.label} over time: <strong>${m.fmt(from.v)}</strong> in ${from.year} to ` +
+        `<strong>${m.fmt(to.v)}</strong> in ${to.year}, ${d >= 0 ? '+' : ''}<strong>${m.fmtD(Math.abs(d))}</strong>.`;
+      return f;
+    }
+    if (!isos.length) { showNotice('Ask about a country first, then "over time".'); return null; }
+    f.isos = isos.slice(0, 8); ctx.lastIso = f.isos[f.isos.length - 1];
+    f.fromYear = p.year || null; f.metricUsed = key;
+    const bits = f.isos.slice(0, 3).map(iso => {
+      const s = seriesOf(key, iso); if (!s.length) return null;
+      const from = p.year ? (s.find(d => d.year >= p.year) || s[0]) : s[0];
+      const to = s[s.length - 1];
+      const d = to.v - from.v;
+      return `${esc(BY_ISO[iso].name)} ${d >= 0 ? '+' : '-'}<strong>${m.fmtD(Math.abs(d))}</strong> since ${from.year}`;
+    }).filter(Boolean);
+    if (!bits.length) return miss();
+    f.text = `${cap(m.label)} over time: ${bits.join(', ')}.`;
+  }
+
+  else if (p.kind === 'point') {
+    const key = (p.metric && META[p.metric].series) ? p.metric
+      : (META[ctx.metric].series ? ctx.metric : 'wealth_gini');
+    ctx.metric = key;
+    const m = META[key];
+    const c = BY_ISO[p.iso]; if (!c) return miss();
+    const s = seriesOf(key, p.iso);
+    if (!s.length) return miss();
+    // snap to the nearest year the series actually carries
+    let at = s.find(d => d.year === p.year);
+    if (!at) at = s.reduce((best, d) => Math.abs(d.year - p.year) < Math.abs(best.year - p.year) ? d : best, s[0]);
+    f.isos = [p.iso]; ctx.lastIso = p.iso;
+    f.marker = { iso: p.iso, year: at.year }; f.metricUsed = key;
+    const asked = at.year === p.year ? '' : ` (nearest to ${p.year})`;
+    f.text = `<strong>${esc(c.name)}</strong> in ${at.year}${asked}: ${m.label} <strong>${m.fmt(at.v)}</strong>.`;
+  }
+
+  else if (p.kind === 'metric') {
+    ctx.metric = p.metric;
+    const m = META[p.metric];
+    const isos = p.isos.length ? p.isos : (ctx.lastIso ? [ctx.lastIso] : []);
+    if (m.us && (!isos.length || (isos.length === 1 && isos[0] === 'USA')) && US) {
+      const first = US[0], last = US.filter(r => r[m.us] != null).slice(-1)[0];
+      f.mode = 'us'; f.metric = p.metric; f.isos = ['USA']; ctx.lastIso = 'USA';
+      f.text = `<strong>US ${m.label}</strong>: <strong>${pc(last[m.us])}</strong> in ${last.year}, ` +
+        `from <strong>${pc(first[m.us])}</strong> in ${first.year}.`;
+    } else if (m.series && isos.length) {
+      const iso = isos[0];
+      const lv = latestValOf(p.metric, iso); if (!lv) return miss();
+      const rk = rankOf(iso, p.metric);
+      f.isos = isos.slice(0, 8); ctx.lastIso = iso; f.metricUsed = p.metric;
+      const rankBit = m.giniFam ? `${ord(rk.rank)} most unequal of ${rk.of}` : `${ord(rk.rank)} of ${rk.of}`;
+      f.text = `<strong>${esc(BY_ISO[iso].name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> in ${lv.year}, ${rankBit}.`;
+    } else if (m.snap && isos.length) {
+      const iso = isos[0], lv = latestValOf(p.metric, iso);
+      if (!lv) return miss();
+      const rk = rankOf(iso, p.metric);
+      f.mode = 'bars'; f.metric = p.metric; f.isos = [iso]; ctx.lastIso = iso;
+      f.bar = barFor(p.metric, iso);
+      f.text = `<strong>${esc(BY_ISO[iso].name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> ` +
+        `(${lv.year}), ${ord(rk.rank)} of ${rk.of}.`;
+    } else return miss();
+  }
+
+  else if (p.kind === 'us_shares') {
+    ctx.metric = p.metric;
+    const m = META[p.metric];
+    const first = US[0], last = US.filter(r => r[m.us] != null).slice(-1)[0];
+    f.mode = 'us'; f.metric = p.metric; f.isos = ['USA']; ctx.lastIso = 'USA';
+    f.text = `<strong>US ${m.label}</strong>: <strong>${pc(last[m.us])}</strong> in ${last.year}, ` +
+      `from <strong>${pc(first[m.us])}</strong> in ${first.year}.`;
+  }
+
+  return f;
+
+  function barFor(key, highlightIso) {
+    const pool = rankedPool(key, 'high', null);
+    let rows = pool.slice(0, 10);
+    if (highlightIso && !rows.some(r => r.geo_id === highlightIso)) {
+      const own = pool.find(r => r.geo_id === highlightIso);
+      if (own) rows = rows.concat([own]);
+    }
+    return { key, dir: 'high', rows, highlight: highlightIso };
+  }
+  function miss() {
+    showNotice('No data for that one in this panel. The release files may go further.');
+    return null;
+  }
+}
+
+/* ── session ───────────────────────────────────────────────────────── */
+// answer + the standing-context annotations, shared by ask() and recomputeChain()
+function runQuery(q) {
+  const isAmong = /\bamong\b|\ball countries\b|\beveryone\b|\bonly (rich|poor|the)\b|\brestrict\b|\bdrop the (filter|condition|pool)\b/.test(norm(q));
+  const f = answer(q);
+  if (!f) return null;
+  if (META[ctx.metric] && META[ctx.metric].series && !isIneq(ctx.metric)) ctx.lastAspect = ctx.metric;
+  if (ctx.region && !f.noChart) {
+    const rl = REGION_LABEL[ctx.region];
+    if (!f.text.includes(rl)) f.text = f.text.replace(/\s*$/, '') + ` <em>in ${rl}</em>`;
+  }
+  if (ctx.pool && !/among /i.test(f.text)) f.text = f.text.replace(/\s*$/, '') + poolNote();
+  if (!isAmong) ctx.lastQuery = q;   // AMONG re-runs this; never re-runs itself
+  return f;
+}
+
+function resetCtx() {
+  ctx.lastIso = null; ctx.lastRankDir = null; ctx.lastRegion = null;
+  ctx.metric = (typeof FACETS !== 'undefined' && FACETS[curFacet] && FACETS[curFacet].metric)
+    || (SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini');
+  ctx.lastAspect = null; ctx.pool = null; ctx.lastQuery = null; ctx.region = null; computePool();
+}
+
+function ask(q) {
+  hideNotice();
+  stopIdle(false);   // the cube stops drifting once you ask
+  const f = (curFacet === 'opportunity' && US_CZ) ? oppAnswer(q) : runQuery(q);
+  if (!f) return;
+  // one editable cell: a new question refines it in place, it doesn't pile up
+  chain.length = 0;
+  chain.push(f);
+  syncCellFromFact(f);   // the typed question becomes the cell the accordion can amend
+  render();
+  document.getElementById('q').value = '';
+}
+
+// re-run the whole chain from its queries on a fresh context; flag lines whose answer shifted
+function recomputeChain() {
+  const items = chain.map(f => ({ id: f.id, query: f.query, oldText: f.text }));
+  resetCtx();
+  chain.length = 0;
+  for (const it of items) {
+    // route by the facet the cube is on now; questions that don't translate drop out
+    const nf = (curFacet === 'opportunity' && US_CZ) ? oppAnswer(it.query, true) : runQuery(it.query);
+    if (!nf) continue;                    // query no longer resolves under new state: drop it
+    nf.id = it.id;
+    nf.changed = nf.text !== it.oldText;
+    chain.push(nf);
+  }
+}
+
+function removeFact(id) {
+  const i = chain.findIndex(f => f.id === id);
+  if (i === -1) return;
+  chain.splice(i, 1);
+  recomputeChain();                       // deletion may change later answers; re-run and mark them
+  render();
+}
+
+// the cube: six faces, one per dimension of the ask cube. It turns to whichever
+// dimension the last question moved, so the abstract cube stays in view.
+/* ── the cube: the facet selector ─────────────────────────────────── */
+const FACETS = {
+  wealth:      { i: 0, side: true, color: 'var(--wealth)', metric: 'wealth_top1', sub: 'top 1% share' },
+  income:      { i: 1, side: true, color: 'var(--income)', metric: 'income_gini', sub: 'income Gini' },
+  opportunity: { i: 2, side: true, color: 'var(--opportunity)', metric: null, sub: 'commuting zones' },
+  health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'rich vs poor',
+                 note: 'Health inequality here is how many more years the rich live than the poor. That measure is being wired in next.' },
+  interplay:   { i: -1, side: false, color: 'var(--ink-2)', sub: 'across the four',
+                 note: 'Interplay holds two inequalities against each other across places. The scatter view is coming next.' },
+  scope:       { i: -1, side: false, color: 'var(--ink-2)', sub: 'world to zone',
+                 note: 'Scope drops the same measure from countries down to commuting zones. The local data is coming next.' },
+};
+// example prompts, per facet, all runnable: enter on the empty box executes the one showing
+// ten distinct things the accordion and chat can do; each cycles through the box, fillable
+const PROMPT_SETS = {
+  default: [
+    'France',
+    'most concentrated',
+    'life expectancy and inequality',
+    'wealth vs income in the US',
+    'France, then over time',
+    'poverty and inequality',
+    'happiest countries',
+    'who breaks the pattern',
+    'among rich countries',
+    'life satisfaction and inequality',
+  ],
+  income: [
+    'Brazil',
+    'most unequal',
+    'life expectancy and inequality',
+    'Brazil, then over time',
+    'poverty and inequality',
+    'median income and inequality',
+    'who breaks the pattern',
+    'among rich countries',
+  ],
+  opportunity: [
+    'upward mobility',
+    "credit by parents' income",
+    "mortgages by parents' income",
+    'mobility and income',
+  ],
+};
+let promptIdx = 0;
+function nextPrompt(jump) {
+  const el = document.getElementById('q'); if (!el) return;
+  const set = PROMPT_SETS[curFacet] || PROMPT_SETS.default;
+  if (jump) promptIdx = 0;
+  else { if (el.value || document.activeElement === el) return; promptIdx += 1; }
+  el.placeholder = set[promptIdx % set.length];
+}
+// step the suggestion by hand, so you can flick through the premade questions
+function cyclePrompt(dir) {
+  const el = document.getElementById('q'); if (!el || el.value) return;
+  const set = PROMPT_SETS[curFacet] || PROMPT_SETS.default;
+  promptIdx = (promptIdx + dir + set.length) % set.length;
+  el.placeholder = set[promptIdx];
+}
+function runPrompt(text) {
+  // strip the verb, split a chained example into its steps, run them in order
+  const steps = text.replace(/^\w+:\s*/, '').split(/,?\s+then\s+/);
+  steps.forEach(s => { if (s.trim()) ask(s.trim()); });
+}
+const FACET_HEX = { wealth: '#2a78d6', income: '#2f9e8f', opportunity: '#c98a2b', health: '#c0607a' };
+const ACC = () => FACET_HEX[curFacet] || '#2a78d6';   // the UI accent follows the facet you're on
+// a chart is coloured by the variable it shows, and every colour comes from the
+// four-facet palette: wealth blue, income teal, health rose, opportunity amber.
+// an aspect borrows the colour of the facet family it belongs to.
+const METRIC_HEX = {
+  wealth_top1: '#2a78d6', wealth_gini: '#2a78d6', wealth_bottom50: '#2a78d6',
+  income_gini: '#2f9e8f', median_income: '#2f9e8f', gdp_pc: '#2f9e8f', poverty_rate: '#2f9e8f',
+  life_exp: '#c0607a', life_satisfaction: '#c0607a', co2_pc: '#c98a2b',
+};
+const metricColor = key => METRIC_HEX[key] || '#7a7f88';
+const cubeEl = () => document.getElementById('cube');
+let curFacet = 'wealth', cRotX = 0, cRotY = 0;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const STATIC_TILT = 'rotateX(-15deg) rotateY(-20deg) ';
+function cubeApply() {
+  const c = cubeEl(); if (!c) return;
+  c.style.transform = `scale(${cubeScale}) ` + (reduceMotion ? STATIC_TILT : '') + `rotateX(${cRotX}deg) rotateY(${cRotY}deg)`;
+}
+// which face points at the viewer, for ANY orientation: rotate each face's
+// outward normal by the cube's transform and take the one with the largest +z.
+// M = Rx(cRotX)*Ry(cRotY); the z-row of M is [-ca*sb, sa, ca*cb].
+function facetFromAngles() {
+  const a = cRotX * Math.PI / 180, b = cRotY * Math.PI / 180;
+  const sa = Math.sin(a), ca = Math.cos(a), sb = Math.sin(b), cb = Math.cos(b);
+  const z = {
+    wealth: ca * cb, income: -ca * sb, opportunity: -ca * cb,
+    health: ca * sb, interplay: -sa, scope: sa,
+  };
+  return Object.keys(z).reduce((best, k) => z[k] > z[best] ? k : best, 'wealth');
+}
+// the same wound target, shifted by whole turns to sit closest to where we are now,
+// so snapping back to a face never unwinds several full spins
+function nearestEquivalent(target, current) { return target + 360 * Math.round((current - target) / 360); }
+function paintFacet(name) {
+  const f = FACETS[name]; if (!f) return;
+  curFacet = name;
+  document.documentElement.style.setProperty('--accent', f.color);
+  document.querySelectorAll('#cube .face').forEach(el => el.classList.toggle('lit', el.dataset.facet === name));
+  document.querySelectorAll('.fchip').forEach(el => el.setAttribute('aria-pressed', el.dataset.facet === name ? 'true' : 'false'));
+  const vf = document.getElementById('v-facet');
+  if (vf) {
+    const list = FACET_MEASURES[name];
+    const label = facetMeasureLabel(name) || f.sub;
+    const measure = list && list.length > 1
+      ? `<button type="button" class="submeasure" id="submeasure">${label} &#8645;</button>`
+      : `<span class="muted">${label}</span>`;
+    vf.innerHTML = `${name} &middot; ${measure}`;
+  }
+  const hl = document.getElementById('here-label');   // the reminder in the results header
+  if (hl) hl.textContent = name;
+  if (typeof updateCell === 'function') updateCell();   // keep the coordinates current
+}
+// the accordion is the navigation: a fold unfolds to offer that dimension's choices
+// each option is [label, value]; for the global facets the value is a coordinate the
+// accordion sets on the cell, for opportunity it is a query the US-zone engine runs
+function dimOptions(dim) {
+  if (curFacet === 'opportunity') {
+    if (dim === 'against') return [["credit by parents' income", "credit by parents' income"],
+      ["mortgages by parents' income", "mortgages by parents' income"], ['mobility and income', 'mobility and income']];
+    return [];
+  }
+  if (dim === 'place') return [['France', 'FRA'], ['Brazil', 'BRA'], ['Germany', 'DEU'],
+    ['United States', 'USA'], ['India', 'IND'], ['Nigeria', 'NGA'], ['all countries', '']];
+  if (dim === 'time') return [['over time', 'true'], ['a single moment', 'false']];
+  if (dim === 'against') {
+    // everything the facet's inequality can be held against: every series we carry,
+    // minus the facet's own measures (you don't correlate a thing with itself)
+    const own = new Set((FACET_MEASURES[curFacet] || []).map(m => m[0]));
+    own.add(facetIneqDefault());
+    const order = ['income_gini', 'wealth_top1', 'wealth_gini', 'wealth_bottom50',
+      'life_exp', 'life_satisfaction', 'poverty_rate', 'median_income', 'gdp_pc', 'co2_pc'];
+    return order.filter(k => SERIES[k] && META[k] && !own.has(k))
+      .map(k => [META[k].label, k]).concat([['nothing', '']]);
+  }
+  return [];
+}
+function toggleRib(dim) {
+  const rib = document.getElementById('rib-' + dim); if (!rib) return;
+  if (rib.classList.contains('expanded')) { rib.classList.remove('expanded'); return; }
+  document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
+  const list = dimOptions(dim), opts = document.getElementById('opts-' + dim);
+  if (!list.length) { showNotice(curFacet === 'opportunity' ? 'Opportunity is the whole set of US commuting zones, so place is fixed.' : 'Nothing to add on that dimension yet.'); return; }
+  opts.innerHTML = list.map(o => `<button type="button" class="opt" data-val="${esc(o[1])}">${esc(o[0])}</button>`).join('');
+  opts.querySelectorAll('.opt').forEach(btn => btn.addEventListener('click', () => {
+    rib.classList.remove('expanded');
+    if (curFacet === 'opportunity') ask(btn.dataset.val);   // opportunity runs the query as-is
+    else applyDim(dim, btn.dataset.val);                    // the global facets amend the cell
+  }));
+  rib.classList.add('expanded');
+}
+function wireCell() {
+  ['place', 'against'].forEach(dim => {   // time is a plain on/off toggle, it has no options drawer
+    const head = document.querySelector('#rib-' + dim + ' .rib-head');
+    if (head) head.addEventListener('click', () => toggleRib(dim));
+  });
+  document.querySelectorAll('.rib-x').forEach(x => x.addEventListener('click', e => {
+    e.stopPropagation(); applyDim(x.dataset.clear, '');   // X out a branch of the cell
+  }));
+  const ub = document.getElementById('us-back');
+  if (ub) ub.addEventListener('click', () => flipTo('ask', true));
+}
+// click the measure in the accordion to swap it, e.g. top 1% share to wealth Gini
+function cycleMeasure() {
+  const list = FACET_MEASURES[curFacet]; if (!list || list.length < 2) return;
+  facetMeasureIdx[curFacet] = ((facetMeasureIdx[curFacet] || 0) + 1) % list.length;
+  ctx.metric = facetMeasure(curFacet);
+  paintFacet(curFacet);
+  if (chain.length) runCell();
+}
+let baseX = 0, baseY = 0, cubeScale = 1;   // the resting orientation of the active face
+function faceToFront(name) {
+  const f = FACETS[name];
+  let tx, ty;
+  if (f.side) { tx = 0; ty = -90 * f.i; }
+  else if (name === 'interplay') { tx = -90; ty = 0; }
+  else { tx = 90; ty = 0; }
+  // land on the nearest wound copy of the target so the turn is always the short way
+  cRotX = nearestEquivalent(tx, cRotX);
+  cRotY = nearestEquivalent(ty, cRotY);
+  baseX = tx; baseY = ty;   // canonical angles for the wobble maths (mod-360 equal to cRot*)
+  cubeApply();
+}
+// user turns to a facet: switch the lens, refresh the starters, recompute what's on screen
+function chooseFacet(name) {
+  if (!FACETS[name]) return;
+  paintFacet(name);
+  faceToFront(name);
+  settle();
+  hideNotice();
+  const f = FACETS[name];
+  const fm = facetMeasure(name);
+  if (fm) ctx.metric = fm; else if (f.metric) ctx.metric = f.metric;
+  if (f.note) showNotice(f.note);
+  updateChips();
+  nextPrompt(true);   // the example prompt follows the facet
+  rerunCurrent();     // re-read the same cell under the new facet, cube and chart follow
+}
+// motion: a slow tumble before anything is chosen, then a crisp snap to the
+// chosen face and a small wobble around it, a reminder the other faces are there
+let cDragging = false, clx = 0, cly = 0, cMoved = 0, motRAF = null, mClk = 0, wob0 = 0, motion = 'tumble', settleT = null;
+function motionStep() {
+  mClk += 1;
+  if (motion === 'tumble') {
+    const s = mClk * 0.0042;
+    cRotY = Math.sin(s) * 40 + Math.sin(s * 0.63 + 1.1) * 14;
+    cRotX = Math.sin(s * 0.86 + 2.0) * 34 + Math.sin(s * 0.42) * 12;
+    cubeApply();
+  } else if (motion === 'wobble') {
+    const s = (mClk - wob0) * 0.0048;   // starts at 0 so the wobble eases out of the snap
+    if (Math.abs(baseX) > 45) {   // interplay / scope sit at the poles: wobble inward, never across
+      const dir = baseX < 0 ? 1 : -1;
+      cRotX = baseX + dir * Math.abs(Math.sin(s * 0.83)) * 15;
+      cRotY = baseY + Math.sin(s) * 9;
+    } else {
+      cRotY = baseY + Math.sin(s) * 14 + Math.sin(s * 0.57 + 1.2) * 6;
+      cRotX = baseX + Math.sin(s * 0.83 + 2.1) * 12 + Math.sin(s * 0.44) * 5;
+    }
+    cubeApply();
+  }
+  motRAF = (motion === 'tumble' || motion === 'wobble') ? requestAnimationFrame(motionStep) : null;
+}
+function runMotion() { if (!reduceMotion && !motRAF && (motion === 'tumble' || motion === 'wobble')) motRAF = requestAnimationFrame(motionStep); }
+// let the CSS transition land the face, then ease the wobble back in
+function settle() {
+  clearTimeout(settleT);
+  motion = 'still';
+  if (motRAF) { cancelAnimationFrame(motRAF); motRAF = null; }
+  cubeApply();
+  if (reduceMotion) return;
+  settleT = setTimeout(() => { wob0 = mClk; motion = 'wobble'; runMotion(); }, 660);
+}
+function startIdle() { motion = 'tumble'; runMotion(); }
+function stopIdle() { if (motion !== 'tumble') return; faceToFront(curFacet); settle(); }
+function cubeSnap() {
+  // whichever face ended up nearest the viewer wins, from any tumbled orientation
+  chooseFacet(facetFromAngles());
+}
+function initCube() {
+  const scene = document.getElementById('scene');
+  if (!scene) return;
+  scene.addEventListener('pointerdown', e => {
+    e.preventDefault();   // don't start a text selection on the copy behind the cube
+    motion = 'drag'; if (motRAF) { cancelAnimationFrame(motRAF); motRAF = null; } clearTimeout(settleT);
+    cDragging = true; cMoved = 0; clx = e.clientX; cly = e.clientY;
+    cubeEl().classList.add('drag'); scene.setPointerCapture(e.pointerId);
+  });
+  scene.addEventListener('pointermove', e => {
+    if (!cDragging) return;
+    const dx = e.clientX - clx, dy = e.clientY - cly; clx = e.clientX; cly = e.clientY;
+    cMoved += Math.abs(dx) + Math.abs(dy);
+    cRotY += dx * 0.6; cRotX -= dy * 0.6;   // free tumble, no axis is clamped
+    cubeApply();
+  });
+  const end = () => { if (!cDragging) return; cDragging = false; cubeEl().classList.remove('drag'); cubeSnap(); };
+  scene.addEventListener('pointerup', end);
+  scene.addEventListener('pointercancel', end);
+  document.querySelectorAll('.fchip').forEach(el =>
+    el.addEventListener('click', () => chooseFacet(el.dataset.facet)));
+  paintFacet('wealth'); cubeApply(); startIdle();
+}
+
+/* ── opportunity: the commuting-zone layer (Opportunity Insights) ──── */
+let US_CZ = null;
+const OPP_FIN = [
+  { re: /\bmortgage\b|\bhome ?loan\b|\bhousing\b/, key: 'mort', label: 'mortgage balance', fmt: usd0 },
+  { re: /\bdelinqu\w*|\bbehind on\b|\bmiss\w* payment/, key: 'delq', label: 'delinquency rate', fmt: v => (v * 100).toFixed(0) + '%' },
+  { re: /\bcredit\b|\bscore\b/, key: 'cr', label: 'credit score', fmt: v => '' + Math.round(v) },
+];
+function czMed(sel) { const a = Object.values(US_CZ).map(sel).filter(v => v != null).sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; }
+function oppAnswer(q, strict) {
+  const r = norm(q);
+  const f = { id: ++factSeq, query: q, kind: 'opp', isos: [], mode: 'opp', text: '', opp: {} };
+  const zones = Object.values(US_CZ);
+  const fin = OPP_FIN.find(x => x.re.test(r));
+  if (fin || /\bgap\b|\brich[- ]?poor\b|\bp25\b|\bp75\b|\bstart\w* poor\b|\bborn poor\b/.test(r)) {
+    const g = fin || OPP_FIN[2];
+    const pts = zones.filter(z => z[g.key + '25'] != null && z[g.key + '75'] != null)
+      .map(z => ({ name: z.name, x: z[g.key + '25'], y: z[g.key + '75'] }));
+    const m25 = czMed(z => z[g.key + '25']), m75 = czMed(z => z[g.key + '75']);
+    f.opp = { kind: 'gap', label: g.label, fmt: g.fmt, pts };
+    f.text = `In the average commuting zone, children whose parents were in the bottom quarter reach a ${g.label} of ` +
+      `<strong>${g.fmt(m25)}</strong>. Children whose parents were in the top quarter reach <strong>${g.fmt(m75)}</strong>.`;
+    return f;
+  }
+  const cov = /\bpoverty\b/.test(r) ? { key: 'pov', label: 'poverty rate' }
+    : /\brent\b|\bhousing cost\b/.test(r) ? { key: 'rent', label: 'two-bed rent' }
+    : /\bincome\b|\bagainst\b|\bvs\b|\btrack|\bcorrelat/.test(r) ? { key: 'inc', label: 'median income' } : null;
+  if (cov) {
+    const pts = zones.filter(z => z.mob != null && z[cov.key] != null).map(z => ({ name: z.name, x: z[cov.key], y: z.mob }));
+    const rr = pearson(pts);
+    f.opp = { kind: 'scatter', covLabel: cov.label, pts };
+    f.text = `Across ${pts.length} US commuting zones, upward mobility is ${rr >= 0 ? 'higher' : 'lower'} where ` +
+      `${cov.label} is higher. <em>r = ${rr.toFixed(2)}</em>`;
+    return f;
+  }
+  const mobWords = /\bmobilit\w*|\bclimb\w*|\bmove up\b|\bopportunit\w*|\brank\w*|\bbest\b|\bworst\b|\bhighest\b|\blowest\b|\bwhere\b|\bzones?\b/.test(r);
+  if (strict && !mobWords) return null;   // a question that doesn't translate to this facet drops, it doesn't get faked
+  if (!strict && !mobWords) {
+    showNotice('Opportunity is the US commuting-zone layer. Ask about upward mobility, or credit, mortgages, and delinquency by parents\' income.');
+    return null;
+  }
+  const ranked = zones.filter(z => z.mob != null).sort((a, b) => b.mob - a.mob);
+  const top = ranked[0], bot = ranked[ranked.length - 1];
+  f.opp = { kind: 'mobility', ranked };
+  f.text = `Across ${ranked.length} US commuting zones, the income percentile a child from a low-income family reaches by adulthood ` +
+    `runs from the <strong>${ord(Math.round(bot.mob * 100))}</strong> in ${esc(bot.name)} to the <strong>${ord(Math.round(top.mob * 100))}</strong> in ${esc(top.name)}.`;
+  return f;
+}
+function drawOpp(f) {
+  const el = document.getElementById('chart'), title = document.getElementById('chart-title'), src = document.getElementById('chart-src');
+  const o = f.opp, AM = '#c98a2b';
+  if (o.kind === 'gap') {
+    const all = o.pts.flatMap(p => [p.x, p.y]), lo = Math.min(...all), hi = Math.max(...all);
+    Plotly.react(el, [
+      { x: [lo, hi], y: [lo, hi], mode: 'lines', line: { color: '#cbd5e1', width: 1, dash: 'dash' }, hoverinfo: 'skip' },
+      { x: o.pts.map(p => p.x), y: o.pts.map(p => p.y), text: o.pts.map(p => p.name), mode: 'markers',
+        marker: { color: AM, size: 6, opacity: 0.45 }, hovertemplate: '%{text}<extra></extra>' },
+    ], Object.assign({}, BASE_LAYOUT, {
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: 'parents in the bottom quarter', type: 'linear', autorange: true }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: 'parents in the top quarter', type: 'linear', autorange: true }),
+    }), CFG);
+    title.textContent = `${cap(o.label)} by parents' income, across commuting zones`;
+    src.textContent = 'Each dot is a commuting zone. The line marks the same outcome for both. Source: Opportunity Insights.';
+  } else if (o.kind === 'scatter') {
+    Plotly.react(el, [{ x: o.pts.map(p => p.x), y: o.pts.map(p => p.y), text: o.pts.map(p => p.name),
+      mode: 'markers', marker: { color: AM, size: 6, opacity: 0.45 }, hovertemplate: '%{text}<extra></extra>' }],
+      Object.assign({}, BASE_LAYOUT, {
+        xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: o.covLabel, type: 'linear', autorange: true }),
+        yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: 'upward mobility (rank at p25)', type: 'linear', autorange: true }),
+      }), CFG);
+    title.textContent = `Upward mobility and ${o.covLabel}, by commuting zone`;
+    src.textContent = 'Each dot is a US commuting zone. Source: Opportunity Insights.';
+  } else {
+    const rows = o.ranked.slice(-8).concat(o.ranked.slice(0, 8));
+    Plotly.react(el, [{ type: 'bar', orientation: 'h', y: rows.map(z => z.name), x: rows.map(z => Math.round(z.mob * 100)),
+      marker: { color: rows.map((z, i) => i < 8 ? '#e0c194' : AM) },
+      text: rows.map(z => Math.round(z.mob * 100)), textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') }, hoverinfo: 'skip' }],
+      Object.assign({}, BASE_LAYOUT, {
+        margin: { t: 8, r: 26, b: 40, l: 150 },
+        xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: 'income percentile a poor kid reaches', type: 'linear', autorange: true }),
+        yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category', autorange: true }),
+      }), CFG);
+    title.textContent = 'Upward mobility, highest and lowest commuting zones';
+    src.textContent = 'The income percentile a child from a low-income family reaches by adulthood. Source: Opportunity Insights.';
+  }
+}
+
+function render() {
+  const session = document.getElementById('session');
+  const list = document.getElementById('facts');
+  updateChips();
+  // once you're working, the cube shrinks so the ask box and cell stay the controls
+  const engaged = chain.length > 0;
+  document.getElementById('view-ask').classList.toggle('engaged', engaged);
+  const wantScale = engaged ? 0.52 : 1;
+  if (wantScale !== cubeScale) { cubeScale = wantScale; cubeApply(); }
+  if (chain.length === 0) {
+    session.hidden = true;
+    updateCell();   // back to just the facet, the other slots empty
+    const a0 = document.getElementById('answer'); if (a0) a0.innerHTML = '';
+    return;
+  }
+  session.hidden = false;
+  // one cell, one answer: the current reading of it
+  const last = chain[chain.length - 1];
+  const ansEl = document.getElementById('answer');
+  ansEl.innerHTML = `<span class="t">${last.text}` +
+    `${last.changed ? ' <span class="upd">updated</span>' : ''}</span>`;
+  if (list) list.innerHTML = '';
+  drawChart();
+  updateCell();   // the cube stays on the facet you chose; only the cell coordinates move
+}
+
+// each dimension of the atlas is a slot; the cube fills the facet, asking fills the rest
+function setSlot(id, value, hint, color) {
+  const rib = document.getElementById('rib-' + id); if (!rib) return;
+  const v = document.getElementById('v-' + id); if (!v) return;
+  if (value) {
+    rib.classList.add('filled'); rib.classList.remove('empty'); v.innerHTML = value;
+    if (color) rib.style.setProperty('--rc', color); else rib.style.removeProperty('--rc');
+  } else { rib.classList.remove('filled'); rib.classList.add('empty'); v.textContent = hint; rib.style.removeProperty('--rc'); }
+}
+const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence'];
+// the accordion reads the cell, the single source of truth, so it always matches the edits
+function updateCell() {
+  document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
+  const last = chain.length ? chain[chain.length - 1] : null;
+  if (last && last.kind === 'opp') {   // opportunity has no cell; read its fact
+    setSlot('place', 'US commuting zones', 'a country, or all of them');
+    setSlot('time', null, 'a moment, or a run of years');
+    const o = last.opp;
+    setSlot('against', o.covLabel || o.label || null, 'another measure to hold it to', '#c98a2b');
+    return;
+  }
+  let place = cell.place && BY_ISO[cell.place] ? esc(BY_ISO[cell.place].name)
+    : ctx.region ? REGION_LABEL[ctx.region] : ctx.pool ? esc(ctx.pool.label) : (last ? 'all countries' : null);
+  setSlot('place', place, 'pick a country');
+  setSlot('time', cell.time ? 'over the years' : null, 'pick a span');
+  const agKey = cell.against && META[cell.against] ? cell.against : null;
+  setSlot('against', agKey ? META[agKey].label : null, 'pick a measure', agKey ? metricColor(agKey) : null);
+  buildAddRow(last);
+}
+// only offer the dimensions that aren't in the cell yet; the accordion grows as you add them
+function buildAddRow(last) {
+  const el = document.getElementById('add-row'); if (!el) return;
+  let chips;
+  if (last && last.kind === 'opp') {
+    chips = [['against', '+ hold against']];
+  } else {
+    chips = [];
+    if (!cell.place && !ctx.region && !ctx.pool) chips.push(['place', '+ a place']);
+    if (!cell.time) chips.push(['time', '+ over time']);
+    if (!cell.against) chips.push(['against', '+ another measure']);
+  }
+  el.innerHTML = chips.map(c => `<button type="button" class="add-chip" data-add="${c[0]}">${c[1]}</button>`).join('');
+  el.querySelectorAll('.add-chip').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.add === 'time') applyDim('time', 'true');   // over time is a plain on/off, no submenu
+    else toggleRib(b.dataset.add);
+  }));
+}
+
+/* ── chart ─────────────────────────────────────────────────────────── */
+const BASE_LAYOUT = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor: 'rgba(0,0,0,0)',
+  font: { family: 'Inter, system-ui, sans-serif', color: cssVar('--ink-2', '#555555'), size: 12 },
+  margin: { t: 8, r: 8, b: 40, l: 46 },
+  xaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea' },
+  yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea' },
+  showlegend: false,
+};
+const CFG = { responsive: true, displayModeBar: false };
+// pull the grid/axis/text colours from the live theme so charts go dark too
+function cssVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+function syncChartTheme() {
+  const grid = cssVar('--grid', '#f0f0f0'), axis = cssVar('--axis', '#eaeaea'), font = cssVar('--ink-2', '#555555');
+  BASE_LAYOUT.font.color = font;
+  BASE_LAYOUT.xaxis.gridcolor = grid; BASE_LAYOUT.xaxis.linecolor = axis;
+  BASE_LAYOUT.yaxis.gridcolor = grid; BASE_LAYOUT.yaxis.linecolor = axis;
+}
+
+function drawChart() {
+  syncChartTheme();
+  const drawable = chain.slice().reverse().find(f => !f.noChart) || chain[chain.length - 1];
+  const mode = drawable.mode;
+  const el = document.getElementById('chart');
+  const title = document.getElementById('chart-title');
+  const src = document.getElementById('chart-src');
+
+  if (mode === 'opp') { drawOpp(drawable); return; }
+
+  if (mode === 'bars') {
+    const bar = chain.slice().reverse().find(f => f.mode === 'bars').bar;
+    const rows = bar.rows.slice().reverse();
+    const isDelta = bar.key === 'delta';
+    const m = META[isDelta ? bar.metric : bar.key];
+    const isPct = m.fmt === pc;
+    const vals = rows.map(r => isPct && !isDelta ? r.val * 100 : r.val);
+    const labels = rows.map(r => isDelta
+      ? (r.val >= 0 ? '+' : '-') + m.fmtD(Math.abs(r.val))
+      : m.fmt(r.val));
+    Plotly.react(el, [{
+      type: 'bar', orientation: 'h',
+      y: rows.map(r => r.geo_name),
+      x: vals,
+      marker: { color: rows.map(r => r.geo_id === bar.highlight ? '#eb6834' : metricColor(isDelta ? bar.metric : bar.key)) },
+      text: labels,
+      textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
+      hovertemplate: '%{y}: %{text}<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 70, b: 36, l: 150 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis,
+        isDelta ? {} : (m.giniFam ? { range: [0, 1.05] } : (isPct ? { ticksuffix: '%' } : {}))),
+      bargap: 0.35,
+    }), CFG);
+    const hl = bar.highlight && BY_ISO[bar.highlight];
+    if (isDelta) {
+      title.textContent = `${bar.dir === 'up' ? 'Biggest rises' : 'Biggest falls'}${bar.note || ''}`;
+      src.textContent = (META[bar.metric].poolSrc || '') + ' Change from the first year at or after the start year to the latest.';
+    } else {
+      title.textContent = `${cap(m.label)}${bar.note || ''}, latest year` + (hl ? `, around ${hl.name}` : '');
+      src.textContent = m.poolSrc || 'Source: WID, latest available year per country. Shares are of household net wealth.';
+    }
+  }
+
+  else if (mode === 'us') {
+    const focus = chain.slice().reverse().find(f => f.mode === 'us').metric;
+    const specs = [
+      ['top1_share', 'Top 1%', SLOTS[0]],
+      ['top10_share', 'Top 10%', SLOTS[1]],
+      ['bottom50_share', 'Bottom 50%', SLOTS[2]],
+    ];
+    const traces = specs.map(([key, name, color]) => {
+      const dim = focus && META[focus] && META[focus].us !== key;
+      return {
+        type: 'scatter', mode: 'lines', name,
+        x: US.filter(r => r[key] != null).map(r => r.year),
+        y: US.filter(r => r[key] != null).map(r => r[key] * 100),
+        line: { color, width: dim ? 1.2 : 2.2 },
+        opacity: dim ? 0.35 : 1,
+        hovertemplate: name + ': %{y:.1f}%<extra></extra>',
+      };
+    });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      showlegend: true,
+      legend: { orientation: 'h', y: 1.08, font: { size: 11 } },
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { ticksuffix: '%', rangemode: 'tozero' }),
+      hovermode: 'x unified',
+    }), CFG);
+    title.textContent = 'US wealth shares, 1989 to 2025';
+    src.textContent = 'Source: Fed Distributional Financial Accounts, with SCF anchors. Share of total household net wealth.';
+  }
+
+  else if (mode === 'scatter') {
+    const sc = chain.slice().reverse().find(f => f.mode === 'scatter').scatter;
+    const mx = META[sc.x], my = META[sc.y];
+    const scale = (m, v) => m.fmt === pc ? v * 100 : v;
+    const labelSet = new Set([...(sc.labelIsos || []), ...sc.focus]);
+    const focusSet = new Set(sc.focus);
+    const bg = sc.pts.filter(p => !labelSet.has(p.iso));
+    const named = sc.pts.filter(p => labelSet.has(p.iso));
+    const mk = pts => ({ x: pts.map(p => scale(mx, p.x)), y: pts.map(p => scale(my, p.y)),
+      text: pts.map(p => p.name), customdata: pts.map(p => [mx.fmt(p.x), my.fmt(p.y)]) });
+    const traces = [{
+      type: 'scatter', mode: 'markers', ...mk(bg),
+      marker: { color: metricColor(sc.y), size: 7, opacity: 0.42 },   // coloured by the variable on the y axis
+      hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
+    }];
+    if (sc.fit) {   // the robust line, drawn across the x-range
+      const xs = sc.pts.map(p => p.x), lo = Math.min(...xs), hi = Math.max(...xs);
+      traces.push({
+        type: 'scatter', mode: 'lines', showlegend: false, hoverinfo: 'skip',
+        x: [scale(mx, lo), scale(mx, hi)],
+        y: [scale(my, sc.fit.slope * lo + sc.fit.intercept), scale(my, sc.fit.slope * hi + sc.fit.intercept)],
+        line: { color: '#98a4b8', width: 1.5, dash: 'dash' },
+      });
+    }
+    if (named.length) traces.push({
+      type: 'scatter', mode: 'markers+text', ...mk(named),
+      marker: { color: named.map(p => focusSet.has(p.iso) ? '#eb6834' : metricColor(sc.y)), size: 11, line: { color: '#fff', width: 1.5 } },
+      textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
+      hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
+    });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 12, b: 44, l: 56 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: mx.label, font: { size: 12 } },
+        ticksuffix: mx.fmt === pc ? '%' : '' }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: my.label, font: { size: 12 } },
+        ticksuffix: my.fmt === pc ? '%' : '' }),
+    }), CFG);
+    title.textContent = (sc.fit ? `Who breaks the pattern: ${my.label} against ${mx.label}` :
+      `${cap(my.label)} against ${mx.label}`) + (sc.region ? ` in ${REGION_LABEL[sc.region]}` : '');
+    src.textContent = (sc.fit ? 'Dashed line is a robust (Theil-Sen) fit; labelled countries sit furthest from it. ' : '') +
+      `Each dot is a country at its latest overlapping year. ${(mx.poolSrc || '').replace(/^Source: /, 'Inequality: ')} ${(my.poolSrc || '').replace(/^Source: /, 'Aspect: ')}`;
+  }
+
+  else if (mode === 'contrast') {
+    const c = chain.slice().reverse().find(f => f.mode === 'contrast').contrast;
+    const my = META[c.y], scy = v => my.fmt === pc ? v * 100 : v;
+    const wPctAxis = c.wealthLens === 'wealth_top1';   // (legacy) top 1% share plots as a percent
+    const foc = new Set(c.focus);
+    const panel = (pts, xaxis, color, sx) => {
+      const bg = pts.filter(p => !foc.has(p.iso)), fg = pts.filter(p => foc.has(p.iso));
+      const mk = (a, hl) => ({ type: 'scatter', mode: hl ? 'markers+text' : 'markers', xaxis, yaxis: 'y',
+        x: a.map(p => sx(p.x)), y: a.map(p => scy(p.y)), text: a.map(p => hl ? p.name : ''),
+        customdata: a.map(p => p.name), textposition: 'top center', textfont: { size: 10, color: cssVar('--ink', '#1a2744') },
+        marker: { color: hl ? '#eb6834' : color, size: hl ? 10 : 6, opacity: hl ? 1 : 0.55, line: hl ? { color: '#fff', width: 1.5 } : {} },
+        hovertemplate: '%{customdata}<br>%{x:.2f} · ' + my.label + ' %{y}<extra></extra>', showlegend: false });
+      return fg.length ? [mk(bg, false), mk(fg, true)] : [mk(bg, false)];
+    };
+    const isGdp = c.wealthLens === 'gdp_pc';
+    const traces = [...panel(c.wPts, 'x', ACC(), wPctAxis ? (v => v * 100) : (v => v)), ...panel(c.iPts, 'x2', '#98a4b8', v => v)];
+    const rTxt = (r, dom) => ({ x: dom, y: 1.06, xref: 'paper', yref: 'paper', xanchor: 'center',
+      text: r == null ? '' : `r = ${r.toFixed(2)}`, showarrow: false, font: { size: 12, color: cssVar('--ink', '#1a2744') } });
+    const wLabel = isGdp ? 'GDP per person' : wPctAxis ? 'top 1% wealth share' : 'wealth Gini';
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 24, r: 10, b: 42, l: 52 },
+      annotations: [rTxt(c.rW, 0.23), rTxt(c.rI, 0.80)],
+      xaxis: { domain: [0, 0.46], type: c.wLog ? 'log' : 'linear', gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', ticksuffix: wPctAxis ? '%' : '', tickprefix: isGdp ? '$' : '', title: { text: wLabel, font: { size: 12 } } },
+      xaxis2: { domain: [0.54, 1], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'income Gini', font: { size: 12 } } },
+      yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' },
+    }), CFG);
+    title.textContent = `${cap(my.label)}, against ${isGdp ? 'prosperity' : wPctAxis ? 'wealth concentration' : 'wealth inequality'} and income` + (c.region ? ` (${REGION_LABEL[c.region]})` : '');
+    src.textContent = isGdp
+      ? `One country per dot. Left: against GDP per person (log scale), a level of prosperity, the national twin of local home values. Right: against income Gini. GDP: OWID. Income: World Bank PIP.`
+      : `One country per dot: the same measure against wealth concentration on the left, income on the right. Income Gini: World Bank PIP.`;
+  }
+
+  else if (mode === 'divergence') {
+    const dv = chain.slice().reverse().find(f => f.mode === 'divergence').diverge;
+    const w = dv.w, inc = dv.inc, base = dv.base;
+    const wBase = (w.series.find(d => d.year >= base) || {}).v;
+    const iMap = {}; for (const d of inc) iMap[d.year] = d.v;
+    const iBase = iMap[base] || (inc.find(d => d.year >= base) || {}).v;
+    const wLine = w.series.filter(d => d.year >= base);
+    const iLine = inc.filter(d => d.year >= base);
+    const traces = [
+      { type: 'scatter', mode: 'lines', name: cap(w.label),
+        x: wLine.map(d => d.year), y: wLine.map(d => d.v / wBase * 100),
+        line: { color: metricColor('wealth_top1'), width: 2.4 },
+        hovertemplate: cap(w.label) + ' %{y:.0f} (base ' + base + ' = 100)<extra></extra>' },
+      { type: 'scatter', mode: 'lines', name: 'Income Gini',
+        x: iLine.map(d => d.year), y: iLine.map(d => d.v / iBase * 100),
+        line: { color: metricColor('income_gini'), width: 2.4 },
+        hovertemplate: 'Income Gini %{y:.0f} (base ' + base + ' = 100)<extra></extra>' },
+    ];
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      showlegend: true, legend: { orientation: 'h', y: 1.1, font: { size: 11 } },
+      margin: { t: 8, r: 16, b: 40, l: 48 },
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: `indexed to ${base} = 100`, font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = `${BY_ISO[dv.iso] ? BY_ISO[dv.iso].name : dv.iso}: wealth and income inequality since ${base}`;
+    src.textContent = `Both indexed to ${base} = 100, so the lines start together and you can read how far each has moved. ` +
+      (dv.iso === 'USA' ? 'Wealth: Fed Distributional Financial Accounts. Income: World Bank PIP.' : 'Wealth: WID. Income: World Bank PIP.') + ' via OWID.';
+  }
+
+  else if (mode === 'path') {
+    const pa = chain.slice().reverse().find(f => f.mode === 'path').path;
+    const mx = META[pa.x], my = META[pa.y];
+    const scale = (m, v) => m.fmt === pc ? v * 100 : v;
+    const pts = pa.pts;
+    const xs = pts.map(p => scale(mx, p.x)), ys = pts.map(p => scale(my, p.y));
+    const traces = [{
+      type: 'scatter', mode: 'lines+markers',
+      x: xs, y: ys, text: pts.map(p => p.year),
+      line: { color: '#c9d3e0', width: 1.5 },
+      marker: { size: 8, color: pts.map((_, i) => i), colorscale: [[0, '#cde2fb'], [1, '#0d366b']], line: { color: '#fff', width: 1 } },
+      hovertemplate: '%{text}<br>' + mx.label + ': %{x}<br>' + my.label + ': %{y}<extra></extra>',
+    }];
+    const ann = [[0, 'start'], [pts.length - 1, 'latest']].map(([i]) => ({
+      x: xs[i], y: ys[i], text: '' + pts[i].year, showarrow: false,
+      yshift: 12, font: { size: 11, color: cssVar('--ink', '#1a2744') },
+    }));
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 16, b: 44, l: 56 }, annotations: ann,
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: mx.label, font: { size: 12 } }, ticksuffix: mx.fmt === pc ? '%' : '' }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' }),
+    }), CFG);
+    title.textContent = `${BY_ISO[pa.iso].name}: ${my.label} against ${mx.label} over time`;
+    src.textContent = `The path runs light (earliest) to dark (latest). ${(mx.lineSrc || '').replace(/^Source: /, mx.label + ': ')}`;
+  }
+
+  else if (mode === 'tiers') {
+    const t = chain.slice().reverse().find(f => f.mode === 'tiers').tiers;
+    const my = META[t.aspect], ml = META[t.lens];
+    const rows = t.rows.slice().reverse();
+    const isPct = my.fmt === pc;
+    const vals = rows.map(r => isPct ? r.val * 100 : r.val);
+    Plotly.react(el, [{
+      type: 'bar', orientation: 'h',
+      y: rows.map(r => r.label), x: vals,
+      marker: { color: ['#1baf7a', '#c9d3e0', '#eb6834'] },
+      text: rows.map(r => my.fmt(r.val) + '  ·  ' + r.n),
+      textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
+      hovertemplate: '%{y}: %{text} countries<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 90, b: 36, l: 150 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, isPct ? { ticksuffix: '%' } : {}),
+      bargap: 0.4,
+    }), CFG);
+    title.textContent = `${cap(my.label)} by ${ml.label} tier`;
+    src.textContent = `Countries split into thirds by ${ml.label}, latest year. Bars show the mean of each third; the count follows each bar.`;
+  }
+
+  else if (mode === 'strip') {
+    const st = chain.slice().reverse().find(f => f.mode === 'strip').strip;
+    const m = META[st.key];
+    const focusSet = new Set(st.focus);
+    const scale = v => m.fmt === pc ? v * 100 : v;
+    const jitter = st.pool.map(() => (((Math.sin(st.pool.length) + 1) % 1)));
+    const bg = st.pool.filter(r => !focusSet.has(r.geo_id));
+    const fg = st.pool.filter(r => focusSet.has(r.geo_id));
+    const yj = (arr, seed) => arr.map((_, i) => ((Math.sin((i + seed) * 12.9898) * 43758.5453) % 1 + 1) % 1 * 0.8 - 0.4);
+    const traces = [{
+      type: 'scatter', mode: 'markers',
+      x: bg.map(r => scale(r.val)), y: yj(bg, 1),
+      text: bg.map(r => r.geo_name), customdata: bg.map(r => m.fmt(r.val)),
+      marker: { color: metricColor(st.key), size: 6, opacity: 0.5 },
+      hovertemplate: '%{text}: %{customdata}<extra></extra>',
+    }];
+    if (fg.length) traces.push({
+      type: 'scatter', mode: 'markers+text',
+      x: fg.map(r => scale(r.val)), y: yj(fg, 99),
+      text: fg.map(r => r.geo_name), customdata: fg.map(r => m.fmt(r.val)),
+      textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
+      marker: { color: '#eb6834', size: 11, line: { color: '#fff', width: 1.5 } },
+      hovertemplate: '%{text}: %{customdata}<extra></extra>',
+    });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 12, b: 40, l: 12 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: cap(m.label), font: { size: 12 } },
+        ticksuffix: m.fmt === pc ? '%' : '' }),
+      yaxis: { visible: false, range: [-1, 1] },
+    }), CFG);
+    title.textContent = `${cap(m.label)}, every country` + (st.region ? ` in ${REGION_LABEL[st.region]}` : '');
+    src.textContent = m.poolSrc || '';
+  }
+
+  else if (mode === 'lorenz') {
+    const lz = chain.slice().reverse().find(f => f.mode === 'lorenz').lorenz;
+    const traces = lz.isos.map(iso => {
+      const c = BY_ISO[iso].latest;
+      const b50 = c.bottom50_wealth_share, t10 = c.top10_wealth_share, t1 = c.top1_wealth_share;
+      const px = [0, 50, 90, 99, 100];
+      const py = [0, b50 * 100, (1 - t10) * 100, (1 - t1) * 100, 100];
+      return {
+        type: 'scatter', mode: 'lines', name: BY_ISO[iso].name,
+        x: px, y: py, line: { color: assignColor(iso), width: 2.2 },
+        hovertemplate: BY_ISO[iso].name + ': bottom %{x:.0f}% hold %{y:.1f}%<extra></extra>',
+      };
+    });
+    traces.push({
+      type: 'scatter', mode: 'lines', name: 'Perfect equality',
+      x: [0, 100], y: [0, 100], line: { color: '#c3c2b7', width: 1.5, dash: 'dot' },
+      hoverinfo: 'skip', showlegend: false,
+    });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      showlegend: traces.filter(t => t.showlegend !== false).length >= 2,
+      legend: { orientation: 'h', y: 1.1, font: { size: 11 } },
+      margin: { t: 8, r: 12, b: 44, l: 48 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: 'Share of population', font: { size: 12 } }, ticksuffix: '%', range: [0, 100] }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: 'Share of wealth', font: { size: 12 } }, ticksuffix: '%', range: [0, 100] }),
+    }), CFG);
+    title.textContent = 'Wealth Lorenz curve' + (lz.isos.length === 1 ? `, ${BY_ISO[lz.isos[0]].name}` : '');
+    src.textContent = 'Source: WID. Anchored at the bottom 50%, top 10%, and top 1% shares. The further the curve bows from the diagonal, the more concentrated.';
+  }
+
+  else {
+    const lineFacts = chain.filter(f => f.mode === 'lines');
+    const metric = lineFacts.slice().reverse().map(f => f.metricUsed).find(Boolean) || 'wealth_gini';
+    const m = META[metric];
+    const isoSet = [];
+    lineFacts.forEach(f => f.isos.forEach(i => { if (!isoSet.includes(i)) isoSet.push(i); }));
+    const wantWorld = chain.some(f => f.world);
+    const fromYear = chain.slice().reverse().map(f => f.fromYear).find(Boolean) || null;
+    const traces = [];
+    for (const iso of isoSet) {
+      const s = seriesOf(metric, iso);
+      if (!s.length) continue;
+      traces.push({
+        type: 'scatter', mode: s.length < 25 ? 'lines+markers' : 'lines', name: BY_ISO[iso].name,
+        x: s.map(d => d.year), y: s.map(d => d.v),
+        line: { color: isoSet.length === 1 ? metricColor(metric) : assignColor(iso), width: 2.2 },
+        marker: { size: 5 },
+        hovertemplate: BY_ISO[iso].name + ': ' + m.hover + '<extra></extra>',
+      });
+    }
+    if (wantWorld) {
+      const w = medianSeriesOf(metric, null);
+      if (w.length) traces.push({
+        type: 'scatter', mode: 'lines', name: 'World median',
+        x: w.map(d => d.year), y: w.map(d => d.v),
+        line: { color: '#999999', width: 2, dash: 'dash' },
+        hovertemplate: 'World median: ' + m.hover + '<extra></extra>',
+      });
+    }
+    const regs = [];
+    chain.forEach(f => { if (f.regionKey && !regs.includes(f.regionKey)) regs.push(f.regionKey); });
+    for (const reg of regs) {
+      const s = medianSeriesOf(metric, reg);
+      if (!s.length) continue;
+      const name = `${REGION_LABEL[reg]} median`;
+      traces.push({
+        type: 'scatter', mode: 'lines', name,
+        x: s.map(d => d.year), y: s.map(d => d.v),
+        line: { color: assignColor('reg:' + reg), width: 2, dash: 'dash' },
+        hovertemplate: name + ': ' + m.hover + '<extra></extra>',
+      });
+    }
+    for (const mk of chain.filter(f => f.marker).map(f => f.marker)) {
+      const s = seriesOf(metric, mk.iso);
+      const at = s.find(d => d.year === mk.year);
+      if (at) traces.push({
+        type: 'scatter', mode: 'markers', showlegend: false,
+        x: [at.year], y: [at.v],
+        marker: { color: assignColor(mk.iso), size: 9, line: { color: '#ffffff', width: 2 } },
+        hovertemplate: `${BY_ISO[mk.iso].name}, ${at.year}: ` + m.hover + '<extra></extra>',
+      });
+    }
+    const labelable = traces.filter(t => t.showlegend !== false && !t.line.dash);
+    const annotations = labelable.length <= 4 ? labelable.map(t => ({
+      x: t.x[t.x.length - 1], y: t.y[t.y.length - 1], xanchor: 'left', xshift: 6,
+      text: t.name, showarrow: false,
+      font: { size: 11, color: cssVar('--ink-2', '#555555') },
+    })) : [];
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      showlegend: traces.filter(t => t.showlegend !== false).length >= 2,
+      legend: { orientation: 'h', y: 1.08, font: { size: 11 } },
+      hovermode: 'x unified',
+      annotations,
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, fromYear ? { range: [fromYear, 2025] } : {}),
+      margin: { t: 8, r: labelable.length <= 4 ? 110 : 16, b: 40, l: 46 },
+    }), CFG);
+    title.textContent = `${cap(m.label)} over time`;
+    src.textContent = m.lineSrc || '';
+  }
+}
+
+/* ── chips: follow-ups track the conversation ──────────────────────── */
+// the guided argument: the divergence, then everyday measures against the two inequalities
+const ASPECT_CHIP = { life_exp: 'life expectancy and inequality', life_satisfaction: 'life satisfaction and inequality',
+  poverty_rate: 'poverty and inequality', median_income: 'median income and inequality' };
+const START_CHIPS = ['wealth vs income in the US', 'life expectancy and inequality', 'life satisfaction and inequality', 'poverty and inequality'];
+// starters per facet, so turning the cube changes what the terminal suggests
+const FACET_CHIPS = {
+  wealth: ['wealth vs income in the US', 'France', 'most concentrated', 'life expectancy and inequality'],
+  income: ['most unequal', 'France', 'median income and inequality', 'poverty and inequality'],
+  opportunity: ['upward mobility', "credit by parents' income", "mortgages by parents' income", 'mobility and income'],
+};
+
+function updateChips() {
+  const el = document.getElementById('chips');
+  if (!el) return;   // the suggestion row is gone; the cycling prompt guides instead
+  let list;
+  const avail = Object.keys(ASPECT_CHIP).filter(k => SERIES[k]);
+  const otherAspects = cur => avail.filter(k => k !== cur).map(k => ASPECT_CHIP[k]);
+  if (typeof curFacet !== 'undefined' && curFacet === 'opportunity') list = FACET_CHIPS.opportunity;
+  else if (!chain.length) list = (typeof curFacet !== 'undefined' && FACET_CHIPS[curFacet]) || START_CHIPS;
+  else {
+    const last = chain[chain.length - 1];
+    if (last.kind === 'divergence' || last.mode === 'divergence')
+      list = ['life expectancy and inequality', 'life satisfaction and inequality', 'poverty and inequality'];
+    else if (last.kind === 'time')
+      list = [...otherAspects(ctx.lastAspect).slice(0, 2), 'wealth vs income in the US', 'most concentrated'];
+    else
+      list = ['wealth vs income in the US', ...otherAspects(ctx.lastAspect).slice(0, 2), 'most concentrated'];
+  }
+  // don't re-offer a question the chain has already asked: the cube should keep moving
+  const asked = new Set(chain.map(f => norm(f.query)));
+  list = list.filter(e => !asked.has(norm(e)));
+  if (!list.length) list = START_CHIPS.filter(e => !asked.has(norm(e)));
+  el.innerHTML = list.map(e => `<button type="button" class="chip">${e}</button>`).join('');
+  el.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => ask(b.textContent)));
+}
+
+/* ── notices, views, wiring ────────────────────────────────────────── */
+function showNotice(html) {
+  const n = document.getElementById('notice');
+  n.innerHTML = html; n.hidden = false;
+}
+function hideNotice() { document.getElementById('notice').hidden = true; }
+
+const VIEWS = ['ask', 'wealth', 'income', 'wellbeing', 'us', 'db'];
+
+/* ── US county tier: the same ask cube, at county resolution ───────── */
+let US_COUNTY = null, US_STATE = null, US_NAMES = null, US_MANIFEST = null;
+const US_ABBR = { '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT','10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL','18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD','25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE','32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND','39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV','55':'WI','56':'WY','72':'PR' };
+const usLabel = { us_mobility:'upward mobility', us_econ_conn:'economic connectedness', us_cohesion:'cohesion', us_volunteering:'volunteering', us_homeownership:'homeownership', us_house_value:'home value', us_income_gini:'income Gini', us_median_income:'median income', us_poverty:'poverty', us_single_parent:'single-parent share', us_college:'college share', us_life_exp:'life expectancy', us_le_gap:'the rich-poor life gap', us_credit_score:'credit score', us_debt_card:'credit-card debt', us_debt_mortgage:'mortgage debt', us_debt_auto:'auto debt', us_debt_student:'student debt', us_delinquency:'delinquency' };
+const usd0v = v => '$' + Math.round(v).toLocaleString('en-US');
+const pctv = v => (v * 100).toFixed(0) + '%';
+const usFmt = { us_mobility:v=>v.toFixed(2), us_econ_conn:v=>v.toFixed(2), us_cohesion:v=>v.toFixed(2), us_volunteering:pctv, us_homeownership:pctv, us_house_value:usd0v, us_income_gini:v=>v.toFixed(2), us_median_income:usd0v, us_poverty:pctv, us_single_parent:pctv, us_college:pctv, us_life_exp:v=>v.toFixed(1)+' yrs', us_le_gap:v=>v.toFixed(1)+' yrs', us_credit_score:v=>''+Math.round(v), us_debt_card:usd0v, us_debt_mortgage:usd0v, us_debt_auto:usd0v, us_debt_student:usd0v, us_delinquency:v=>(v*100).toFixed(1)+'%' };
+const usFmtOf = m => usFmt[m] || (v => '' + v);
+const usWorse = {};   // higher_is_worse per metric, from manifest
+function usAvail() { return US_COUNTY ? Object.keys(US_COUNTY).filter(k => usLabel[k] && Object.keys(US_COUNTY[k]).length) : []; }
+
+let US_INDEX = [];
+function usBuildIndex() {
+  US_INDEX = [];
+  for (const f in US_NAMES) US_INDEX.push({ norm: norm(US_NAMES[f]), fips: f });
+  US_INDEX.sort((a, b) => b.norm.length - a.norm.length);
+}
+function usFind(text) {
+  let t = ' ' + norm(text) + ' ';
+  const found = [];
+  for (const { norm: n, fips } of US_INDEX) {
+    if (n.length < 4) continue;
+    const needle = ' ' + n + ' ', at = t.indexOf(needle);
+    if (at !== -1) { if (!found.includes(fips)) found.push(fips); t = t.slice(0, at) + ' '.repeat(needle.length) + t.slice(at + needle.length); }
+  }
+  return { fips: found, residual: t };
+}
+
+const US_KEYWORDS = [
+  [/\bupward mobility\b|\bmobility\b|\bmove up\b|\bclimb\b/, 'us_mobility'],
+  [/\beconomic connect\w*\b|\bconnectedness\b|\bconnection\b|\bfriends?\b/, 'us_econ_conn'],
+  [/\bcohesion\b|\bclustering\b/, 'us_cohesion'],
+  [/\bvolunteer\w*\b/, 'us_volunteering'],
+  [/\bhomeowner\w*\b|\bhome ?ownership\b/, 'us_homeownership'],
+  [/\bhome values?\b|\bhouse values?\b|\bhousing\b|\bhome prices?\b|\bproperty values?\b/, 'us_house_value'],
+  [/\bthe rich[- ]poor\b|\blife gap\b|\bhealth gap\b|\brich live\w*\b|\blongevity gap\b/, 'us_le_gap'],
+  [/\blife expectancy\b|\blongevity\b|\blive longer\b/, 'us_life_exp'],
+  [/\bcredit[- ]?card debt\b|\bcard debt\b/, 'us_debt_card'],
+  [/\bcredit scores?\b|\bcredit\b/, 'us_credit_score'],
+  [/\bmortgage\w*\b/, 'us_debt_mortgage'],
+  [/\bauto loans?\b|\bcar loans?\b|\bauto debt\b/, 'us_debt_auto'],
+  [/\bstudent (loans?|debt)\b/, 'us_debt_student'],
+  [/\bdelinquen\w*\b|\bbehind on\b/, 'us_delinquency'],
+  [/\bmedian income\b/, 'us_median_income'],
+  [/\bpoverty\b|\bpoorest\b|\bpoor\b/, 'us_poverty'],
+  [/\bsingle[- ]parent\w*\b/, 'us_single_parent'],
+  [/\bcollege\b|\bdegrees?\b/, 'us_college'],
+  [/\bincome inequality\b|\bincome gini\b|\binequality\b|\bunequal\b|\bgini\b/, 'us_income_gini'],
+];
+function usDetect(r) {
+  const a = usAvail(), out = [];
+  for (const [re, id] of US_KEYWORDS) if (re.test(r) && a.includes(id) && !out.includes(id)) out.push(id);
+  return out;
+}
+function usLensDefault() { return usAvail().includes('us_house_value') ? 'us_house_value' : 'us_income_gini'; }
+
+const usHasName = f => US_NAMES[f] && !US_NAMES[f].startsWith(f);
+function usRanked(metric, dir) {
+  const m = US_COUNTY[metric] || {};
+  return Object.keys(m).filter(usHasName).map(f => ({ fips: f, v: m[f] }))
+    .sort((a, b) => dir === 'low' ? a.v - b.v : b.v - a.v);
+}
+function usPaired(x, y) {
+  const X = US_COUNTY[x] || {}, Y = US_COUNTY[y] || {}, out = [];
+  for (const f in X) if (Y[f] != null && X[f] != null && usHasName(f)) out.push({ fips: f, x: X[f], y: Y[f] });
+  return out;
+}
+const usName = f => US_NAMES[f] || f;
+
+const usCtx = { metric: 'us_mobility', lens: 'us_house_value' };
+let usSeq = 0;
+const usChain = [];
+
+function usNotice(html) { const n = document.getElementById('us-notice'); n.innerHTML = html; n.hidden = false; }
+function usHideNotice() { document.getElementById('us-notice').hidden = true; }
+
+function usAsk(q) {
+  usHideNotice();
+  const f = usAnswer(q);
+  if (!f) return;
+  usChain.push(f); usRender();
+  document.getElementById('us-q').value = '';
+}
+function usRemove(id) { const i = usChain.findIndex(f => f.id === id); if (i !== -1) usChain.splice(i, 1); usRender(); }
+
+function usAnswer(q) {
+  const r = norm(q);
+  const mets = usDetect(r);
+  const { fips } = usFind(r);
+  // a measure named but not in the loaded data
+  const namedUnavail = US_KEYWORDS.find(([re, id]) => re.test(r) && !usAvail().includes(id));
+  if (namedUnavail && !mets.length && !fips.length) {
+    usNotice(`${cap(usLabel[namedUnavail[1]])} is not in the loaded county data yet.`);
+    return null;
+  }
+  const most = /\bmost\b|\bhighest\b|\bworst\b|\bbiggest\b|\btop\b/.test(r);
+  const least = /\bleast\b|\blowest\b|\bbest\b|\bsmallest\b|\bfewest\b|\bbottom\b/.test(r);
+  const against = /\bagainst\b|\bvs\b|\bversus\b|\btrack\w*\b|\bpredict\w*\b/.test(r);
+  const tiers = /\btiers?\b|\bbands?\b|\bterciles?\b|\bthirds?\b/.test(r);
+  const brk = /\bbreaks? the (pattern|trend)\b|\boutliers?\b|\boff the (trend|line|pattern)\b|\bexceptions?\b|\bbeat\w* (the )?odds\b|\bpunch\w* above\b|\bdefy\w*\b/.test(r);
+  const lens = mets.find(m => m === 'us_income_gini' || m === 'us_house_value') ||
+    (/\bwealth\b|\bhome|\bhous|\bproperty\b/.test(r) ? 'us_house_value' : usCtx.lens);
+  const metric = mets.find(m => m !== lens) || (mets[0] !== lens ? mets[0] : null) || usCtx.metric;
+  const wealthLens = /\bhome values?\b|\bhous\w*\b|\bproperty\b/.test(r) && !/\bincome\b/.test(r);
+  const incomeLens = /\bincome (inequality|gini)\b/.test(r) && !/\bwealth|home|hous|property\b/.test(r);
+  const wantContrast = metric && !fips.length && !brk && !tiers &&
+    (/\bwealth or income\b|\bwhich (matters|explains|is it)\b|\band inequality\b|\bvs\.? income\b/.test(r) ||
+      (against && !wealthLens && !incomeLens));
+  const f = { id: ++usSeq, query: q };
+
+  if (wantContrast) {
+    const y = metric, xw = 'us_house_value', xi = 'us_income_gini';
+    const wPts = usPaired(xw, y), iPts = usPaired(xi, y);
+    const rW = pearson(wPts), rI = pearson(iPts);
+    if ((rW == null && rI == null) || (wPts.length < 12 && iPts.length < 12)) return usMiss();
+    usCtx.metric = y;
+    const parts = [];
+    if (rW != null) parts.push(`housing wealth at r = <strong>${rW.toFixed(2)}</strong>`);
+    if (rI != null) parts.push(`income inequality at r = <strong>${rI.toFixed(2)}</strong>`);
+    f.mode = 'uscontrast'; f.uc = { y, wPts, iPts, rW, rI };
+    f.text = `Across ${Math.max(wPts.length, iPts.length)} counties, ${usLabel[y]} tracks ${parts.join(', ')}.`;
+  }
+  else if (brk) {
+    const y = metric, x = (lens === y ? usLensDefault() : lens);
+    const pts = usPaired(x, y);
+    const fit = theilSen(pts);
+    if (!fit || pts.length < 12) return usMiss();
+    for (const p of pts) p.resid = p.y - (fit.slope * p.x + fit.intercept);
+    const s = pts.slice().sort((a, b) => b.resid - a.resid);
+    const over = s.slice(0, 3), under = s.slice(-3).reverse();
+    usCtx.metric = y; usCtx.lens = x;
+    f.mode = 'usscatter'; f.sc = { x, y, pts, fit, label: [...over, ...under].map(p => p.fips) };
+    const fmt = usFmtOf(y);
+    const say = a => `${esc(usName(a.fips))} <strong>${fmt(Math.abs(a.resid))}</strong> ${a.resid >= 0 ? 'above' : 'below'}`;
+    f.text = `Against ${usLabel[x]}, the counties furthest off the line on ${usLabel[y]}: ` +
+      `${say(over[0])} and ${say(over[1])} what it predicts; ${say(under[0])} and ${say(under[1])}.`;
+  }
+  else if (tiers) {
+    const y = metric, x = (lens === y ? usLensDefault() : lens);
+    const pool = usRanked(x, 'high');
+    if (pool.length < 12) return usMiss();
+    const hi = pool[Math.floor(pool.length / 3)].v, lo = pool[Math.floor(2 * pool.length / 3)].v;
+    const g = { high: [], mid: [], low: [] };
+    for (const f2 in US_COUNTY[x]) {
+      const xv = US_COUNTY[x][f2], yv = (US_COUNTY[y] || {})[f2];
+      if (yv == null) continue;
+      (xv >= hi ? g.high : xv <= lo ? g.low : g.mid).push(yv);
+    }
+    if (!g.high.length || !g.low.length) return usMiss();
+    const mean = a => a.reduce((s2, v) => s2 + v, 0) / a.length;
+    const mh = mean(g.high), mm = mean(g.mid), ml = mean(g.low), fmt = usFmtOf(y);
+    usCtx.metric = y; usCtx.lens = x;
+    f.mode = 'ustiers'; f.tiers = { x, y, rows: [
+      { label: `Top third by ${usLabel[x]}`, v: mh, n: g.high.length },
+      { label: 'Middle third', v: mm, n: g.mid.length },
+      { label: `Bottom third`, v: ml, n: g.low.length } ] };
+    f.text = `Counties in the top third by ${usLabel[x]} average <strong>${fmt(mh)}</strong> on ${usLabel[y]}; ` +
+      `the bottom third <strong>${fmt(ml)}</strong>.`;
+  }
+  else if ((against || wealthLens || incomeLens) && metric) {
+    const y = metric, x = incomeLens ? 'us_income_gini' : (lens === y ? usLensDefault() : lens);
+    const pts = usPaired(x, y);
+    if (pts.length < 12) return usMiss();
+    const rr = pearson(pts);
+    usCtx.metric = y; usCtx.lens = x;
+    f.mode = 'usscatter'; f.sc = { x, y, pts, r: rr, label: [] };
+    f.text = `Across ${pts.length} counties, ${usLabel[y]} ${corrClause(rr, usLabel[x])} (r = ${rr.toFixed(2)}).`;
+  }
+  else if (fips.length) {
+    const only = fips[0], isState = only.length === 2;
+    const store = isState ? US_STATE : US_COUNTY;
+    usCtx.metric = mets[0] || usCtx.metric;
+    const parts = usAvail().filter(m => (store[m] || {})[only] != null)
+      .slice(0, 6).map(m => `${usLabel[m]} <strong>${usFmtOf(m)(store[m][only])}</strong>`);
+    if (!parts.length) return usMiss();
+    f.mode = 'usbars'; f.bar = { key: usCtx.metric, dir: 'high', rows: usRanked(usCtx.metric, 'high').slice(0, 12), highlight: isState ? null : only };
+    f.text = `<strong>${esc(usName(only))}</strong>: ${parts.join(', ')}.`;
+  }
+  else if (most || least || metric) {
+    const key = metric;
+    const worse = usWorse[key];
+    const dir = least ? 'low' : most ? 'high' : (worse ? 'high' : 'high');
+    const pool = usRanked(key, dir);
+    if (!pool.length) return usMiss();
+    const top = pool.slice(0, 12), fmt = usFmtOf(key);
+    usCtx.metric = key;
+    f.mode = 'usbars'; f.bar = { key, dir, rows: top };
+    const three = top.slice(0, 3).map(p => `${esc(usName(p.fips))} <strong>${fmt(p.v)}</strong>`).join(', ');
+    f.text = `${dir === 'high' ? 'Highest' : 'Lowest'} ${usLabel[key]} by county: ${three}.`;
+  }
+  else return usMiss();
+
+  return f;
+  function usMiss() { usNotice('Try a measure ("upward mobility", "the rich-poor life gap", "credit score"), "against home values", "across home-value tiers", "who breaks the pattern", or a state.'); return null; }
+}
+
+/* ── US chips ──────────────────────────────────────────────────────── */
+function usChips() {
+  const el = document.getElementById('us-chips');
+  const av = usAvail();
+  const aspects = ['us_mobility', 'us_le_gap', 'us_life_exp', 'us_econ_conn'].filter(m => av.includes(m));
+  const contrast = m => `${usLabel[m]} and inequality`;
+  let list;
+  if (!usChain.length) {
+    list = aspects.slice(0, 3).map(contrast).concat(['who breaks the pattern']);
+  } else {
+    const last = usChain[usChain.length - 1];
+    const others = aspects.filter(m => m !== usCtx.metric).slice(0, 2).map(contrast);
+    if (last.mode === 'uscontrast') list = ['who breaks the pattern', `${usLabel[usCtx.metric]} across income inequality tiers`, ...others];
+    else if (last.mode === 'usscatter') list = ['who breaks the pattern', `${usLabel[usCtx.metric]} across income inequality tiers`, ...others];
+    else if (last.mode === 'ustiers') list = ['who breaks the pattern', contrast(usCtx.metric), ...others];
+    else list = [contrast(usCtx.metric), ...others, 'who breaks the pattern'];
+  }
+  el.innerHTML = list.map(c => `<button type="button" class="chip">${c}</button>`).join('');
+  el.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => usAsk(b.textContent)));
+}
+
+function usRender() {
+  const sess = document.getElementById('us-session');
+  const list = document.getElementById('us-facts');
+  usChips();
+  if (!usChain.length) { sess.hidden = true; return; }
+  sess.hidden = false;
+  list.innerHTML = usChain.map((f, i) =>
+    `<li><span class="n">${i + 1}</span><span class="t">${f.text}</span>` +
+    `<button class="x" data-id="${f.id}" title="remove">&times;</button></li>`).join('');
+  list.querySelectorAll('.x').forEach(b => b.addEventListener('click', () => usRemove(Number(b.dataset.id))));
+  const el = document.getElementById('us-facets');
+  const lastMode = usChain[usChain.length - 1].mode;
+  el.innerHTML = `<span class="facet-lead">cell</span><span class="facet"><span class="k">measure</span> ${usLabel[usCtx.metric]}</span>` +
+    (lastMode === 'uscontrast' ? `<span class="facet lens"><span class="k">against</span> wealth vs income</span>`
+      : (lastMode === 'usscatter' || lastMode === 'ustiers') ? `<span class="facet lens"><span class="k">against</span> ${usLabel[usCtx.lens]}</span>` : '') +
+    `<span class="facet"><span class="k">geography</span> US counties</span>`;
+  usDrawChart();
+}
+
+function usDrawChart() {
+  const f = usChain[usChain.length - 1];
+  const el = document.getElementById('us-chart');
+  const title = document.getElementById('us-chart-title');
+  const src = document.getElementById('us-chart-src');
+  src.textContent = 'Source: Opportunity Insights (Opportunity Atlas, Social Capital Atlas) and the health tables. County level, latest release.';
+
+  if (f.mode === 'usbars') {
+    let rows = f.bar.rows.slice();
+    if (f.bar.highlight && !rows.some(r => r.fips === f.bar.highlight)) {
+      const own = usRanked(f.bar.key, 'high').find(r => r.fips === f.bar.highlight);
+      if (own) rows = rows.concat([own]);
+    }
+    rows = rows.reverse();
+    const fmt = usFmtOf(f.bar.key);
+    Plotly.react(el, [{
+      type: 'bar', orientation: 'h', y: rows.map(r => usName(r.fips)), x: rows.map(r => r.v),
+      marker: { color: rows.map(r => r.fips === f.bar.highlight ? '#eb6834' : '#2a78d6') },
+      text: rows.map(r => fmt(r.v)), textposition: 'outside',
+      textfont: { size: 11, color: cssVar('--ink-2', '#555555') }, hovertemplate: '%{y}: %{text}<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, { margin: { t: 8, r: 80, b: 30, l: 190 }, bargap: 0.35 }), CFG);
+    title.textContent = `${cap(usLabel[f.bar.key])}, ${f.bar.dir === 'high' ? 'highest' : 'lowest'} counties`;
+  }
+  else if (f.mode === 'ustiers') {
+    const rows = f.tiers.rows.slice().reverse(), fmt = usFmtOf(f.tiers.y);
+    Plotly.react(el, [{
+      type: 'bar', orientation: 'h', y: rows.map(r => r.label), x: rows.map(r => r.v),
+      marker: { color: ['#1baf7a', '#c9d3e0', '#eb6834'] },
+      text: rows.map(r => fmt(r.v) + '  ·  ' + r.n), textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
+      hovertemplate: '%{y}: %{text} counties<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, { margin: { t: 8, r: 90, b: 30, l: 190 }, bargap: 0.4 }), CFG);
+    title.textContent = `${cap(usLabel[f.tiers.y])} by ${usLabel[f.tiers.x]} tier`;
+  }
+  else if (f.mode === 'usscatter') {
+    const sc = f.sc, fx = usFmtOf(sc.x), fy = usFmtOf(sc.y);
+    const labelSet = new Set(sc.label || []);
+    const bg = sc.pts.filter(p => !labelSet.has(p.fips)), named = sc.pts.filter(p => labelSet.has(p.fips));
+    const mk = a => ({ x: a.map(p => p.x), y: a.map(p => p.y), text: a.map(p => usName(p.fips)),
+      customdata: a.map(p => [fx(p.x), fy(p.y)]) });
+    const traces = [{ type: 'scatter', mode: 'markers', ...mk(bg), marker: { color: '#c9d3e0', size: 5 },
+      hovertemplate: '%{text}<br>' + usLabel[sc.x] + ': %{customdata[0]}<br>' + usLabel[sc.y] + ': %{customdata[1]}<extra></extra>' }];
+    if (sc.fit) {
+      const xs = sc.pts.map(p => p.x), lo = Math.min(...xs), hi = Math.max(...xs);
+      traces.push({ type: 'scatter', mode: 'lines', showlegend: false, hoverinfo: 'skip',
+        x: [lo, hi], y: [sc.fit.slope * lo + sc.fit.intercept, sc.fit.slope * hi + sc.fit.intercept],
+        line: { color: '#98a4b8', width: 1.5, dash: 'dash' } });
+    }
+    if (named.length) traces.push({ type: 'scatter', mode: 'markers+text', ...mk(named),
+      marker: { color: '#eb6834', size: 10, line: { color: '#fff', width: 1.5 } },
+      textposition: 'top center', textfont: { size: 10, color: cssVar('--ink', '#1a2744') },
+      hovertemplate: '%{text}<br>' + usLabel[sc.x] + ': %{customdata[0]}<br>' + usLabel[sc.y] + ': %{customdata[1]}<extra></extra>' });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 12, b: 44, l: 60 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: usLabel[sc.x], font: { size: 12 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: usLabel[sc.y], font: { size: 12 } } }),
+    }), CFG);
+    title.textContent = (sc.fit ? `Who breaks the pattern: ` : '') + `${cap(usLabel[sc.y])} against ${usLabel[sc.x]}, by county`;
+    src.textContent = (sc.fit ? 'Dashed line is a robust (Theil-Sen) fit; labelled counties sit furthest from it. ' : '') + src.textContent;
+  }
+  else if (f.mode === 'uscontrast') {
+    const uc = f.uc, fy = usFmtOf(uc.y);
+    const panel = (pts, xaxis, color) => [{ type: 'scatter', mode: 'markers', xaxis, yaxis: 'y',
+      x: pts.map(p => p.x), y: pts.map(p => p.y), customdata: pts.map(p => usName(p.fips)),
+      marker: { color, size: 4, opacity: 0.45 }, showlegend: false,
+      hovertemplate: '%{customdata}<br>%{x} · ' + usLabel[uc.y] + ' %{y}<extra></extra>' }];
+    const traces = [...panel(uc.wPts, 'x', '#2a78d6'), ...panel(uc.iPts, 'x2', '#98a4b8')];
+    const rTxt = (r, dom) => ({ x: dom, y: 1.06, xref: 'paper', yref: 'paper', xanchor: 'center',
+      text: r == null ? '' : `r = ${r.toFixed(2)}`, showarrow: false, font: { size: 12, color: cssVar('--ink', '#1a2744') } });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 24, r: 10, b: 42, l: 58 },
+      annotations: [rTxt(uc.rW, 0.23), rTxt(uc.rI, 0.80)],
+      xaxis: { domain: [0, 0.46], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'home value', font: { size: 12 } } },
+      xaxis2: { domain: [0.54, 1], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'income Gini', font: { size: 12 } } },
+      yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: usLabel[uc.y], font: { size: 12 } } },
+    }), CFG);
+    title.textContent = `${cap(usLabel[uc.y])}, against housing wealth and income inequality`;
+    src.textContent = 'One county per dot, against local home value and against local income Gini. Source: Opportunity Insights, county covariates.';
+  }
+}
+
+function initUS() {
+  const loaded = document.getElementById('us-loaded'), empty = document.getElementById('us-empty');
+  if (!US_COUNTY || !usAvail().length) { if (loaded) loaded.hidden = true; if (empty) empty.hidden = false; return; }
+  loaded.hidden = false; empty.hidden = true;
+  if (US_MANIFEST) for (const m of US_MANIFEST.metrics) usWorse[m.id] = m.higher_is_worse;
+  for (const f in US_NAMES) { const p = US_NAMES[f].split(', '); if (p.length === 3) US_NAMES[f] = p[0] + ', ' + p[2]; }
+  usBuildIndex();
+  const av = usAvail();
+  document.getElementById('us-coverage').innerHTML =
+    `${(US_MANIFEST ? US_MANIFEST.counties_total : 3000).toLocaleString('en-US')} counties, ${av.length} measures: ` +
+    av.map(m => usLabel[m]).join(', ') + '.';
+  document.getElementById('us-form').addEventListener('submit', e => {
+    e.preventDefault(); const v = document.getElementById('us-q').value.trim(); if (v) usAsk(v);
+  });
+  document.getElementById('us-clear').addEventListener('click', () => { usChain.length = 0; usCtx.metric = 'us_mobility'; usCtx.lens = usLensDefault(); usRender(); });
+  usChips();
+}
+
+function setView(name) {
+  for (const v of VIEWS) {
+    document.getElementById('view-' + v).hidden = v !== name;
+  }
+  document.querySelectorAll('.tabs .tab').forEach(t =>
+    t.classList.toggle('on', t.dataset.view === name));
+  if (name === 'ask' && chain.length) requestAnimationFrame(() =>
+    Plotly.Plots.resize(document.getElementById('chart')));
+  if (name === 'us' && usChain && usChain.length) requestAnimationFrame(() =>
+    Plotly.Plots.resize(document.getElementById('us-chart')));
+}
+// turn to another face of the cube: the atlas flips left, the new face comes in from the right
+let flipping = false;
+function flipTo(name, back) {
+  const curName = VIEWS.find(v => !document.getElementById('view-' + v).hidden);
+  if (!curName || curName === name || flipping) { setView(name); window.scrollTo(0, 0); return; }
+  if (reduceMotion) { setView(name); window.scrollTo(0, 0); return; }
+  flipping = true;
+  const cur = document.getElementById('view-' + curName), nxt = document.getElementById('view-' + name);
+  const out = back ? 90 : -90, inn = back ? -90 : 90;
+  // hinge each face on the shared edge so it turns like a corner of the cube, not a spinning card
+  const curEdge = back ? 'left center' : 'right center';
+  const nxtEdge = back ? 'right center' : 'left center';
+  const EASE = 'transform .5s cubic-bezier(.5,0,.28,1), opacity .3s ease';
+  cur.classList.add('flipping'); cur.style.transformOrigin = curEdge;
+  cur.style.transition = EASE;
+  cur.style.transform = `rotateY(${out}deg)`; cur.style.opacity = '0';
+  setTimeout(() => {
+    cur.hidden = true; cur.classList.remove('flipping');
+    cur.style.transform = ''; cur.style.opacity = ''; cur.style.transition = ''; cur.style.transformOrigin = '';
+    setView(name); window.scrollTo(0, 0);
+    nxt.classList.add('flipping'); nxt.style.transformOrigin = nxtEdge; nxt.style.transition = 'none';
+    nxt.style.transform = `rotateY(${inn}deg)`; nxt.style.opacity = '0';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      nxt.style.transition = EASE;
+      nxt.style.transform = 'rotateY(0deg)'; nxt.style.opacity = '1';
+      setTimeout(() => { nxt.classList.remove('flipping'); nxt.style.transition = ''; nxt.style.transform = ''; nxt.style.opacity = ''; nxt.style.transformOrigin = ''; flipping = false; }, 520);
+    }));
+  }, 460);
+}
+
+// reset takes you all the way back to the home start: empty cell, drifting cube, top of the page
+function resetAll() {
+  const onUS = !document.getElementById('view-us').hidden;
+  chain.length = 0; facetMeasureIdx.wealth = 0; facetMeasureIdx.income = 0;
+  resetCell(); resetCtx(); render();
+  chooseFacet('wealth'); startIdle();
+  if (onUS) flipTo('ask', true); else window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+}
+
+function setHelp(open) {
+  document.getElementById('help').hidden = !open;
+  document.getElementById('helpbtn').classList.toggle('on', open);
+}
+
+/* ── database table ────────────────────────────────────────────────── */
+const tsort = { key: 'wealth_gini', dir: 'desc' };
+function renderTable() {
+  const q = norm(document.getElementById('tfilter').value || '');
+  let rows = LATEST.slice();
+  if (q) rows = rows.filter(r => norm(r.geo_name).includes(q));
+  rows.sort((a, b) => {
+    const x = a[tsort.key], y = b[tsort.key];
+    if (x == null) return 1; if (y == null) return -1;
+    const c = typeof x === 'string' ? x.localeCompare(y) : x - y;
+    return tsort.dir === 'asc' ? c : -c;
+  });
+  document.querySelector('#dbtable tbody').innerHTML = rows.map(r =>
+    `<tr><td>${esc(r.geo_name)}</td><td>${r.year}</td><td>${g3(r.wealth_gini)}</td>` +
+    `<td>${pc(r.top1_wealth_share)}</td><td>${pc(r.top10_wealth_share)}</td><td>${pc(r.bottom50_wealth_share)}</td></tr>`).join('');
+  document.querySelectorAll('#dbtable thead th').forEach(th => {
+    th.querySelector('.dir').textContent =
+      th.dataset.k === tsort.key ? (tsort.dir === 'asc' ? '↑' : '↓') : '';
+  });
+}
+
+function fillCoverage() {
+  const cov = (metric, elId) => {
+    const s = SERIES[metric] || {};
+    const isos = Object.keys(s).filter(i => s[i].length);
+    let lo = Infinity, hi = -Infinity;
+    for (const i of isos) { lo = Math.min(lo, s[i][0].year); hi = Math.max(hi, s[i][s[i].length - 1].year); }
+    const el = document.getElementById(elId);
+    if (el && isos.length) el.textContent = `${isos.length} countries, ${lo} to ${hi}.`;
+  };
+  cov('wealth_gini', 'cov-wealth');
+  cov('income_gini', 'cov-income');
+  cov('median_income', 'cov-median');
+  cov('life_exp', 'cov-life');
+  cov('co2_pc', 'cov-co2');
+  cov('poverty_rate', 'cov-poverty');
+  cov('life_satisfaction', 'cov-sat');
+}
+
+function boot() {
+  updateChips();
+  document.querySelectorAll('.help-v, .try').forEach(v => {
+    v.innerHTML = v.dataset.qs.split(';')
+      .map(q => `<button type="button" class="chip">${q}</button>`).join('');
+    v.querySelectorAll('.chip').forEach(b =>
+      b.addEventListener('click', () => { setHelp(false); setView('ask'); ask(b.textContent); }));
+  });
+  document.getElementById('helpbtn').addEventListener('click', () =>
+    setHelp(document.getElementById('help').hidden));
+  document.getElementById('ask-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const el = document.getElementById('q');
+    const v = el.value.trim();
+    setHelp(false);
+    if (v) { if (/,?\s+then\s+/.test(v)) { runPrompt(v); el.value = ''; } else ask(v); }
+    else runPrompt(el.placeholder);   // enter on the empty box runs the example showing
+  });
+  // pull the cycling example into the box to complete it: Tab, or click the empty prompt
+  const qEl = document.getElementById('q');
+  function fillPrompt() {
+    if (qEl.value) return;
+    qEl.value = qEl.placeholder.replace(/^\w+:\s*/, '');
+    qEl.focus(); qEl.setSelectionRange(qEl.value.length, qEl.value.length);
+  }
+  // the example stays a grey placeholder; Tab drops it in to complete, arrows flick between them
+  qEl.addEventListener('keydown', e => {
+    if (e.key === 'Tab' && !qEl.value) { e.preventDefault(); fillPrompt(); }
+    else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !qEl.value) {
+      e.preventDefault(); cyclePrompt(e.key === 'ArrowDown' ? 1 : -1);
+    }
+  });
+  document.getElementById('clear').addEventListener('click', resetAll);
+  // the prompt cycles through the premade questions on its own; arrows step it by hand
+  setInterval(() => nextPrompt(false), 3800);
+  // click the measure inside the facet row to swap it
+  const vfacet = document.getElementById('v-facet');
+  if (vfacet) vfacet.addEventListener('click', e => { if (e.target.closest('.submeasure')) cycleMeasure(); });
+  wireCell();
+  // theme toggle: follow the OS, or override it and remember
+  const themeBtn = document.getElementById('theme');
+  if (themeBtn) themeBtn.addEventListener('click', () => {
+    const dark = !(document.documentElement.getAttribute('data-theme') === 'dark' ||
+      (!document.documentElement.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches));
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    try { localStorage.setItem('oia-theme', dark ? 'dark' : 'light'); } catch (e) {}
+    if (chain.length) drawChart();
+  });
+  // back to the top (and the cube) once you've scrolled into the visuals
+  const toTop = document.getElementById('totop');
+  if (toTop) {
+    toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }));
+    window.addEventListener('scroll', () => toTop.classList.toggle('show', window.scrollY > 320));
+  }
+  // the cube, and the folded-away deeper views
+  initCube();
+  const tabsEl = document.getElementById('tabs'), deeperBtn = document.getElementById('deeper');
+  deeperBtn.addEventListener('click', () => {
+    const open = tabsEl.hidden;
+    tabsEl.hidden = !open;
+    deeperBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  const usEnter = document.getElementById('us-enter');
+  if (usEnter) usEnter.addEventListener('click', () => flipTo('us'));
+  document.getElementById('home').addEventListener('click', () => {
+    const onUS = !document.getElementById('view-us').hidden;
+    if (onUS) flipTo('ask', true); else setView('ask');
+    tabsEl.hidden = true; deeperBtn.setAttribute('aria-expanded', 'false');
+  });
+  document.getElementById('share').addEventListener('click', () => {
+    const url = location.origin + location.pathname +
+      (chain.length ? '#' + chain.map(f => encodeURIComponent(f.query)).join('|') : '');
+    navigator.clipboard && navigator.clipboard.writeText(url);
+    const b = document.getElementById('share');
+    const old = b.textContent; b.textContent = 'copied';
+    setTimeout(() => { b.textContent = old; }, 1200);
+  });
+  document.querySelectorAll('.tabs .tab').forEach(t =>
+    t.addEventListener('click', () => setView(t.dataset.view)));
+  document.querySelectorAll('.goto-db').forEach(a =>
+    a.addEventListener('click', e => { e.preventDefault(); setView('db'); }));
+  document.getElementById('tfilter').addEventListener('input', renderTable);
+  document.querySelectorAll('#dbtable thead th').forEach(th =>
+    th.addEventListener('click', () => {
+      if (tsort.key === th.dataset.k) tsort.dir = tsort.dir === 'asc' ? 'desc' : 'asc';
+      else { tsort.key = th.dataset.k; tsort.dir = th.dataset.k === 'geo_name' ? 'asc' : 'desc'; }
+      renderTable();
+    }));
+  document.addEventListener('keydown', e => {
+    if (e.key === '/' && document.activeElement !== document.getElementById('q')
+        && document.activeElement !== document.getElementById('tfilter')) {
+      e.preventDefault(); setView('ask'); document.getElementById('q').focus();
+    }
+  });
+  renderTable();
+  fillCoverage();
+  initUS();
+
+  if (location.hash.length > 1) {
+    // a shared link replays its chain, then the URL goes clean so a reload starts blank
+    location.hash.slice(1).split('|').slice(0, 12)
+      .map(decodeURIComponent).forEach(q => { const f = runQuery(q); if (f) chain.push(f); });
+    history.replaceState(null, '', location.pathname);
+    if (chain.length) render();
+  }
+  // otherwise the terminal opens clean: the cube drifts, the prompt waits
+}
+
+/* the wealth pipeline writes bare NaN into some numeric fields; JSON.parse rejects it */
+const loadJson = url => fetch(url).then(r => r.text())
+  .then(t => JSON.parse(t.replace(/\bNaN\b/g, 'null')));
+
+function toSeries(dict) {
+  const out = {};
+  for (const iso in dict) out[iso] = dict[iso].map(([year, v]) => ({ year, v }));
+  return out;
+}
+
+const opt = url => loadJson(url).catch(() => ({}));   // modules that may not exist yet load empty
+Promise.all([
+  loadJson('data/wealth_latest.json'),
+  loadJson('data/wealth_timeseries.json'),
+  loadJson('data/us_longrun.json'),
+  opt('data/geo_names.json'),
+  opt('data/income_gini.json'),
+  opt('data/life_expectancy.json'),
+  opt('data/co2_per_capita.json'),
+  opt('data/poverty_rate.json'),
+  opt('data/median_income.json'),
+  opt('data/gdp_pc.json'),
+  opt('data/life_satisfaction.json'),
+  opt('data/wealth_top1.json'),
+  opt('data/wealth_bottom50.json'),
+  opt('data/us_county.json'),
+  opt('data/us_state.json'),
+  opt('data/us_names.json'),
+  opt('data/us_manifest.json'),
+  opt('data/us_cz.json'),
+]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50, usCounty, usState, usNames, usManifest, usCz]) => {
+  LATEST = latest; US = us;
+  // spine is the union of every country any module knows, named from geo_names
+  const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
+  for (const iso in names) BY_ISO[iso] = { name: names[iso], latest: null };
+  for (const r of latest) {
+    if (!BY_ISO[r.geo_id]) BY_ISO[r.geo_id] = { name: r.geo_name, latest: null };
+    BY_ISO[r.geo_id].latest = r;
+  }
+  const wg = {};
+  for (const r of ts) if (BY_ISO[r.geo_id] && r.wealth_gini != null)
+    (wg[r.geo_id] = wg[r.geo_id] || []).push({ year: r.year, v: r.wealth_gini });
+  for (const iso in wg) wg[iso].sort((a, b) => a.year - b.year);
+  SERIES.wealth_gini = wg;
+  SERIES.income_gini = toSeries(income);
+  SERIES.life_exp = toSeries(life);
+  SERIES.co2_pc = toSeries(co2);
+  SERIES.poverty_rate = toSeries(pov);
+  SERIES.median_income = toSeries(medinc);
+  SERIES.gdp_pc = toSeries(gdp);
+  if (sat && Object.keys(sat).length) SERIES.life_satisfaction = toSeries(sat);
+  if (wtop1 && Object.keys(wtop1).length) SERIES.wealth_top1 = toSeries(wtop1);
+  if (wbot50 && Object.keys(wbot50).length) SERIES.wealth_bottom50 = toSeries(wbot50);
+  if (usCounty && Object.keys(usCounty).length) { US_COUNTY = usCounty; US_STATE = usState; US_NAMES = usNames; US_MANIFEST = usManifest; }
+  if (usCz && Object.keys(usCz).length) US_CZ = usCz;
+
+  buildIndex();
+  boot();
+}).catch(() => {
+  showNotice('Could not load the data files. If this page was opened from disk, serve it over HTTP, ' +
+    'or get the release files from <a href="https://github.com/conway1521/wealth_ineq">GitHub</a>.');
+});
+</script>
+</body>
+</html>
