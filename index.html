@@ -28,6 +28,7 @@
   --opportunity: #c98a2b;
   --health:      #c0607a;
   --grid: #f0f0f0; --axis: #eaeaea;
+  --pleat-hi: #ffffff;
   --shadow: 0 1px 2px rgba(16,20,28,.05), 0 8px 30px rgba(16,20,28,.06);
 }
 /* dark, black-and-white at night; follows the OS unless the toggle overrides it */
@@ -37,17 +38,20 @@
     --border: #24272c; --border-2: #30343a;
     --ink: #f3f4f6; --ink-2: #a9aeb6; --ink-3: #6b7079;
     --grid: #232629; --axis: #2b2f34;
+    --pleat-hi: #1e2228;
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 34px rgba(0,0,0,.45);
   }
 }
 :root[data-theme="light"] {
   --bg: #fafafa; --surface: #ffffff; --panel: #f4f5f7; --border: #eaeaea; --border-2: #dcdee1;
   --ink: #0a0a0a; --ink-2: #555555; --ink-3: #999999; --grid: #f0f0f0; --axis: #eaeaea;
+  --pleat-hi: #ffffff;
   --shadow: 0 1px 2px rgba(16,20,28,.05), 0 8px 30px rgba(16,20,28,.06);
 }
 :root[data-theme="dark"] {
   --bg: #0c0d0f; --surface: #141619; --panel: #191c20; --border: #24272c; --border-2: #30343a;
   --ink: #f3f4f6; --ink-2: #a9aeb6; --ink-3: #6b7079; --grid: #232629; --axis: #2b2f34;
+  --pleat-hi: #1e2228;
   --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 34px rgba(0,0,0,.45);
 }
 
@@ -156,14 +160,12 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
   background: var(--bg); pointer-events: none;
 }
-.qmark {
-  position: absolute; right: 44px; top: 50%; transform: translateY(-50%);
+.helpbtn {
+  display: block; margin: 10px auto 0;
   font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-  border: 1px solid var(--border); border-radius: 100px;
-  width: 22px; height: 22px; line-height: 1;
-  background: var(--bg); cursor: pointer;
+  background: none; border: none; cursor: pointer; letter-spacing: .03em;
 }
-.qmark:hover, .qmark.on { color: var(--ink); border-color: var(--ink-3); }
+.helpbtn:hover, .helpbtn.on { color: var(--ink); }
 
 .help {
   max-width: 560px; margin: 12px auto 0; text-align: left;
@@ -191,10 +193,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .chip:hover { border-color: var(--ink-3); color: var(--ink); }
 
 .notice {
-  max-width: 640px; margin-top: 12px;
-  font-size: 13px; color: var(--ink-2);
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; padding: 10px 14px;
+  max-width: 500px; margin: 12px auto 0; text-align: center;
+  font-size: 13px; color: var(--ink-3); line-height: 1.5;
 }
 
 /* chain */
@@ -290,31 +290,40 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .cell { max-width: 560px; margin: 22px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); margin-bottom: 8px; }
-/* one folded strip: the left edge is a real zigzag of pleats, one per panel */
-.ribs { border: 1px solid var(--border-2); border-radius: 12px; overflow: hidden;
-  background: var(--surface); box-shadow: var(--shadow); }
-.rib { overflow: hidden; }
-/* the crease between panels, and a faint alternating shade so the folds catch light */
-.rib + .rib { border-top: 1px solid color-mix(in srgb, var(--ink) 11%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 80%, #fff); }
-.rib:nth-child(odd)  { background-image: linear-gradient(176deg, color-mix(in srgb, var(--ink) 5%, transparent), transparent 62%); }
-.rib:nth-child(even) { background-image: linear-gradient(4deg,   color-mix(in srgb, var(--ink) 5%, transparent), transparent 62%); }
-.rib-head { display: grid; grid-template-columns: 20px 92px 1fr auto; align-items: center; min-height: 46px; }
-.rib[data-dim] .rib-head, .deeper-rib .rib-head { cursor: pointer; }
-.rib[data-dim] .rib-head:hover, .deeper-rib .rib-head:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-/* the pleat: a diagonal bar that flips direction every panel, so stacked they zigzag */
-.rib .spine { align-self: stretch; background: var(--rc, color-mix(in srgb, var(--ink-3) 45%, transparent));
-  transition: background .3s ease; }
-.rib:nth-child(odd)  .spine { clip-path: polygon(0 0, 62% 0, 100% 100%, 38% 100%); }
-.rib:nth-child(even) .spine { clip-path: polygon(38% 0, 100% 0, 62% 100%, 0 100%); }
+/* one continuous folded strip of paper: each panel is a pleat tilted toward or
+   away from the light, so bands run bright-to-dark and flip on every fold; the
+   creases between them alternate ridge (bright line) and valley (dark line) */
+.ribs { border-top: 1px solid var(--border-2); border-bottom: 1px solid var(--border-2);
+  overflow: hidden; background: var(--surface); }
+.rib { position: relative; }
+.rib:nth-child(odd)  { background: linear-gradient(178deg,
+  var(--pleat-hi) 0%, var(--surface) 44%, color-mix(in srgb, var(--ink) 15%, var(--surface)) 100%); }
+.rib:nth-child(even) { background: linear-gradient(178deg,
+  color-mix(in srgb, var(--ink) 15%, var(--surface)) 0%, var(--surface) 56%, var(--pleat-hi) 100%); }
+/* the crease that owns each top border: valley under an even panel, ridge under an odd one */
+.rib + .rib { border-top: 1px solid transparent; }
+.rib:nth-child(even) { border-top-color: color-mix(in srgb, var(--ink) 34%, transparent); }
+.rib:nth-child(odd)  { border-top-color: var(--pleat-hi); }
+.rib-head { display: grid; grid-template-columns: 20px 86px 1fr auto auto; align-items: center; min-height: 46px; }
+.rib[data-dim] .rib-head { cursor: pointer; }
+.rib[data-dim] .rib-head:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+/* the pleated left edge: a diagonal binding bar that flips every panel, zigzagging the spine */
+.rib .spine { align-self: stretch; background: var(--rc, color-mix(in srgb, var(--ink-3) 40%, transparent)); }
+.rib:nth-child(odd)  .spine { clip-path: polygon(0 0, 100% 0, 55% 100%, 0 100%); }
+.rib:nth-child(even) .spine { clip-path: polygon(0 0, 55% 0, 100% 100%, 0 100%); }
 .rib.filled .spine, .rib.facet .spine { background: var(--rc, var(--ink-3)); }
-.rib.facet { --rc: var(--accent); }
+.rib.facet { --rc: var(--accent); display: block; border-radius: 0; padding: 0;
+  font-size: inherit; gap: 0; border: 0; }
 .rib .dim { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--ink-3); padding-left: 14px; }
+  color: var(--ink-3); padding-left: 12px; }
 .rib .val { font-size: 15px; color: var(--ink); padding: 13px 8px 13px 4px; }
 .rib .val .muted { color: var(--ink-3); }
 .rib.facet .val { font-weight: 600; }
-.rib .fold { font-size: 9px; color: var(--ink-3); padding-right: 14px; transition: transform .3s ease; }
+.rib-x { font-family: var(--mono); background: none; border: none; cursor: pointer; color: var(--ink-3);
+  font-size: 15px; line-height: 1; padding: 0 4px; }
+.rib-x:hover { color: var(--ink); }
+.rib[data-dim]:not(.filled) .rib-x { display: none; }
+.rib .fold { font-size: 9px; color: var(--ink-3); padding-right: 12px; transition: transform .3s ease; }
 .rib.expanded .fold { transform: rotate(180deg); }
 /* a dimension only exists once you add it; the fold unravels open, and folds away when cleared */
 .rib[data-dim] { max-height: 0; opacity: 0; transition: max-height .42s cubic-bezier(.22,1,.36,1), opacity .3s ease; }
@@ -495,33 +504,31 @@ footer a { color: inherit; }
           <button class="fchip h" data-facet="health" aria-pressed="false">health</button>
         </div>
         <div class="facet-chips meta-row">
-          <button class="fchip meta" data-facet="interplay" aria-pressed="false">interplay &uarr;</button>
-          <button class="fchip meta" data-facet="scope" aria-pressed="false">scope &darr;</button>
+          <button class="fchip meta" data-facet="interplay" aria-pressed="false">interplay</button>
+          <button class="fchip meta" data-facet="scope" aria-pressed="false">scope</button>
         </div>
       </div>
       <form class="askbox" id="ask-form">
         <span class="car" aria-hidden="true">&rsaquo;</span>
         <input id="q" type="text" autocomplete="off" spellcheck="false"
                placeholder="ask: France, then over time, then against life expectancy" aria-label="Ask the atlas">
-        <button type="button" class="qmark" id="helpbtn" aria-label="What can I ask">?</button>
         <span class="slash">/</span>
       </form>
+      <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">? what can I ask</button>
       <div class="cell" id="cell">
         <div class="ribs" id="ribs">
           <div class="rib facet" id="rib-facet"><div class="rib-head"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div></div>
-          <div class="rib" id="rib-place" data-dim="place"><div class="rib-head"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-place"></div></div>
-          <div class="rib" id="rib-time" data-dim="time"><div class="rib-head"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-time"></div></div>
-          <div class="rib" id="rib-against" data-dim="against"><div class="rib-head"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-against"></div></div>
+          <div class="rib" id="rib-place" data-dim="place"><div class="rib-head"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span><button class="rib-x" data-clear="place" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-place"></div></div>
+          <div class="rib" id="rib-time" data-dim="time"><div class="rib-head"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span><button class="rib-x" data-clear="time" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-time"></div></div>
+          <div class="rib" id="rib-against" data-dim="against"><div class="rib-head"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span><button class="rib-x" data-clear="against" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-against"></div></div>
         </div>
         <div class="add-row" id="add-row"></div>
       </div>
       <div class="help" id="help" hidden>
-        <p class="help-intro">Two steps. See how wealth and income inequality have split, then take an everyday measure and see which one it tracks.</p>
-        <div class="help-row"><span class="help-k">The split</span><span class="help-v" data-qs="wealth vs income in the US;wealth vs income in France"></span></div>
-        <div class="help-row"><span class="help-k">Which one tracks</span><span class="help-v" data-qs="life expectancy and inequality;life satisfaction and inequality;poverty and inequality;median income and inequality"></span></div>
-        <div class="help-row"><span class="help-k">A country</span><span class="help-v" data-qs="France;Brazil in 2000;happiest countries"></span></div>
-        <div class="help-row"><span class="help-k">By county</span><span class="help-v" data-qs="the United States"></span></div>
-        <p class="help-foot">Answers stack up. You can also ask plainly: rank, over time, who breaks the pattern, among richer countries. Remove any line with its &times; and the rest re-runs.</p>
+        <div class="help-row"><span class="help-k">a country</span><span class="help-v" data-qs="France;Brazil;happiest countries"></span></div>
+        <div class="help-row"><span class="help-k">a ranking</span><span class="help-v" data-qs="most concentrated;most unequal;who breaks the pattern"></span></div>
+        <div class="help-row"><span class="help-k">a relationship</span><span class="help-v" data-qs="life expectancy and inequality;poverty and inequality;among rich countries"></span></div>
+        <div class="help-row"><span class="help-k">over time</span><span class="help-v" data-qs="France over time;wealth vs income in the US"></span></div>
       </div>
       <div class="notice" id="notice" hidden></div>
     </section>
@@ -1348,10 +1355,16 @@ function applyDim(dim, val) {
   else if (dim === 'against') cell.against = val || null;
   runCell();
 }
-// re-read the current cell under a changed facet or measure
+// re-read the current cell under a changed facet or measure (never drops back to the landing)
 function rerunCurrent() {
   if (!chain.length) return;
-  if (curFacet === 'opportunity') { recomputeChain(); render(); } else runCell();
+  if (curFacet === 'opportunity') {
+    if (!US_CZ) return;
+    const f = oppAnswer('upward mobility');   // a global cell doesn't translate, so open the zone view
+    if (f) { chain.length = 0; chain.push(f); render(); }
+    return;
+  }
+  runCell();
 }
 
 function answer(q) { return buildAnswer(parse(q), q); }
@@ -2001,8 +2014,9 @@ function wireCell() {
     const head = document.querySelector('#rib-' + dim + ' .rib-head');
     if (head) head.addEventListener('click', () => toggleRib(dim));
   });
-  const dh = document.querySelector('#rib-deeper .rib-head');
-  if (dh) dh.addEventListener('click', () => flipTo('us'));
+  document.querySelectorAll('.rib-x').forEach(x => x.addEventListener('click', e => {
+    e.stopPropagation(); applyDim(x.dataset.clear, '');   // X out a branch of the cell
+  }));
   const ub = document.getElementById('us-back');
   if (ub) ub.addEventListener('click', () => flipTo('ask', true));
 }
@@ -3139,8 +3153,8 @@ function boot() {
     qEl.value = qEl.placeholder.replace(/^\w+:\s*/, '');
     qEl.focus(); qEl.setSelectionRange(qEl.value.length, qEl.value.length);
   }
+  // the example stays a grey placeholder; Tab drops it in to complete, click just puts the cursor there
   qEl.addEventListener('keydown', e => { if (e.key === 'Tab' && !qEl.value) { e.preventDefault(); fillPrompt(); } });
-  qEl.addEventListener('click', () => { if (!qEl.value) fillPrompt(); });
   document.getElementById('clear').addEventListener('click', resetAll);
   // the prompt cycles through the question verbs; press enter on the empty box to run one
   setInterval(() => nextPrompt(false), 3800);
