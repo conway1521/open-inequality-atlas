@@ -160,6 +160,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
   background: var(--bg); pointer-events: none;
 }
+/* the tab-to-fill hint belongs to the empty box only; once you type, it steps aside */
+#q:not(:placeholder-shown) ~ .slash { visibility: hidden; }
 .helpbtn {
   display: block; margin: 10px auto 0;
   font-family: var(--mono); font-size: 11px; color: var(--ink-3);
@@ -286,6 +288,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.engaged .cube .face { justify-content: center; align-items: center; padding: 10px; }
 #view-ask.engaged .cube .face .q { display: none; }
 #view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
+/* keep the answer and its graph close under the accordion, so the chart is in view */
+#view-ask.engaged #session { padding-top: 12px; }
 
 /* ── the cell: a folded accordion, each dimension a fold that unfolds ── */
 .cell { max-width: 560px; margin: 22px auto 0; text-align: left; }
@@ -319,7 +323,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib.expanded .fold { transform: rotate(180deg); }
 /* a dimension only exists once you add it; the fold unravels open, and folds away when cleared */
 .rib[data-dim] { max-height: 0; opacity: 0; transition: max-height .42s cubic-bezier(.22,1,.36,1), opacity .3s ease; }
-.rib[data-dim].filled, .rib[data-dim].expanded { max-height: 220px; opacity: 1; }
+.rib[data-dim].filled, .rib[data-dim].expanded { max-height: 320px; opacity: 1; }
 
 /* the add row: pick which dimension to unfold next */
 .add-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 2px 0; }
@@ -330,7 +334,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* the drawer that unfolds under a fold */
 .rib-opts { max-height: 0; opacity: 0; overflow: hidden; display: flex; flex-wrap: wrap; gap: 6px;
   padding: 0 14px 0 22px; transition: max-height .38s cubic-bezier(.22,1,.36,1), opacity .26s ease; }
-.rib.expanded .rib-opts { max-height: 160px; opacity: 1; padding: 2px 14px 12px 22px; }
+.rib.expanded .rib-opts { max-height: 260px; opacity: 1; padding: 2px 14px 12px 22px; }
 .rib-opts .opt { font-size: 12.5px; padding: 5px 11px; border-radius: 100px; border: 1px solid var(--border);
   background: var(--bg); color: var(--ink-2); cursor: pointer; }
 .rib-opts .opt:hover { color: var(--ink); border-color: var(--ink-3); }
@@ -364,7 +368,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .facet .k { color: var(--ink-3); }
 .facet.lens { border-color: #c9d9ec; }
 .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-#chart { width: 100%; height: 380px; }
+#chart { width: 100%; height: 460px; }
 .chart-src {
   font-size: 12px; color: var(--ink-3);
   padding: 8px 2px 8px; border-top: 1px solid var(--border); margin-top: 4px;
@@ -1999,7 +2003,16 @@ function dimOptions(dim) {
   if (dim === 'place') return [['France', 'FRA'], ['Brazil', 'BRA'], ['Germany', 'DEU'],
     ['United States', 'USA'], ['India', 'IND'], ['Nigeria', 'NGA'], ['all countries', '']];
   if (dim === 'time') return [['over time', 'true'], ['a single moment', 'false']];
-  if (dim === 'against') return Object.keys(ASPECT_CHIP).filter(k => SERIES[k]).map(k => [META[k].label, k]).concat([['nothing', '']]);
+  if (dim === 'against') {
+    // everything the facet's inequality can be held against: every series we carry,
+    // minus the facet's own measures (you don't correlate a thing with itself)
+    const own = new Set((FACET_MEASURES[curFacet] || []).map(m => m[0]));
+    own.add(facetIneqDefault());
+    const order = ['income_gini', 'wealth_top1', 'wealth_gini', 'wealth_bottom50',
+      'life_exp', 'life_satisfaction', 'poverty_rate', 'median_income', 'gdp_pc', 'co2_pc'];
+    return order.filter(k => SERIES[k] && META[k] && !own.has(k))
+      .map(k => [META[k].label, k]).concat([['nothing', '']]);
+  }
   return [];
 }
 function toggleRib(dim) {
@@ -3167,11 +3180,8 @@ function boot() {
     qEl.focus(); qEl.setSelectionRange(qEl.value.length, qEl.value.length);
   }
   // the example stays a grey placeholder; Tab drops it in to complete, arrows flick between them
-  const fillhint = document.getElementById('fillhint');
-  function syncHint() { if (fillhint) fillhint.style.visibility = qEl.value ? 'hidden' : 'visible'; }
-  qEl.addEventListener('input', syncHint);
   qEl.addEventListener('keydown', e => {
-    if (e.key === 'Tab' && !qEl.value) { e.preventDefault(); fillPrompt(); syncHint(); }
+    if (e.key === 'Tab' && !qEl.value) { e.preventDefault(); fillPrompt(); }
     else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !qEl.value) {
       e.preventDefault(); cyclePrompt(e.key === 'ArrowDown' ? 1 : -1);
     }
