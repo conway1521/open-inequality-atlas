@@ -1360,6 +1360,13 @@ function answer(q) {
       const pt = pts.find(x => x.iso === focus[0]);
       t += ` ${esc(pt.name)} is the highlighted point.`;
     }
+    // a weak global link often sharpens among rich countries: point there instead of leaving it flat
+    if (Math.abs(r) < 0.22 && !p.region && !ctx.pool && SERIES.gdp_pc && pts.length > 30) {
+      const rich = new Set(rankedPool('gdp_pc', 'high').slice(0, 60).map(rr => rr.geo_id));
+      const rr = pearson(pts.filter(pt => rich.has(pt.iso)));
+      if (rr != null && Math.abs(rr) - Math.abs(r) >= 0.12)
+        t += ` <em>Among rich countries it sharpens to r = ${rr.toFixed(2)}.</em>`;
+    }
     f.text = t;
   }
 
@@ -1368,10 +1375,10 @@ function answer(q) {
     let x, y;
     const lastSc = chain.slice().reverse().find(ff => ff.scatter);
     if (lastSc) { x = lastSc.scatter.x; y = lastSc.scatter.y; }
-    else { x = isIneq(ctx.metric) ? ctx.metric : 'wealth_gini'; y = ctx.lastAspect; }
+    else { x = isIneq(ctx.metric) ? ctx.metric : facetIneqDefault(); y = ctx.lastAspect; }
     const aspNamed = p.metrics.find(m => !isIneq(m) && META[m].series);
     if (aspNamed) y = aspNamed;
-    if (!y) { showNotice('Hold a measure against inequality first, then ask who breaks the pattern.'); return null; }
+    if (!y) y = SERIES.life_exp ? 'life_exp' : 'income_gini';   // a sensible relationship to break by default
     const mx = META[x], my = META[y];
     const pts = pairedPoints(x, y, null);
     const fit = theilSen(pts);
@@ -1434,17 +1441,11 @@ function answer(q) {
   else if (p.kind === 'among') {
     ctx.pool = p.pool; computePool();
     if (p.pool === null) setRegion(null);   // "all countries" also drops any region
-    if (!ctx.lastQuery) {
-      const label = p.pool ? p.pool.label : 'all countries';
-      f.kind = 'poolset'; f.mode = chain.length ? chain[chain.length - 1].mode : 'lines';
-      f.text = `Pool set to <strong>${label}</strong>` +
-        (POOL_SET ? ` (${POOL_SET.size} countries).` : '.') + ' Ask something to see it applied.';
-      f.noChart = true;
-      return f;
-    }
-    const inner = answer(ctx.lastQuery);   // re-run the last real question inside the new pool
+    // always apply the pool to a real question: the last one, or the everyday health cut
+    const base = ctx.lastQuery || (ctx.lastAspect && ASPECT_CHIP[ctx.lastAspect]) || 'life expectancy and inequality';
+    const inner = answer(base);
     if (!inner) { ctx.pool = null; computePool(); return null; }
-    inner.id = f.id; inner.query = q;      // this chain line represents the AMONG move
+    inner.id = f.id; inner.query = q;      // this line represents the AMONG move
     const label = p.pool ? p.pool.label : 'all countries';
     if (!/among /i.test(inner.text)) inner.text = inner.text.replace(/\s*$/, '') + ` <em>among ${label}</em>`;
     return inner;
