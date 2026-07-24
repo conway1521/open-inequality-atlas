@@ -286,20 +286,23 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .cell { max-width: 560px; margin: 22px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); margin-bottom: 8px; }
-/* the whole thing is one folded strip: panels alternate light and shadow like a bellows */
+/* one folded strip: the left edge is a real zigzag of pleats, one per panel */
 .ribs { border: 1px solid var(--border-2); border-radius: 12px; overflow: hidden;
   background: var(--surface); box-shadow: var(--shadow); }
 .rib { overflow: hidden; }
-/* the crease between panels: a shadow line above a highlight line */
-.rib + .rib { border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 85%, #fff); }
-/* each panel catches the light from an alternating angle */
-.rib:nth-child(odd)  { background-image: linear-gradient(176deg, color-mix(in srgb, var(--ink) 6%, transparent), transparent 62%); }
-.rib:nth-child(even) { background-image: linear-gradient(4deg,   color-mix(in srgb, var(--ink) 6%, transparent), transparent 62%); }
-.rib-head { display: grid; grid-template-columns: 8px 96px 1fr auto; align-items: center; min-height: 46px; }
+/* the crease between panels, and a faint alternating shade so the folds catch light */
+.rib + .rib { border-top: 1px solid color-mix(in srgb, var(--ink) 11%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 80%, #fff); }
+.rib:nth-child(odd)  { background-image: linear-gradient(176deg, color-mix(in srgb, var(--ink) 5%, transparent), transparent 62%); }
+.rib:nth-child(even) { background-image: linear-gradient(4deg,   color-mix(in srgb, var(--ink) 5%, transparent), transparent 62%); }
+.rib-head { display: grid; grid-template-columns: 20px 92px 1fr auto; align-items: center; min-height: 46px; }
 .rib[data-dim] .rib-head, .deeper-rib .rib-head { cursor: pointer; }
 .rib[data-dim] .rib-head:hover, .deeper-rib .rib-head:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-.rib .spine { align-self: stretch; background: var(--rc, transparent); transition: background .3s ease; }
+/* the pleat: a diagonal bar that flips direction every panel, so stacked they zigzag */
+.rib .spine { align-self: stretch; background: var(--rc, color-mix(in srgb, var(--ink-3) 45%, transparent));
+  transition: background .3s ease; }
+.rib:nth-child(odd)  .spine { clip-path: polygon(0 0, 62% 0, 100% 100%, 38% 100%); }
+.rib:nth-child(even) .spine { clip-path: polygon(38% 0, 100% 0, 62% 100%, 0 100%); }
 .rib.filled .spine, .rib.facet .spine { background: var(--rc, var(--ink-3)); }
 .rib.facet { --rc: var(--accent); }
 .rib .dim { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
@@ -1851,13 +1854,15 @@ function runPrompt(text) {
 }
 const FACET_HEX = { wealth: '#2a78d6', income: '#2f9e8f', opportunity: '#c98a2b', health: '#c0607a' };
 const ACC = () => FACET_HEX[curFacet] || '#2a78d6';   // the UI accent follows the facet you're on
-// every variable has its own colour; a chart is coloured by the variable it shows
+// a chart is coloured by the variable it shows, and every colour comes from the
+// four-facet palette: wealth blue, income teal, health rose, opportunity amber.
+// an aspect borrows the colour of the facet family it belongs to.
 const METRIC_HEX = {
   wealth_top1: '#2a78d6', wealth_gini: '#2a78d6', wealth_bottom50: '#2a78d6',
-  income_gini: '#2f9e8f', median_income: '#2f9e8f', gdp_pc: '#6b7280',
-  life_exp: '#3f9e56', life_satisfaction: '#d99b1f', poverty_rate: '#d15b4a', co2_pc: '#7b6cc4',
+  income_gini: '#2f9e8f', median_income: '#2f9e8f', gdp_pc: '#2f9e8f', poverty_rate: '#2f9e8f',
+  life_exp: '#c0607a', life_satisfaction: '#c0607a', co2_pc: '#c98a2b',
 };
-const metricColor = key => METRIC_HEX[key] || '#6b7280';
+const metricColor = key => METRIC_HEX[key] || '#7a7f88';
 const cubeEl = () => document.getElementById('cube');
 let curFacet = 'wealth', cRotX = 0, cRotY = 0;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2944,23 +2949,26 @@ function flipTo(name, back) {
   if (reduceMotion) { setView(name); window.scrollTo(0, 0); return; }
   flipping = true;
   const cur = document.getElementById('view-' + curName), nxt = document.getElementById('view-' + name);
-  const out = back ? 92 : -92, inn = back ? -92 : 92;
-  const EASE = 'transform .46s cubic-bezier(.5,0,.3,1), opacity .34s ease';   // the cube's own turn
-  cur.classList.add('flipping');
+  const out = back ? 90 : -90, inn = back ? -90 : 90;
+  // hinge each face on the shared edge so it turns like a corner of the cube, not a spinning card
+  const curEdge = back ? 'left center' : 'right center';
+  const nxtEdge = back ? 'right center' : 'left center';
+  const EASE = 'transform .5s cubic-bezier(.5,0,.28,1), opacity .3s ease';
+  cur.classList.add('flipping'); cur.style.transformOrigin = curEdge;
   cur.style.transition = EASE;
   cur.style.transform = `rotateY(${out}deg)`; cur.style.opacity = '0';
   setTimeout(() => {
     cur.hidden = true; cur.classList.remove('flipping');
-    cur.style.transform = ''; cur.style.opacity = ''; cur.style.transition = '';
+    cur.style.transform = ''; cur.style.opacity = ''; cur.style.transition = ''; cur.style.transformOrigin = '';
     setView(name); window.scrollTo(0, 0);
-    nxt.classList.add('flipping'); nxt.style.transition = 'none';
+    nxt.classList.add('flipping'); nxt.style.transformOrigin = nxtEdge; nxt.style.transition = 'none';
     nxt.style.transform = `rotateY(${inn}deg)`; nxt.style.opacity = '0';
     requestAnimationFrame(() => requestAnimationFrame(() => {
       nxt.style.transition = EASE;
       nxt.style.transform = 'rotateY(0deg)'; nxt.style.opacity = '1';
-      setTimeout(() => { nxt.classList.remove('flipping'); nxt.style.transition = ''; nxt.style.transform = ''; nxt.style.opacity = ''; flipping = false; }, 480);
+      setTimeout(() => { nxt.classList.remove('flipping'); nxt.style.transition = ''; nxt.style.transform = ''; nxt.style.opacity = ''; nxt.style.transformOrigin = ''; flipping = false; }, 520);
     }));
-  }, 420);
+  }, 460);
 }
 
 // reset takes you all the way back to the home start: empty cell, drifting cube, top of the page
