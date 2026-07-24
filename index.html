@@ -277,34 +277,15 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .here-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { .cube { transition: none; } }
 
-/* stage 2: once a question is asked the page splits. the graphs and the answer
-   take the centre; the cube, ask box and accordion move into a slim right rail
-   that stays put as you scroll, governing what the centre shows */
-#view-ask.engaged { max-width: 1180px; display: grid; align-items: start;
-  grid-template-columns: minmax(0, 1fr) 336px; gap: 46px; }
-#view-ask.engaged #session { grid-column: 1; grid-row: 1; min-width: 0; }
-#view-ask.engaged .ask { grid-column: 2; grid-row: 1; position: sticky; top: 18px;
-  align-self: start; padding: 0; }
+/* once a question is asked, the cube shrinks to a compact marker and the ask box,
+   accordion, then the answer and graphs all stack down the one centred column */
+#view-ask.engaged .ask { padding: 22px 0 8px; }
 #view-ask.engaged .ask h1, #view-ask.engaged .ask .sub { display: none; }
-#view-ask.engaged .homebtn { display: inline-flex; }
 #view-ask.engaged .cubebox { margin: 0 auto 14px; gap: 8px; }
 #view-ask.engaged .scene { height: 104px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
 #view-ask.engaged .cube .face { justify-content: center; align-items: center; padding: 10px; }
 #view-ask.engaged .cube .face .q { display: none; }
 #view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
-#view-ask.engaged .askbox, #view-ask.engaged .cell, #view-ask.engaged .help { max-width: 100%; }
-#view-ask.engaged .meta-row { display: none; }
-/* home button: only present once engaged, sits atop the rail */
-.homebtn { display: none; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11px;
-  color: var(--ink-3); background: var(--surface); border: 1px solid var(--border);
-  border-radius: 100px; padding: 4px 12px; cursor: pointer; margin: 0 auto 12px; }
-.homebtn:hover { color: var(--ink); border-color: var(--ink-3); }
-/* stack the rail under the centre on narrow screens */
-@media (max-width: 900px) {
-  #view-ask.engaged { display: block; max-width: 880px; }
-  #view-ask.engaged .ask { position: static; }
-  #view-ask.engaged #session { margin-top: 8px; }
-}
 
 /* ── the cell: a folded accordion, each dimension a fold that unfolds ── */
 .cell { max-width: 560px; margin: 22px auto 0; text-align: left; }
@@ -497,7 +478,6 @@ footer a { color: inherit; }
     <section class="ask">
       <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality.</h1>
       <p class="sub">Wealth, income, opportunity, health. Pick a face and ask.</p>
-      <button type="button" class="homebtn" id="homebtn">&lsaquo; home</button>
       <div class="cubebox">
         <div class="scene" id="scene">
           <div class="cube" id="cube">
@@ -1338,12 +1318,12 @@ function runCell() {
   ctx.metric = facetIneqDefault();
   ctx.lastIso = cell.place; ctx.lastAspect = cell.against;
   let p, q;
-  if (cell.against && META[cell.against]) {
-    p = { kind: 'correlate', x: ctx.metric, y: cell.against, region: ctx.region };
-    q = `${META[cell.against].label} and inequality`;
-  } else if (cell.place && cell.time) {
+  if (cell.place && cell.time) {   // over time wins when a place is set, so the toggle always shows
     p = { kind: 'time', isos: [cell.place], year: null, region: null, metric: ctx.metric };
     q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} over time`;
+  } else if (cell.against && META[cell.against]) {
+    p = { kind: 'correlate', x: ctx.metric, y: cell.against, region: ctx.region };
+    q = `${META[cell.against].label} and inequality`;
   } else if (cell.place) {
     p = { kind: 'profile', iso: cell.place };
     q = BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place;
@@ -1973,13 +1953,21 @@ function cubeApply() {
   const c = cubeEl(); if (!c) return;
   c.style.transform = `scale(${cubeScale}) ` + (reduceMotion ? STATIC_TILT : '') + `rotateX(${cRotX}deg) rotateY(${cRotY}deg)`;
 }
+// which face points at the viewer, for ANY orientation: rotate each face's
+// outward normal by the cube's transform and take the one with the largest +z.
+// M = Rx(cRotX)*Ry(cRotY); the z-row of M is [-ca*sb, sa, ca*cb].
 function facetFromAngles() {
-  const rx = ((Math.round(cRotX / 90) * 90) % 360 + 360) % 360;
-  if (rx === 90) return 'scope';
-  if (rx === 270) return 'interplay';
-  const idx = ((Math.round(-cRotY / 90) % 4) + 4) % 4;
-  return ['wealth', 'income', 'opportunity', 'health'][idx];
+  const a = cRotX * Math.PI / 180, b = cRotY * Math.PI / 180;
+  const sa = Math.sin(a), ca = Math.cos(a), sb = Math.sin(b), cb = Math.cos(b);
+  const z = {
+    wealth: ca * cb, income: -ca * sb, opportunity: -ca * cb,
+    health: ca * sb, interplay: -sa, scope: sa,
+  };
+  return Object.keys(z).reduce((best, k) => z[k] > z[best] ? k : best, 'wealth');
 }
+// the same wound target, shifted by whole turns to sit closest to where we are now,
+// so snapping back to a face never unwinds several full spins
+function nearestEquivalent(target, current) { return target + 360 * Math.round((current - target) / 360); }
 function paintFacet(name) {
   const f = FACETS[name]; if (!f) return;
   curFacet = name;
@@ -2029,7 +2017,7 @@ function toggleRib(dim) {
   rib.classList.add('expanded');
 }
 function wireCell() {
-  ['place', 'time', 'against'].forEach(dim => {
+  ['place', 'against'].forEach(dim => {   // time is a plain on/off toggle, it has no options drawer
     const head = document.querySelector('#rib-' + dim + ' .rib-head');
     if (head) head.addEventListener('click', () => toggleRib(dim));
   });
@@ -2050,10 +2038,14 @@ function cycleMeasure() {
 let baseX = 0, baseY = 0, cubeScale = 1;   // the resting orientation of the active face
 function faceToFront(name) {
   const f = FACETS[name];
-  if (f.side) { cRotX = 0; cRotY = -90 * f.i; }
-  else if (name === 'interplay') { cRotX = -90; cRotY = 0; }
-  else { cRotX = 90; cRotY = 0; }
-  baseX = cRotX; baseY = cRotY;
+  let tx, ty;
+  if (f.side) { tx = 0; ty = -90 * f.i; }
+  else if (name === 'interplay') { tx = -90; ty = 0; }
+  else { tx = 90; ty = 0; }
+  // land on the nearest wound copy of the target so the turn is always the short way
+  cRotX = nearestEquivalent(tx, cRotX);
+  cRotY = nearestEquivalent(ty, cRotY);
+  baseX = tx; baseY = ty;   // canonical angles for the wobble maths (mod-360 equal to cRot*)
   cubeApply();
 }
 // user turns to a facet: switch the lens, refresh the starters, recompute what's on screen
@@ -2108,8 +2100,7 @@ function settle() {
 function startIdle() { motion = 'tumble'; runMotion(); }
 function stopIdle() { if (motion !== 'tumble') return; faceToFront(curFacet); settle(); }
 function cubeSnap() {
-  cRotX = Math.max(-90, Math.min(90, Math.round(cRotX / 90) * 90));
-  cRotY = Math.round(cRotY / 90) * 90;
+  // whichever face ended up nearest the viewer wins, from any tumbled orientation
   chooseFacet(facetFromAngles());
 }
 function initCube() {
@@ -2125,7 +2116,7 @@ function initCube() {
     if (!cDragging) return;
     const dx = e.clientX - clx, dy = e.clientY - cly; clx = e.clientX; cly = e.clientY;
     cMoved += Math.abs(dx) + Math.abs(dy);
-    cRotY += dx * 0.6; cRotX -= dy * 0.6; cRotX = Math.max(-92, Math.min(92, cRotX));
+    cRotY += dx * 0.6; cRotX -= dy * 0.6;   // free tumble, no axis is clamped
     cubeApply();
   });
   const end = () => { if (!cDragging) return; cDragging = false; cubeEl().classList.remove('drag'); cubeSnap(); };
@@ -2290,7 +2281,10 @@ function buildAddRow(last) {
     if (!cell.against) chips.push(['against', '+ another measure']);
   }
   el.innerHTML = chips.map(c => `<button type="button" class="add-chip" data-add="${c[0]}">${c[1]}</button>`).join('');
-  el.querySelectorAll('.add-chip').forEach(b => b.addEventListener('click', () => toggleRib(b.dataset.add)));
+  el.querySelectorAll('.add-chip').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.add === 'time') applyDim('time', 'true');   // over time is a plain on/off, no submenu
+    else toggleRib(b.dataset.add);
+  }));
 }
 
 /* ── chart ─────────────────────────────────────────────────────────── */
@@ -3182,8 +3176,6 @@ function boot() {
       e.preventDefault(); cyclePrompt(e.key === 'ArrowDown' ? 1 : -1);
     }
   });
-  const homebtn = document.getElementById('homebtn');
-  if (homebtn) homebtn.addEventListener('click', resetAll);
   document.getElementById('clear').addEventListener('click', resetAll);
   // the prompt cycles through the premade questions on its own; arrows step it by hand
   setInterval(() => nextPrompt(false), 3800);
