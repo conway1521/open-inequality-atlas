@@ -119,7 +119,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 
 /* header on narrow screens */
 @media (max-width: 720px) {
-  header .wrap { gap: 12px; }
+  header .wrap { gap: 10px; flex-wrap: wrap; height: auto; padding-top: 9px; padding-bottom: 9px; }
+  .ver { display: none; }
   .top-links { font-size: 12px; }
   .tabs .wrap { flex-wrap: wrap; height: auto; gap: 4px; padding-top: 8px; padding-bottom: 8px; }
   .tab { padding: 6px 10px; }
@@ -287,120 +288,108 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .here-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { .cube { transition: none; } }
 
-/* stage 2: once a question is asked the page folds open. the cube, the ask box
-   and the accordion stay together on the left as the thing you drive; the answer
-   and its graph swing in on the right. no panels, no borders: the page itself folds */
-#view-ask.engaged {
-  max-width: 1240px; display: grid; align-items: start;
-  grid-template-columns: 392px minmax(0, 1fr); gap: 40px;
-}
-#view-ask.engaged .ask {
-  grid-column: 1; grid-row: 1; padding: 0; position: sticky; top: 18px;
-  transform-origin: right center; animation: fold-driver .55s cubic-bezier(.22, 1, .36, 1);
-}
-#view-ask.engaged #session {
-  grid-column: 2; grid-row: 1; min-width: 0; padding-top: 2px;
-  transform-origin: left center; animation: fold-face .55s cubic-bezier(.22, 1, .36, 1);
-}
-/* the driver settles back from a turn, the answer opens out like the next face */
-@keyframes fold-driver {
-  from { transform: rotateY(-26deg) translateX(30%); opacity: .3; }
-  to   { transform: none; opacity: 1; }
-}
-@keyframes fold-face {
-  from { transform: rotateY(24deg) translateX(-8%); opacity: 0; }
-  to   { transform: none; opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  #view-ask.engaged .ask, #view-ask.engaged #session { animation: none; }
-}
+/* stage 2: the cube stays the thing. It does not move aside and it is not
+   replaced by a badge: the deck it sits in pins to the top and condenses, the
+   bellows rides with it, and the answer and its graph flow underneath. */
+#view-ask.engaged .ask { padding: 0; }
 #view-ask.engaged .ask h1, #view-ask.engaged .ask .sub { display: none; }
-#view-ask.engaged .homebtn { display: inline-flex; }
-#view-ask.engaged .cubebox { margin: 0 auto 14px; gap: 8px; }
-#view-ask.engaged .scene { height: 148px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; }
+#view-ask.engaged .homebtn { display: inline-flex; position: absolute; left: 0; top: 10px; margin: 0; z-index: 2; }
+#view-ask.engaged .deck {
+  position: sticky; top: 0; z-index: 20; background: var(--bg);
+  padding: 10px 0 12px; transition: padding .28s ease, box-shadow .28s ease;
+}
+#view-ask.engaged .deck::after {           /* the shadow only once it is holding */
+  content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: 0; width: 100vw; height: 1px; background: var(--border);
+  opacity: 0; transition: opacity .28s ease;
+}
+#view-ask.engaged .deck.condensed::after { opacity: 1; }
+#view-ask.engaged .cubebox { margin: 0 auto 10px; gap: 8px; }
+#view-ask.engaged .scene { height: 150px; margin-bottom: 6px; display: flex;
+  align-items: center; justify-content: center; transition: height .28s ease; }
 #view-ask.engaged .cube .face { justify-content: center; align-items: center; padding: 10px; }
 #view-ask.engaged .cube .face .q { display: none; }
 #view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
-#view-ask.engaged .askbox, #view-ask.engaged .help, #view-ask.engaged .cell { max-width: 100%; }
-/* before you ask, the accordion is just the face you're on */
-#view-ask:not(.engaged) #rib-place,
-#view-ask:not(.engaged) #rib-time,
-#view-ask:not(.engaged) #rib-against,
+/* condensed: the same cube, smaller, with the strip still attached */
+#view-ask.engaged .deck.condensed { padding: 4px 0 8px; }
+#view-ask.engaged .deck.condensed .scene { height: 74px; margin-bottom: 2px; }
+#view-ask.engaged .deck.condensed .facet-chips,
+#view-ask.engaged .deck.condensed .helpbtn,
+#view-ask.engaged .deck.condensed .help { display: none; }
+#view-ask.engaged .deck.condensed .askbox { max-width: 420px; }
+#view-ask.engaged .deck.condensed #q { height: 38px; font-size: 13.5px; }
+#view-ask.engaged .deck.condensed .cell { margin-top: 8px; }
+/* before you ask, the strip is just the face you're on */
 #view-ask:not(.engaged) .add-row { display: none; }
-/* the home button: only once you're working, sits above the cube */
-.homebtn { display: none; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11px;
-  color: var(--ink-3); background: none; border: none; cursor: pointer; margin: 0 auto 6px; padding: 2px 4px; }
-.homebtn:hover { color: var(--ink); }
-/* one column again when there isn't room for two */
-@media (max-width: 940px) {
-  #view-ask.engaged { display: block; max-width: 880px; }
-  #view-ask.engaged .ask { position: static; animation: none; padding: 22px 0 8px; }
-  #view-ask.engaged #session { animation: none; padding-top: 12px; }
+/* the showing: full width, on the page, under the deck */
+#view-ask.engaged #session { padding-top: 18px; }
+#view-ask.engaged .answer { font-size: 19px; line-height: 1.45; margin-bottom: 14px; }
+#view-ask.engaged .chart-card { background: none; border: 0; border-radius: 0; padding: 0; margin-top: 6px; }
+@media (prefers-reduced-motion: reduce) {
+  #view-ask.engaged .deck, #view-ask.engaged .scene { transition: none; }
 }
-
-/* ── the cell: a folded accordion, each dimension a fold that unfolds ── */
-.cell { max-width: 480px; margin: 18px auto 0; text-align: left; }
+/* ── the bellows: one pleated strip under the cube, each pleat a coordinate ──
+   A real accordion is a compressed strip that pulls open, so the folds run
+   across, not down. Slanted creases separate the pleats; a colour bar along the
+   bottom of each says which variable it carries. */
+.deck { text-align: center; }
+.cell { max-width: 720px; margin: 12px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); margin-bottom: 8px; }
-/* a folded strip: each dimension is one flat fold, a hairline crease between them,
-   and a coloured tab on the left that zigzags down the pleated binding edge */
-.ribs { border: 1px solid var(--border-2); border-radius: 6px; overflow: hidden; background: var(--surface); }
-.rib { position: relative; background: var(--surface); }
-.rib + .rib { border-top: 1px solid var(--border); }
-.rib-head { display: grid; grid-template-columns: 13px 72px 1fr auto auto; align-items: center; min-height: 31px; }
+.ribs { position: relative; display: flex; align-items: stretch;
+  border: 1px solid var(--border-2); border-radius: 6px; background: var(--surface); }
+.rib { position: relative; flex: 1 1 0; min-width: 0; }
+.rib.facet { flex: 1.35 1 0; }
+/* the crease between two pleats, leaning like folded paper */
+.rib + .rib::before { content: ''; position: absolute; left: 0; top: 5px; bottom: 5px;
+  width: 1px; background: var(--border); transform: skewX(-13deg); }
+.rib:nth-child(even) { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.rib-head { display: flex; flex-direction: column; gap: 1px; padding: 6px 10px 9px; min-height: 44px; }
 .rib[data-dim] .rib-head { cursor: pointer; }
-.rib[data-dim] .rib-head:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-/* the binding tab: a diagonal bar that flips every fold, so the left edge zigzags */
-.rib .spine { align-self: stretch; background: var(--rc, color-mix(in srgb, var(--ink-3) 34%, transparent)); }
-.rib:nth-child(odd)  .spine { clip-path: polygon(0 0, 100% 0, 52% 100%, 0 100%); }
-.rib:nth-child(even) .spine { clip-path: polygon(0 0, 52% 0, 100% 100%, 0 100%); }
-.rib.filled .spine, .rib.facet .spine { background: var(--rc, var(--ink-3)); }
-.rib.facet { --rc: var(--accent); display: block; border-radius: 0; padding: 0;
-  font-size: inherit; gap: 0; border: 0; }
-.ribs .rib.facet { max-height: none; opacity: 1; }
-/* the measure sits quietly beside the face, the detail lives in the fold */
-.fmeasure { color: var(--ink-3); font-weight: 400; font-size: 11px; margin-left: 8px; }
-.rib .dim { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--ink-3); padding-left: 10px; }
-.rib .val { font-size: 13px; color: var(--ink); padding: 7px 8px 7px 2px; }
+.rib[data-dim]:hover .rib-head { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.rib .dim { font-family: var(--mono); font-size: 8.5px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--ink-3); }
+.rib .val { font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rib .val .muted { color: var(--ink-3); }
 .rib.facet .val { font-weight: 600; }
-/* a filled value is the control: press it to swap the variable in place */
-.rib[data-dim].filled .val { cursor: pointer;
-  text-decoration: underline dotted color-mix(in srgb, var(--ink-3) 55%, transparent);
-  text-underline-offset: 3px; }
-.rib-x { font-family: var(--mono); background: none; border: none; cursor: pointer; color: var(--ink-3);
-  font-size: 13px; line-height: 1; padding: 0 4px; }
+.fmeasure { color: var(--ink-3); font-weight: 400; font-size: 11px; margin-left: 6px; }
+/* the colour bar: which variable this pleat carries */
+.rib .spine { position: absolute; left: 7px; right: 7px; bottom: 0; height: 2px;
+  background: var(--rc, color-mix(in srgb, var(--ink-3) 30%, transparent)); border-radius: 2px 2px 0 0; }
+.rib.facet { --rc: var(--accent); }
+.rib-x { position: absolute; top: 1px; right: 3px; font-family: var(--mono); background: none;
+  border: none; cursor: pointer; color: var(--ink-3); font-size: 12px; line-height: 1;
+  padding: 1px 3px; opacity: 0; transition: opacity .15s ease; }
+.rib:hover .rib-x { opacity: 1; }
 .rib-x:hover { color: var(--ink); }
 .rib[data-dim]:not(.filled) .rib-x { display: none; }
-.rib .fold { font-size: 8px; color: var(--ink-3); padding-right: 10px; transition: transform .3s ease; }
-.rib.expanded .fold { transform: rotate(180deg); }
-/* a dimension only exists once you add it; the fold unravels open, and folds away when cleared */
-.rib[data-dim] { max-height: 0; opacity: 0; transition: max-height .42s cubic-bezier(.22,1,.36,1), opacity .3s ease; }
-.rib[data-dim].filled { max-height: 320px; opacity: 1; }
-.rib[data-dim].expanded { max-height: 420px; opacity: 1; }
+.rib.expanded { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+/* a pleat exists only once its variable is set; the face is always there */
+.rib[data-dim] { display: none; }
+.rib[data-dim].filled, .rib[data-dim].expanded, .ribs .rib.facet { display: block; }
 
-/* the add row: pick which dimension to unfold next */
-.add-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 2px 0; }
+/* the add row: pull another pleat out of the strip */
+.add-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 0; justify-content: center; }
 .add-row:empty { display: none; }
 .add-chip { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); background: transparent;
   border: 1px dashed var(--border-2); border-radius: 100px; padding: 3px 9px; cursor: pointer; }
 .add-chip:hover { color: var(--ink); border-color: var(--ink-3); }
-/* the drawer that unfolds under a fold: the whole space of that variable */
-.rib-opts { max-height: 0; opacity: 0; overflow: hidden; display: block;
-  padding: 0 12px 0 23px; transition: max-height .38s cubic-bezier(.22,1,.36,1), opacity .26s ease; }
-.rib.expanded .rib-opts { max-height: 330px; overflow-y: auto; opacity: 1; padding: 2px 12px 10px 23px; }
+
+/* one drawer for the whole strip, opening under the pleat you touched */
+.bellow-drawer { border: 1px solid var(--border-2); border-top: 0; border-radius: 0 0 6px 6px;
+  background: var(--surface); padding: 9px 12px 10px; max-height: 300px; overflow-y: auto; text-align: left; }
+.bellow-drawer[hidden] { display: none; }
 .opt-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 7px; }
 .opt-group-k { width: 100%; font-family: var(--mono); font-size: 8.5px; letter-spacing: .09em;
   text-transform: uppercase; color: var(--ink-3); margin-bottom: 1px; }
-.rib-opts .opt { font-size: 11.5px; padding: 3px 9px; border-radius: 100px; border: 1px solid var(--border);
+.bellow-drawer .opt { font-size: 11.5px; padding: 3px 9px; border-radius: 100px; border: 1px solid var(--border);
   background: var(--bg); color: var(--ink-2); cursor: pointer; }
-.rib-opts .opt:hover { color: var(--ink); border-color: var(--ink-3); }
-/* the option you're already on */
-.rib-opts .opt.on { border-color: var(--accent); color: var(--ink); }
-/* a measure the atlas doesn't carry: offered, but plainly not there */
-.rib-opts .opt.gone { border-style: dotted; color: var(--ink-3); opacity: .7; background: transparent; }
-.rib-opts .opt.gone:hover { opacity: 1; color: var(--ink-2); }
+.bellow-drawer .opt:hover { color: var(--ink); border-color: var(--ink-3); }
+.bellow-drawer .opt.on { border-color: var(--accent); color: var(--ink); }
+.bellow-drawer .opt.gone { border-style: dotted; color: var(--ink-3); opacity: .7; background: transparent; }
+.bellow-drawer .opt.gone:hover { opacity: 1; color: var(--ink-2); }
+.bellow-drawer .opt.go { border-style: solid; border-color: var(--accent); color: var(--accent); margin-top: 2px; }
+.bellow-drawer .opt.go:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 /* a fold can hold a small table instead of chips: the measure and what it covers */
 .opt-row { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 12px;
   background: none; border: none; border-bottom: 1px solid var(--border); cursor: pointer;
@@ -410,18 +399,18 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .opt-row.on .opt-row-k { color: var(--ink); font-weight: 600; }
 .opt-row.on .opt-row-k::after { content: ' \2022'; color: var(--accent); }
 .opt-row-v { font-family: var(--mono); font-size: 9.5px; color: var(--ink-3); white-space: nowrap; }
-.rib-opts .opt.go { border-style: solid; border-color: var(--accent); color: var(--accent); margin-top: 2px; }
-.rib-opts .opt.go:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .opt-note { font-size: 11.5px; line-height: 1.5; color: var(--ink-2); margin: 2px 0 4px; }
 .opt-note b { font-weight: 600; color: var(--ink); }
 .opt-near { font: inherit; color: var(--accent); background: none; border: none;
   border-bottom: 1px solid currentColor; padding: 0; cursor: pointer; }
-/* find any country: the pool is too big to list */
-.opt-find { margin-bottom: 7px; }
+.opt-find { margin-bottom: 7px; width: 100%; }
 .opt-find input { width: 100%; font: 400 12px 'Inter', system-ui, sans-serif; color: var(--ink);
-  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
-  padding: 4px 8px; outline: none; }
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; outline: none; }
 .opt-find input:focus { border-color: var(--accent); }
+@media (max-width: 620px) {
+  .ribs { flex-wrap: wrap; }
+  .rib, .rib.facet { flex: 1 1 46%; }
+}
 .deeper-rib .val { color: var(--ink-2); font-size: 13.5px; font-style: normal; }
 .deeper-rib .fold { transform: none; }
 .submeasure { font: 600 15px 'Inter', system-ui, sans-serif; color: var(--accent);
@@ -567,6 +556,9 @@ footer a { color: inherit; }
     <section class="ask">
       <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality.</h1>
       <p class="sub">Wealth, income, opportunity, health. Pick a face and ask.</p>
+    </section>
+
+    <div class="deck" id="deck">
       <button type="button" class="homebtn" id="homebtn">&lsaquo; home</button>
       <div class="cubebox">
         <div class="scene" id="scene">
@@ -603,15 +595,16 @@ footer a { color: inherit; }
       <div class="help" id="help" hidden></div>
       <div class="cell" id="cell">
         <div class="ribs" id="ribs">
-          <div class="rib facet" id="rib-facet" data-dim="facet"><div class="rib-head"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-facet"></div></div>
-          <div class="rib" id="rib-place" data-dim="place"><div class="rib-head"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span><button class="rib-x" data-clear="place" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-place"></div></div>
-          <div class="rib" id="rib-time" data-dim="time"><div class="rib-head"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span><button class="rib-x" data-clear="time" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-time"></div></div>
-          <div class="rib" id="rib-against" data-dim="against"><div class="rib-head"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span><button class="rib-x" data-clear="against" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-against"></div></div>
+          <div class="rib facet" id="rib-facet" data-dim="facet"><div class="rib-head"><span class="dim">facet</span><span class="val" id="v-facet"></span></div><span class="spine"></span></div>
+          <div class="rib" id="rib-place" data-dim="place"><div class="rib-head"><span class="dim">place</span><span class="val" id="v-place"></span></div><span class="spine"></span><button class="rib-x" data-clear="place" title="remove">&times;</button></div>
+          <div class="rib" id="rib-time" data-dim="time"><div class="rib-head"><span class="dim">when</span><span class="val" id="v-time"></span></div><span class="spine"></span><button class="rib-x" data-clear="time" title="remove">&times;</button></div>
+          <div class="rib" id="rib-against" data-dim="against"><div class="rib-head"><span class="dim">against</span><span class="val" id="v-against"></span></div><span class="spine"></span><button class="rib-x" data-clear="against" title="remove">&times;</button></div>
         </div>
+        <div class="bellow-drawer" id="rib-drawer" hidden></div>
         <div class="add-row" id="add-row"></div>
       </div>
+      </div>
       <div class="notice" id="notice" hidden></div>
-    </section>
 
     <section id="session" hidden>
       <div class="session-head">
@@ -2257,6 +2250,11 @@ function dimGroups(dim, filter) {
   }
   return g;
 }
+function closeDrawer() {
+  document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
+  const d = document.getElementById('rib-drawer');
+  if (d) { d.hidden = true; d.innerHTML = ''; }
+}
 function renderDrawer(dim, rib, opts, filter) {
   const groups = dimGroups(dim, filter), cur = dimCurrent(dim);
   let html = '';
@@ -2278,14 +2276,14 @@ function renderDrawer(dim, rib, opts, filter) {
   html += '<p class="opt-note" hidden></p>';
   opts.innerHTML = html;
   opts.querySelectorAll('.opt:not(.gone):not(.go), .opt-row').forEach(btn => btn.addEventListener('click', () => {
-    rib.classList.remove('expanded');
+    closeDrawer();
     if (curFacet === 'opportunity') ask(btn.dataset.val);   // opportunity runs the query as-is
     else applyDim(dim, btn.dataset.val);                    // the global facets amend the cell
   }));
   // the second door: read the face you're on, which is what carries you into the answer
   const go = opts.querySelector('.opt.go');
   if (go) go.addEventListener('click', () => {
-    rib.classList.remove('expanded');
+    closeDrawer();
     runPrompt((PROMPT_SETS[curFacet] || PROMPT_SETS.default)[0]);
   });
   // a gap never answers: it says what is missing, and offers the nearest real measure
@@ -2298,7 +2296,7 @@ function renderDrawer(dim, rib, opts, filter) {
     note.hidden = false;
     note.scrollIntoView({ block: 'nearest' });
     const nb = note.querySelector('.opt-near');
-    if (nb) nb.addEventListener('click', () => { rib.classList.remove('expanded'); applyDim(dim, nb.dataset.val); });
+    if (nb) nb.addEventListener('click', () => { closeDrawer(); applyDim(dim, nb.dataset.val); });
   }));
   const find = opts.querySelector('#opt-q');
   if (find) find.addEventListener('input', () => {
@@ -2310,9 +2308,12 @@ function renderDrawer(dim, rib, opts, filter) {
 }
 function toggleRib(dim) {
   const rib = document.getElementById('rib-' + dim); if (!rib) return;
-  if (rib.classList.contains('expanded')) { rib.classList.remove('expanded'); return; }
-  document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
-  renderDrawer(dim, rib, document.getElementById('opts-' + dim), '');
+  const drawer = document.getElementById('rib-drawer'); if (!drawer) return;
+  const wasOpen = rib.classList.contains('expanded');
+  closeDrawer();
+  if (wasOpen) return;             // touching the open pleat folds it back
+  renderDrawer(dim, rib, drawer, '');
+  drawer.hidden = false;
   rib.classList.add('expanded');
 }
 function wireCell() {
@@ -2402,6 +2403,18 @@ function cubeSnap() {
   // whichever face ended up nearest the viewer wins, from any tumbled orientation
   chooseFacet(facetFromAngles());
 }
+let deckCondensed = false;
+function syncDeck() {
+  const deck = document.getElementById('deck');
+  const view = document.getElementById('view-ask');
+  if (!deck || !view) return;
+  const want = view.classList.contains('engaged') && window.scrollY > 90;
+  if (want === deckCondensed) return;
+  deckCondensed = want;
+  deck.classList.toggle('condensed', want);
+  cubeScale = want ? 0.42 : 0.86;
+  cubeApply();
+}
 function initCube() {
   const scene = document.getElementById('scene');
   if (!scene) return;
@@ -2424,6 +2437,7 @@ function initCube() {
   document.querySelectorAll('.fchip').forEach(el =>
     el.addEventListener('click', () => chooseFacet(el.dataset.facet)));
   paintFacet('wealth'); cubeApply(); startIdle();
+  window.addEventListener('scroll', syncDeck, { passive: true });
 }
 
 /* ── opportunity: the commuting-zone layer (Opportunity Insights) ──── */
@@ -2519,7 +2533,11 @@ function render() {
   // once you're working, the cube shrinks so the ask box and cell stay the controls
   const engaged = chain.length > 0;
   document.getElementById('view-ask').classList.toggle('engaged', engaged);
-  const wantScale = engaged ? 0.74 : 1;   // still the anchor once you're working, not a badge
+  if (!engaged && deckCondensed) {   // back home: the deck stands up again
+    deckCondensed = false;
+    const dk = document.getElementById('deck'); if (dk) dk.classList.remove('condensed');
+  }
+  const wantScale = engaged ? (deckCondensed ? 0.42 : 0.86) : 1;   // the same cube, condensed
   if (wantScale !== cubeScale) { cubeScale = wantScale; cubeApply(); }
   if (chain.length === 0) {
     session.hidden = true;
@@ -2550,7 +2568,7 @@ function setSlot(id, value, hint, color) {
 const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence'];
 // the accordion reads the cell, the single source of truth, so it always matches the edits
 function updateCell() {
-  document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
+  closeDrawer();
   const last = chain.length ? chain[chain.length - 1] : null;
   if (last && last.kind === 'opp') {   // opportunity has no cell; read its fact
     setSlot('place', 'US commuting zones', 'a country, or all of them');
