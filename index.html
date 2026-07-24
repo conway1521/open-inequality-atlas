@@ -1296,9 +1296,62 @@ let factSeq = 0;
 const chain = [];
 function poolNote() { return ctx.pool ? ` <em>among ${ctx.pool.label}</em>` : ''; }
 
-function answer(q) {
-  const p = parse(q);
+// the one editable cell: its coordinates are what's on screen. chat and the accordion
+// both write to it, and runCell rebuilds the answer keeping every other coordinate.
+const cell = { place: null, time: false, against: null };
+function resetCell() { cell.place = null; cell.time = false; cell.against = null; }
+function syncCellFromFact(f) {
+  if (!f || f.kind === 'opp') { resetCell(); return; }
+  cell.against = (f.mode === 'scatter' && f.scatter && f.scatter.y && !isIneq(f.scatter.y)) ? f.scatter.y : null;
+  cell.time = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind);
+  const focus = (f.scatter && f.scatter.focus) || f.isos || [];
+  cell.place = (SINGLE_PLACE.includes(f.kind) && f.isos && f.isos.length) ? f.isos[f.isos.length - 1]
+    : (focus.length ? focus[focus.length - 1] : null);
+}
+// build the answer straight from the cell's coordinates, keeping the others intact
+function runCell() {
+  if (curFacet === 'opportunity') return;   // the US-zone facet has its own path
+  ctx.metric = facetIneqDefault();
+  ctx.lastIso = cell.place; ctx.lastAspect = cell.against;
+  let p, q;
+  if (cell.against && META[cell.against]) {
+    p = { kind: 'correlate', x: ctx.metric, y: cell.against, region: ctx.region };
+    q = `${META[cell.against].label} and inequality`;
+  } else if (cell.place && cell.time) {
+    p = { kind: 'time', isos: [cell.place], year: null, region: null, metric: ctx.metric };
+    q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} over time`;
+  } else if (cell.place) {
+    p = { kind: 'profile', iso: cell.place };
+    q = BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place;
+  } else if (cell.time) {
+    p = { kind: 'time', isos: [], year: null, region: ctx.region, metric: ctx.metric };
+    q = 'over time';
+  } else {
+    p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true };
+    q = 'most concentrated';
+  }
+  const prev = chain.slice();
+  chain.length = 0;   // so the highlight comes from the cell, not the answer we're replacing
+  const f = buildAnswer(p, q);
+  if (!f) { chain.push(...prev); render(); return; }
+  chain.push(f); ctx.lastQuery = q; render();
+}
+// set one coordinate from the accordion and rebuild
+function applyDim(dim, val) {
+  if (dim === 'place') cell.place = val || null;
+  else if (dim === 'time') cell.time = (val === 'true');
+  else if (dim === 'against') cell.against = val || null;
+  runCell();
+}
+// re-read the current cell under a changed facet or measure
+function rerunCurrent() {
+  if (!chain.length) return;
+  if (curFacet === 'opportunity') { recomputeChain(); render(); } else runCell();
+}
 
+function answer(q) { return buildAnswer(parse(q), q); }
+// build an answer from a parse object; runCell constructs the same shape from the cell's coordinates
+function buildAnswer(p, q) {
   if (p.kind === 'unknown') {
     showNotice('Could not read that one. Try a country, "least equal", "over time", "income inequality", or "life expectancy".');
     return null;
@@ -1349,7 +1402,7 @@ function answer(q) {
     const r = pearson(pts);
     if (!pts.length || r == null) return miss();
     ctx.metric = p.x; if (!isIneq(p.y)) ctx.lastAspect = p.y;
-    const focus = focusIsos().filter(i => pts.some(pt => pt.iso === i));
+    const focus = [...new Set([ctx.lastIso, ...focusIsos()].filter(Boolean))].filter(i => pts.some(pt => pt.iso === i));
     if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
     f.mode = 'scatter';
     f.scatter = { x: p.x, y: p.y, pts, r, region: p.region, focus };
@@ -1777,6 +1830,7 @@ function ask(q) {
   // one editable cell: a new question refines it in place, it doesn't pile up
   chain.length = 0;
   chain.push(f);
+  syncCellFromFact(f);   // the typed question becomes the cell the accordion can amend
   render();
   document.getElementById('q').value = '';
 }
@@ -1899,16 +1953,18 @@ function paintFacet(name) {
   if (typeof updateCell === 'function') updateCell();   // keep the coordinates current
 }
 // the accordion is the navigation: a fold unfolds to offer that dimension's choices
+// each option is [label, value]; for the global facets the value is a coordinate the
+// accordion sets on the cell, for opportunity it is a query the US-zone engine runs
 function dimOptions(dim) {
   if (curFacet === 'opportunity') {
     if (dim === 'against') return [["credit by parents' income", "credit by parents' income"],
       ["mortgages by parents' income", "mortgages by parents' income"], ['mobility and income', 'mobility and income']];
     return [];
   }
-  if (dim === 'place') return [['France', 'France'], ['Brazil', 'Brazil'], ['Germany', 'Germany'],
-    ['United States', 'wealth vs income in the US'], ['India', 'India'], ['Nigeria', 'Nigeria']];
-  if (dim === 'time') return [['over time', 'over time'], ['since 2000', 'since 2000']];
-  if (dim === 'against') return Object.keys(ASPECT_CHIP).filter(k => SERIES[k]).map(k => [META[k].label, ASPECT_CHIP[k]]);
+  if (dim === 'place') return [['France', 'FRA'], ['Brazil', 'BRA'], ['Germany', 'DEU'],
+    ['United States', 'USA'], ['India', 'IND'], ['Nigeria', 'NGA'], ['all countries', '']];
+  if (dim === 'time') return [['over time', 'true'], ['a single moment', 'false']];
+  if (dim === 'against') return Object.keys(ASPECT_CHIP).filter(k => SERIES[k]).map(k => [META[k].label, k]).concat([['nothing', '']]);
   return [];
 }
 function toggleRib(dim) {
@@ -1917,8 +1973,12 @@ function toggleRib(dim) {
   document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
   const list = dimOptions(dim), opts = document.getElementById('opts-' + dim);
   if (!list.length) { showNotice(curFacet === 'opportunity' ? 'Opportunity is the whole set of US commuting zones, so place is fixed.' : 'Nothing to add on that dimension yet.'); return; }
-  opts.innerHTML = list.map(o => `<button type="button" class="opt" data-q="${esc(o[1])}">${esc(o[0])}</button>`).join('');
-  opts.querySelectorAll('.opt').forEach(btn => btn.addEventListener('click', () => { rib.classList.remove('expanded'); ask(btn.dataset.q); }));
+  opts.innerHTML = list.map(o => `<button type="button" class="opt" data-val="${esc(o[1])}">${esc(o[0])}</button>`).join('');
+  opts.querySelectorAll('.opt').forEach(btn => btn.addEventListener('click', () => {
+    rib.classList.remove('expanded');
+    if (curFacet === 'opportunity') ask(btn.dataset.val);   // opportunity runs the query as-is
+    else applyDim(dim, btn.dataset.val);                    // the global facets amend the cell
+  }));
   rib.classList.add('expanded');
 }
 function wireCell() {
@@ -1937,7 +1997,7 @@ function cycleMeasure() {
   facetMeasureIdx[curFacet] = ((facetMeasureIdx[curFacet] || 0) + 1) % list.length;
   ctx.metric = facetMeasure(curFacet);
   paintFacet(curFacet);
-  if (chain.length) { recomputeChain(); render(); }
+  if (chain.length) runCell();
 }
 let baseX = 0, baseY = 0, cubeScale = 1;   // the resting orientation of the active face
 function faceToFront(name) {
@@ -1961,8 +2021,7 @@ function chooseFacet(name) {
   if (f.note) showNotice(f.note);
   updateChips();
   nextPrompt(true);   // the example prompt follows the facet
-  // the cube in action: the same cell, re-read under the new facet
-  if (chain.length && (f.metric || name === 'opportunity')) { recomputeChain(); render(); }
+  rerunCurrent();     // re-read the same cell under the new facet, cube and chart follow
 }
 // motion: a slow tumble before anything is chosen, then a crisp snap to the
 // chosen face and a small wobble around it, a reminder the other faces are there
@@ -2150,26 +2209,24 @@ function setSlot(id, value, hint, color) {
     if (color) rib.style.setProperty('--rc', color); else rib.style.removeProperty('--rc');
   } else { rib.classList.remove('filled'); rib.classList.add('empty'); v.textContent = hint; rib.style.removeProperty('--rc'); }
 }
-// the cell is read off the answer on screen, so it never shows a stale coordinate
 const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence'];
+// the accordion reads the cell, the single source of truth, so it always matches the edits
 function updateCell() {
   document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
   const last = chain.length ? chain[chain.length - 1] : null;
-  const isOpp = last && last.kind === 'opp';
-  let place = null;
-  if (isOpp) place = 'US commuting zones';
-  else if (last && SINGLE_PLACE.includes(last.kind) && last.isos && last.isos.length)
-    place = last.isos.map(i => BY_ISO[i] ? esc(BY_ISO[i].name) : i).slice(0, 3).join(', ');
-  else if (ctx.region) place = REGION_LABEL[ctx.region];
-  else if (ctx.pool) place = esc(ctx.pool.label);
-  else if (last) place = 'all countries';
+  if (last && last.kind === 'opp') {   // opportunity has no cell; read its fact
+    setSlot('place', 'US commuting zones', 'a country, or all of them');
+    setSlot('time', null, 'a moment, or a run of years');
+    const o = last.opp;
+    setSlot('against', o.covLabel || o.label || null, 'another measure to hold it to', '#c98a2b');
+    return;
+  }
+  let place = cell.place && BY_ISO[cell.place] ? esc(BY_ISO[cell.place].name)
+    : ctx.region ? REGION_LABEL[ctx.region] : ctx.pool ? esc(ctx.pool.label) : (last ? 'all countries' : null);
   setSlot('place', place, 'a country, or all of them');
-  const timeOn = last && ['time', 'divergence', 'path', 'delta_rank'].includes(last.kind);
-  setSlot('time', timeOn ? 'over the years' : null, 'a moment, or a run of years');
-  let ag = null, agKey = null;
-  if (isOpp) ag = last.opp.covLabel || last.opp.label || null;
-  else if (last && (last.mode === 'scatter') && last.scatter && last.scatter.y && META[last.scatter.y]) { ag = META[last.scatter.y].label; agKey = last.scatter.y; }
-  setSlot('against', ag, 'another measure to hold it to', agKey ? metricColor(agKey) : (isOpp ? '#c98a2b' : null));
+  setSlot('time', cell.time ? 'over the years' : null, 'a moment, or a run of years');
+  const agKey = cell.against && META[cell.against] ? cell.against : null;
+  setSlot('against', agKey ? META[agKey].label : null, 'another measure to hold it to', agKey ? metricColor(agKey) : null);
 }
 
 /* ── chart ─────────────────────────────────────────────────────────── */
@@ -2976,7 +3033,7 @@ function flipTo(name, back) {
 function resetAll() {
   const onUS = !document.getElementById('view-us').hidden;
   chain.length = 0; facetMeasureIdx.wealth = 0; facetMeasureIdx.income = 0;
-  resetCtx(); render();
+  resetCell(); resetCtx(); render();
   chooseFacet('wealth'); startIdle();
   if (onUS) flipTo('ask', true); else window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 }
