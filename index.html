@@ -64,6 +64,15 @@ body {
 
 .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
 
+/* the flip: atlas and US are two faces of the same cube, turning to the right */
+main { perspective: 1900px; perspective-origin: center 34%; }
+.flipping { transform-origin: center; backface-visibility: hidden; will-change: transform, opacity; }
+.us-back { display: flex; align-items: center; gap: 12px; padding: 16px 0 4px; }
+.us-back button { font: 500 13px 'Inter', system-ui, sans-serif; color: var(--ink-2);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 100px; padding: 5px 14px; cursor: pointer; }
+.us-back button:hover { color: var(--ink); border-color: var(--ink-3); }
+.us-back .tag { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .09em; color: var(--ink-3); }
+
 /* header */
 header { border-bottom: 1px solid var(--border); background: var(--surface); }
 header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
@@ -616,6 +625,10 @@ footer a { color: inherit; }
   </div>
 
   <div id="view-us" class="wrap db" hidden>
+    <div class="us-back">
+      <button id="us-back" type="button">&#8592; back to the atlas</button>
+      <span class="tag">the US face &middot; county by county</span>
+    </div>
     <h1>The United States, up close</h1>
     <p class="sub">
       The same question, one level down. No county has a wealth Gini, so housing
@@ -1909,7 +1922,9 @@ function wireCell() {
     if (head) head.addEventListener('click', () => toggleRib(dim));
   });
   const dh = document.querySelector('#rib-deeper .rib-head');
-  if (dh) dh.addEventListener('click', () => setView('us'));
+  if (dh) dh.addEventListener('click', () => flipTo('us'));
+  const ub = document.getElementById('us-back');
+  if (ub) ub.addEventListener('click', () => flipTo('ask', true));
 }
 // click the measure in the accordion to swap it, e.g. top 1% share to wealth Gini
 function cycleMeasure() {
@@ -2918,6 +2933,33 @@ function setView(name) {
     t.classList.toggle('on', t.dataset.view === name));
   if (name === 'ask' && chain.length) requestAnimationFrame(() =>
     Plotly.Plots.resize(document.getElementById('chart')));
+  if (name === 'us' && usChain && usChain.length) requestAnimationFrame(() =>
+    Plotly.Plots.resize(document.getElementById('us-chart')));
+}
+// turn to another face of the cube: the atlas flips left, the new face comes in from the right
+let flipping = false;
+function flipTo(name, back) {
+  const curName = VIEWS.find(v => !document.getElementById('view-' + v).hidden);
+  if (!curName || curName === name || flipping) { setView(name); window.scrollTo(0, 0); return; }
+  if (reduceMotion) { setView(name); window.scrollTo(0, 0); return; }
+  flipping = true;
+  const cur = document.getElementById('view-' + curName), nxt = document.getElementById('view-' + name);
+  const out = back ? 92 : -92, inn = back ? -92 : 92;
+  cur.classList.add('flipping');
+  cur.style.transition = 'transform .34s ease, opacity .3s ease';
+  cur.style.transform = `rotateY(${out}deg)`; cur.style.opacity = '0';
+  setTimeout(() => {
+    cur.hidden = true; cur.classList.remove('flipping');
+    cur.style.transform = ''; cur.style.opacity = ''; cur.style.transition = '';
+    setView(name); window.scrollTo(0, 0);
+    nxt.classList.add('flipping'); nxt.style.transition = 'none';
+    nxt.style.transform = `rotateY(${inn}deg)`; nxt.style.opacity = '0';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      nxt.style.transition = 'transform .36s ease, opacity .32s ease';
+      nxt.style.transform = 'rotateY(0deg)'; nxt.style.opacity = '1';
+      setTimeout(() => { nxt.classList.remove('flipping'); nxt.style.transition = ''; nxt.style.transform = ''; nxt.style.opacity = ''; flipping = false; }, 400);
+    }));
+  }, 340);
 }
 
 function setHelp(open) {
@@ -3017,7 +3059,9 @@ function boot() {
     deeperBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
   document.getElementById('home').addEventListener('click', () => {
-    setView('ask'); tabsEl.hidden = true; deeperBtn.setAttribute('aria-expanded', 'false');
+    const onUS = !document.getElementById('view-us').hidden;
+    if (onUS) flipTo('ask', true); else setView('ask');
+    tabsEl.hidden = true; deeperBtn.setAttribute('aria-expanded', 'false');
   });
   document.getElementById('share').addEventListener('click', () => {
     const url = location.origin + location.pathname +
