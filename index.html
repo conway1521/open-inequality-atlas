@@ -244,6 +244,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   padding: 18px 18px 8px;
   position: relative;
 }
+/* in the two-column reading view the chart belongs to the page, not to a widget */
+#view-ask.engaged .chart-card { background: none; border: 0; border-radius: 0; padding: 0; margin-top: 6px; }
 
 /* ── the cube: the facet selector, centred with the stack beneath ─── */
 .cubebox { display: flex; flex-direction: column; align-items: center; gap: 12px;
@@ -315,11 +317,16 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.engaged .ask h1, #view-ask.engaged .ask .sub { display: none; }
 #view-ask.engaged .homebtn { display: inline-flex; }
 #view-ask.engaged .cubebox { margin: 0 auto 14px; gap: 8px; }
-#view-ask.engaged .scene { height: 104px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
+#view-ask.engaged .scene { height: 148px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; }
 #view-ask.engaged .cube .face { justify-content: center; align-items: center; padding: 10px; }
 #view-ask.engaged .cube .face .q { display: none; }
 #view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
 #view-ask.engaged .askbox, #view-ask.engaged .help, #view-ask.engaged .cell { max-width: 100%; }
+/* before you ask, the accordion is just the face you're on */
+#view-ask:not(.engaged) #rib-place,
+#view-ask:not(.engaged) #rib-time,
+#view-ask:not(.engaged) #rib-against,
+#view-ask:not(.engaged) .add-row { display: none; }
 /* the home button: only once you're working, sits above the cube */
 .homebtn { display: none; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11px;
   color: var(--ink-3); background: none; border: none; cursor: pointer; margin: 0 auto 6px; padding: 2px 4px; }
@@ -350,6 +357,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib.filled .spine, .rib.facet .spine { background: var(--rc, var(--ink-3)); }
 .rib.facet { --rc: var(--accent); display: block; border-radius: 0; padding: 0;
   font-size: inherit; gap: 0; border: 0; }
+.ribs .rib.facet { max-height: none; opacity: 1; }
+/* the measure sits quietly beside the face, the detail lives in the fold */
+.fmeasure { color: var(--ink-3); font-weight: 400; font-size: 11px; margin-left: 8px; }
 .rib .dim { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); padding-left: 10px; }
 .rib .val { font-size: 13px; color: var(--ink); padding: 7px 8px 7px 2px; }
@@ -391,6 +401,17 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* a measure the atlas doesn't carry: offered, but plainly not there */
 .rib-opts .opt.gone { border-style: dotted; color: var(--ink-3); opacity: .7; background: transparent; }
 .rib-opts .opt.gone:hover { opacity: 1; color: var(--ink-2); }
+/* a fold can hold a small table instead of chips: the measure and what it covers */
+.opt-row { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 12px;
+  background: none; border: none; border-bottom: 1px solid var(--border); cursor: pointer;
+  padding: 5px 2px; text-align: left; }
+.opt-row:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.opt-row-k { font-size: 12.5px; color: var(--ink-2); }
+.opt-row.on .opt-row-k { color: var(--ink); font-weight: 600; }
+.opt-row.on .opt-row-k::after { content: ' \2022'; color: var(--accent); }
+.opt-row-v { font-family: var(--mono); font-size: 9.5px; color: var(--ink-3); white-space: nowrap; }
+.rib-opts .opt.go { border-style: solid; border-color: var(--accent); color: var(--accent); margin-top: 2px; }
+.rib-opts .opt.go:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .opt-note { font-size: 11.5px; line-height: 1.5; color: var(--ink-2); margin: 2px 0 4px; }
 .opt-note b { font-weight: 600; color: var(--ink); }
 .opt-near { font: inherit; color: var(--accent); background: none; border: none;
@@ -410,6 +431,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 
 /* the current answer, then the chart, then the quiet history */
 .answer { display: flex; gap: 10px; align-items: baseline; font-size: 15.5px; margin: 2px 2px 4px; }
+#view-ask.engaged .answer { font-size: 19px; line-height: 1.45; margin-bottom: 14px; }
 .answer:empty { display: none; }
 .answer .t { flex: 1; color: var(--ink-2); }
 .answer .t strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -581,7 +603,7 @@ footer a { color: inherit; }
       <div class="help" id="help" hidden></div>
       <div class="cell" id="cell">
         <div class="ribs" id="ribs">
-          <div class="rib facet" id="rib-facet"><div class="rib-head"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span></div></div>
+          <div class="rib facet" id="rib-facet" data-dim="facet"><div class="rib-head"><span class="spine"></span><span class="dim">facet</span><span class="val" id="v-facet"></span><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-facet"></div></div>
           <div class="rib" id="rib-place" data-dim="place"><div class="rib-head"><span class="spine"></span><span class="dim">place</span><span class="val" id="v-place"></span><button class="rib-x" data-clear="place" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-place"></div></div>
           <div class="rib" id="rib-time" data-dim="time"><div class="rib-head"><span class="spine"></span><span class="dim">over time</span><span class="val" id="v-time"></span><button class="rib-x" data-clear="time" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-time"></div></div>
           <div class="rib" id="rib-against" data-dim="against"><div class="rib-head"><span class="spine"></span><span class="dim">against</span><span class="val" id="v-against"></span><button class="rib-x" data-clear="against" title="remove">&times;</button><span class="fold">&#9662;</span></div><div class="rib-opts" id="opts-against"></div></div>
@@ -1368,12 +1390,22 @@ function poolNote() { return ctx.pool ? ` <em>among ${ctx.pool.label}</em>` : ''
 
 // the one editable cell: its coordinates are what's on screen. chat and the accordion
 // both write to it, and runCell rebuilds the answer keeping every other coordinate.
-const cell = { place: null, time: false, since: null, against: null };
-function resetCell() { cell.place = null; cell.time = false; cell.since = null; cell.against = null; }
+// time is three-state: unset, one moment (a chosen year), or a run of years
+const cell = { place: null, span: null, year: null, since: null, against: null };
+function resetCell() { cell.place = null; cell.span = null; cell.year = null; cell.since = null; cell.against = null; }
+// the years that metric actually carries for that country
+function seriesYears(iso, metric) {
+  if (!iso) return [];
+  const s = seriesOf(metric || facetIneqDefault(), iso) || [];
+  return s.map(d => d.year);
+}
 function syncCellFromFact(f) {
   if (!f || f.kind === 'opp') { resetCell(); return; }
   cell.against = (f.mode === 'scatter' && f.scatter && f.scatter.y && !isIneq(f.scatter.y)) ? f.scatter.y : null;
-  cell.time = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind);
+  cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
+    : f.kind === 'point' ? 'moment' : null;
+  cell.year = (f.kind === 'point' && f.marker) ? f.marker.year : null;
+  cell.since = null;
   const focus = (f.scatter && f.scatter.focus) || f.isos || [];
   cell.place = (SINGLE_PLACE.includes(f.kind) && f.isos && f.isos.length) ? f.isos[f.isos.length - 1]
     : (focus.length ? focus[focus.length - 1] : null);
@@ -1384,7 +1416,10 @@ function runCell() {
   ctx.metric = facetIneqDefault();
   ctx.lastIso = cell.place; ctx.lastAspect = cell.against;
   let p, q;
-  if (cell.place && cell.time) {   // over time wins when a place is set, so the toggle always shows
+  if (cell.place && cell.span === 'moment' && cell.year) {   // one country, one year
+    p = { kind: 'point', iso: cell.place, year: cell.year, metric: ctx.metric };
+    q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} in ${cell.year}`;
+  } else if (cell.place && cell.span === 'run') {   // a run of years wins when a place is set
     p = { kind: 'time', isos: [cell.place], year: cell.since, region: null, metric: ctx.metric };
     q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} over time`;
   } else if (cell.against && META[cell.against]) {
@@ -1393,7 +1428,7 @@ function runCell() {
   } else if (cell.place) {
     p = { kind: 'profile', iso: cell.place };
     q = BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place;
-  } else if (cell.time) {
+  } else if (cell.span === 'run') {
     p = { kind: 'time', isos: [], year: cell.since, region: ctx.region, metric: ctx.metric };
     q = 'over time';
   } else {
@@ -1413,10 +1448,20 @@ function applyDim(dim, val) {
     if (val && val.slice(0, 2) === 'r:') { cell.place = null; setRegion(val.slice(2)); }
     else { cell.place = val || null; if (!val) setRegion(null); }
   } else if (dim === 'time') {
-    const bits = String(val).split(':');
-    cell.time = bits[0] === 'true';
-    cell.since = cell.time && bits[1] ? +bits[1] : null;
+    const bits = String(val || '').split(':');
+    cell.span = bits[0] === 'run' ? 'run' : bits[0] === 'moment' ? 'moment' : null;
+    cell.since = cell.span === 'run' && bits[1] ? +bits[1] : null;
+    cell.year = cell.span === 'moment' && bits[1] ? +bits[1] : null;
+    if (cell.span === 'moment' && !cell.year) {   // no year named: read the latest one there is
+      const ys = seriesYears(cell.place); cell.year = ys.length ? ys[ys.length - 1] : null;
+    }
   } else if (dim === 'against') cell.against = val || null;
+  else if (dim === 'facet') {   // the measure of the face you're on
+    const list = FACET_MEASURES[curFacet] || [];
+    const i = list.findIndex(m => m[0] === val);
+    if (i >= 0) { facetMeasureIdx[curFacet] = i; ctx.metric = val; paintFacet(curFacet); }
+    if (!chain.length) { updateCell(); return; }   // browsing the faces must not force an answer
+  }
   runCell();
 }
 // re-read the current cell under a changed facet or measure (never drops back to the landing)
@@ -2050,10 +2095,7 @@ function paintFacet(name) {
   if (vf) {
     const list = FACET_MEASURES[name];
     const label = facetMeasureLabel(name) || f.sub;
-    const measure = list && list.length > 1
-      ? `<button type="button" class="submeasure" id="submeasure">${label} &#8645;</button>`
-      : `<span class="muted">${label}</span>`;
-    vf.innerHTML = `${name} &middot; ${measure}`;
+    vf.innerHTML = `${name}<span class="fmeasure">${esc(label)}</span>`;
   }
   const hl = document.getElementById('here-label');   // the reminder in the results header
   if (hl) hl.textContent = name;
@@ -2082,6 +2124,22 @@ const AGAINST_GAPS = [
   ['house prices to income', 'median_income'],
   ['home ownership', 'wealth_bottom50'],
 ];
+// what each face still can't answer, said plainly
+const FACET_GAPS = {
+  wealth: [['the top 10% share', 'Held for the United States only, on the US side.', null]],
+  income: [['the top 1% income share', 'The atlas holds the Gini for income, not its shares.', null],
+    ['wages against profits', 'Not in the atlas.', null]],
+  health: [['the rich-poor life gap', 'Life expectancy is held for the country as a whole, not split by income.', 'life_exp']],
+};
+// how much ground a measure actually covers, straight from the series
+function coverageOf(k) {
+  const ser = SERIES[k]; if (!ser) return '';
+  const isos = Object.keys(ser).filter(i => ser[i] && ser[i].length);
+  if (!isos.length) return '';
+  let lo = Infinity, hi = -Infinity;
+  for (const i of isos) { lo = Math.min(lo, ser[i][0].year); hi = Math.max(hi, ser[i][ser[i].length - 1].year); }
+  return `${isos.length} countries, ${lo} to ${hi}`;
+}
 const REGION_KEYS = ['europe', 'africa', 'asia', 'latam', 'northam', 'mideast', 'oceania'];
 function regionOf(iso) {
   for (const k of REGION_KEYS) if (REGION_SET[k] && REGION_SET[k].has(iso)) return k;
@@ -2097,13 +2155,22 @@ function placePool() {
 // what the fold currently reads, in the same vocabulary the options use
 function dimCurrent(dim) {
   if (dim === 'place') return ctx.region ? 'r:' + ctx.region : (cell.place || '');
-  if (dim === 'time') return cell.time ? 'true' + (cell.since ? ':' + cell.since : '') : 'false';
+  if (dim === 'time') return cell.span === 'run' ? 'run' + (cell.since ? ':' + cell.since : '')
+    : cell.span === 'moment' ? 'moment' + (cell.year ? ':' + cell.year : '') : '';
+  if (dim === 'facet') return facetMeasure(curFacet) || '';
   if (dim === 'against') return cell.against || '';
   return '';
 }
 function dimGroups(dim, filter) {
   const g = [];
   if (curFacet === 'opportunity') {
+    if (dim === 'facet') {
+      g.push({ k: 'measure', rows: [['upward mobility', 'upward mobility', '741 US commuting zones']] });
+      g.push({ k: 'not in the atlas', gaps: [['mobility outside the US',
+        'This layer is US commuting zones only.', null]] });
+      g.push({ go: 1 });
+      return g;
+    }
     if (dim === 'against') {
       g.push({ k: "by parents' income", opts: [['credit score', "credit by parents' income"],
         ['mortgage balance', "mortgages by parents' income"], ['delinquency', "delinquency by parents' income"]] });
@@ -2142,11 +2209,30 @@ function dimGroups(dim, filter) {
     return g;
   }
   if (dim === 'time') {
-    g.push({ k: 'a span', opts: [['a single moment', 'false'], ['over the years', 'true'],
-      ['since 1990', 'true:1990'], ['since 2000', 'true:2000'], ['since 2010', 'true:2010']] });
+    g.push({ k: 'a span', opts: [['a single moment', 'moment'], ['over the years', 'run'],
+      ['since 1990', 'run:1990'], ['since 2000', 'run:2000'], ['since 2010', 'run:2010']] });
+    if (cell.span === 'moment') {   // one moment: which one
+      const ys = seriesYears(cell.place);
+      if (ys.length) {
+        const pick = [];
+        for (let i = ys.length - 1; i >= 0 && pick.length < 12; i -= 4) pick.push(ys[i]);
+        g.push({ k: 'which year', opts: pick.map(y => ['' + y, 'moment:' + y]) });
+      } else {
+        g.push({ k: 'which year', gaps: [['a year',
+          'Years come from one country\'s series, so name a place first.', null]] });
+      }
+    }
     g.push({ k: 'not in the atlas', gaps: [
       ['decade by decade', 'The series are annual points, not decade averages.', null],
       ['what happens next', 'The atlas reports what was measured; it does not forecast.', null]] });
+    return g;
+  }
+  if (dim === 'facet') {
+    const list = FACET_MEASURES[curFacet] || [];
+    if (list.length) g.push({ k: 'measure', rows: list.map(m => [m[1], m[0], coverageOf(m[0])]) });
+    const gaps = FACET_GAPS[curFacet] || [];
+    if (gaps.length) g.push({ k: 'not in the atlas', gaps });
+    g.push({ go: 1 });
     return g;
   }
   if (dim === 'against') {
@@ -2181,17 +2267,27 @@ function renderDrawer(dim, rib, opts, filter) {
     if (grp.k) html += `<span class="opt-group-k">${esc(grp.k)}</span>`;
     for (const o of grp.opts || [])
       html += `<button type="button" class="opt${o[1] === cur ? ' on' : ''}" data-val="${esc(o[1])}">${esc(o[0])}</button>`;
+    for (const r of grp.rows || [])
+      html += `<button type="button" class="opt-row${r[1] === cur ? ' on' : ''}" data-val="${esc(r[1])}">` +
+        `<span class="opt-row-k">${esc(r[0])}</span><span class="opt-row-v">${esc(r[2] || '')}</span></button>`;
     for (const gp of grp.gaps || [])
       html += `<button type="button" class="opt gone" data-gap="${esc(gp[0])}" data-why="${esc(gp[1] || '')}" data-near="${esc(gp[2] || '')}">${esc(gp[0])}</button>`;
+    if (grp.go) html += '<button type="button" class="opt go" data-go="1">read this face &rsaquo;</button>';
     html += '</div>';
   }
   html += '<p class="opt-note" hidden></p>';
   opts.innerHTML = html;
-  opts.querySelectorAll('.opt:not(.gone)').forEach(btn => btn.addEventListener('click', () => {
+  opts.querySelectorAll('.opt:not(.gone):not(.go), .opt-row').forEach(btn => btn.addEventListener('click', () => {
     rib.classList.remove('expanded');
     if (curFacet === 'opportunity') ask(btn.dataset.val);   // opportunity runs the query as-is
     else applyDim(dim, btn.dataset.val);                    // the global facets amend the cell
   }));
+  // the second door: read the face you're on, which is what carries you into the answer
+  const go = opts.querySelector('.opt.go');
+  if (go) go.addEventListener('click', () => {
+    rib.classList.remove('expanded');
+    runPrompt((PROMPT_SETS[curFacet] || PROMPT_SETS.default)[0]);
+  });
   // a gap never answers: it says what is missing, and offers the nearest real measure
   const note = opts.querySelector('.opt-note');
   opts.querySelectorAll('.opt.gone').forEach(btn => btn.addEventListener('click', () => {
@@ -2220,7 +2316,7 @@ function toggleRib(dim) {
   rib.classList.add('expanded');
 }
 function wireCell() {
-  ['place', 'time', 'against'].forEach(dim => {   // every fold opens onto its alternatives
+  ['facet', 'place', 'time', 'against'].forEach(dim => {   // every fold opens onto its alternatives
     const head = document.querySelector('#rib-' + dim + ' .rib-head');
     if (head) head.addEventListener('click', () => toggleRib(dim));
   });
@@ -2423,7 +2519,7 @@ function render() {
   // once you're working, the cube shrinks so the ask box and cell stay the controls
   const engaged = chain.length > 0;
   document.getElementById('view-ask').classList.toggle('engaged', engaged);
-  const wantScale = engaged ? 0.52 : 1;
+  const wantScale = engaged ? 0.74 : 1;   // still the anchor once you're working, not a badge
   if (wantScale !== cubeScale) { cubeScale = wantScale; cubeApply(); }
   if (chain.length === 0) {
     session.hidden = true;
@@ -2466,7 +2562,8 @@ function updateCell() {
   let place = cell.place && BY_ISO[cell.place] ? esc(BY_ISO[cell.place].name)
     : ctx.region ? REGION_LABEL[ctx.region] : ctx.pool ? esc(ctx.pool.label) : (last ? 'all countries' : null);
   setSlot('place', place, 'pick a country');
-  setSlot('time', cell.time ? (cell.since ? 'since ' + cell.since : 'over the years') : null, 'pick a span');
+  setSlot('time', cell.span === 'run' ? (cell.since ? 'since ' + cell.since : 'over the years')
+    : cell.span === 'moment' ? (cell.year ? 'in ' + cell.year : 'a single moment') : null, 'pick a span');
   const agKey = cell.against && META[cell.against] ? cell.against : null;
   setSlot('against', agKey ? META[agKey].label : null, 'pick a measure', agKey ? metricColor(agKey) : null);
   buildAddRow(last);
@@ -2480,12 +2577,12 @@ function buildAddRow(last) {
   } else {
     chips = [];
     if (!cell.place && !ctx.region && !ctx.pool) chips.push(['place', '+ a place']);
-    if (!cell.time) chips.push(['time', '+ over time']);
+    if (!cell.span) chips.push(['time', '+ over time']);
     if (!cell.against) chips.push(['against', '+ another measure']);
   }
   el.innerHTML = chips.map(c => `<button type="button" class="add-chip" data-add="${c[0]}">${c[1]}</button>`).join('');
   el.querySelectorAll('.add-chip').forEach(b => b.addEventListener('click', () => {
-    if (b.dataset.add === 'time') applyDim('time', 'true');   // over time is a plain on/off, no submenu
+    if (b.dataset.add === 'time') applyDim('time', 'run');   // over time is a plain on/off, no submenu
     else toggleRib(b.dataset.add);
   }));
 }
