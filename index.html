@@ -214,7 +214,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 
 /* chain */
 #session { padding: 32px 0 64px; }
-.session-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.session-head { display: flex; align-items: baseline; justify-content: flex-end; margin-bottom: 4px; }
 .session-head .label {
   font-family: var(--mono); font-size: 11px; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--ink-3);
@@ -299,6 +299,10 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
    bellows rides with it, and the answer and its graph flow underneath. */
 #view-ask.engaged .ask { padding: 0; }
 #view-ask.engaged .ask h1, #view-ask.engaged .ask .sub { display: none; }
+/* the way back to the cube room; only present once you're working */
+.homebtn { display: none; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11px;
+  color: var(--ink-3); background: none; border: 0; cursor: pointer; padding: 2px 4px; }
+.homebtn:hover { color: var(--ink); }
 #view-ask.engaged .homebtn { display: inline-flex; position: absolute; left: 0; top: 10px; margin: 0; z-index: 2; }
 #view-ask.engaged .deck {
   position: sticky; top: 0; z-index: 20; background: var(--bg);
@@ -351,7 +355,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib + .rib::after { content: ''; position: absolute; left: 1.5px; top: 4px; bottom: 4px;
   width: 1px; background: var(--pleat-hi); transform: skewX(-13deg); }
 .rib:nth-child(even) { background: color-mix(in srgb, var(--ink) 3%, transparent); }
-.rib-head { display: flex; flex-direction: column; gap: 1px; padding: 6px 10px 9px; min-height: 44px; }
+.rib-head { display: flex; flex-direction: column; gap: 1px; padding: 6px 10px 9px; min-height: 44px;
+  width: 100%; background: none; border: 0; font: inherit; color: inherit; text-align: left; }
 .rib[data-dim] .rib-head { cursor: pointer; }
 .rib[data-dim]:hover .rib-head { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .rib .dim { font-family: var(--mono); font-size: 8.5px; letter-spacing: .09em;
@@ -361,14 +366,20 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib.facet .val { font-weight: 600; }
 .fmeasure { color: var(--ink-3); font-weight: 400; font-size: 11px; margin-left: 6px; }
 /* the colour bar: which variable this pleat carries */
-.rib .spine { position: absolute; left: 7px; right: 7px; bottom: 0; height: 2px;
-  background: var(--rc, color-mix(in srgb, var(--ink-3) 30%, transparent)); border-radius: 2px 2px 0 0; }
+.rib .spine { position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: var(--rc, var(--border-2)); }
+.rib:first-child .spine { border-bottom-left-radius: 5px; }
+.rib:last-child .spine { border-bottom-right-radius: 5px; }
 .rib.facet { --rc: var(--accent); }
 .rib-x { position: absolute; top: 1px; right: 3px; font-family: var(--mono); background: none;
   border: none; cursor: pointer; color: var(--ink-3); font-size: 12px; line-height: 1;
   padding: 1px 3px; opacity: 0; transition: opacity .15s ease; }
 .rib:hover .rib-x { opacity: 1; }
 .rib-x:hover { color: var(--ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.rib-head:focus-visible { outline-offset: -2px; }
+.scene:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 10px; }
+.q-item[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--ink); }
 .rib[data-dim]:not(.filled) .rib-x { display: none; }
 .rib.expanded { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 /* a pleat exists only once its variable is set; the face is always there */
@@ -590,7 +601,8 @@ footer a { color: inherit; }
         </div>
       </div>
       <form class="askbox" id="ask-form">
-        <input id="q" type="text" autocomplete="off" spellcheck="false"
+        <input id="q" type="text" autocomplete="off" spellcheck="false" role="combobox"
+               aria-expanded="false" aria-controls="help" aria-autocomplete="list"
                placeholder="how unequal is France?" aria-label="Ask the atlas">
         <span class="qsteps">
           <button type="button" id="q-up" aria-label="previous question">&#9650;</button>
@@ -599,13 +611,15 @@ footer a { color: inherit; }
         <span class="slash" id="fillhint">tab to fill</span>
       </form>
       <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">? what can I ask</button>
-      <div class="help" id="help" hidden></div>
+      <div class="help" id="help" role="listbox" aria-label="Questions you can ask" hidden></div>
       <div class="cell" id="cell">
         <div class="ribs" id="ribs">
-          <div class="rib facet" id="rib-facet" data-dim="facet"><div class="rib-head"><span class="dim">facet</span><span class="val" id="v-facet"></span></div><span class="spine"></span></div>
-          <div class="rib" id="rib-place" data-dim="place"><div class="rib-head"><span class="dim">place</span><span class="val" id="v-place"></span></div><span class="spine"></span><button class="rib-x" data-clear="place" title="remove">&times;</button></div>
-          <div class="rib" id="rib-time" data-dim="time"><div class="rib-head"><span class="dim">when</span><span class="val" id="v-time"></span></div><span class="spine"></span><button class="rib-x" data-clear="time" title="remove">&times;</button></div>
-          <div class="rib" id="rib-against" data-dim="against"><div class="rib-head"><span class="dim">against</span><span class="val" id="v-against"></span></div><span class="spine"></span><button class="rib-x" data-clear="against" title="remove">&times;</button></div>
+          <div class="rib facet" id="rib-facet" data-dim="facet"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">facet</span><span class="val" id="v-facet"></span></button><span class="spine"></span></div>
+          <div class="rib" id="rib-place" data-dim="place"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">place</span><span class="val" id="v-place"></span></button><span class="spine"></span><button class="rib-x" data-clear="place" aria-label="remove place">&times;</button></div>
+          <div class="rib" id="rib-scope" data-dim="scope"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">among</span><span class="val" id="v-scope"></span></button><span class="spine"></span><button class="rib-x" data-clear="scope" aria-label="remove the set">&times;</button></div>
+          <div class="rib" id="rib-time" data-dim="time"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">when</span><span class="val" id="v-time"></span></button><span class="spine"></span><button class="rib-x" data-clear="time" aria-label="remove when">&times;</button></div>
+          <div class="rib" id="rib-against" data-dim="against"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">against</span><span class="val" id="v-against"></span></button><span class="spine"></span><button class="rib-x" data-clear="against" aria-label="remove against">&times;</button></div>
+          <div class="rib" id="rib-form" data-dim="form"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">shown as</span><span class="val" id="v-form"></span></button><span class="spine"></span><button class="rib-x" data-clear="form" aria-label="remove the form">&times;</button></div>
         </div>
         <div class="bellow-drawer" id="rib-drawer" hidden></div>
         <div class="add-row" id="add-row"></div>
@@ -615,7 +629,6 @@ footer a { color: inherit; }
 
     <section id="session" hidden>
       <div class="session-head">
-        <div class="here" id="here" aria-hidden="true"><span class="here-cube" id="here-cube"></span><span class="here-label" id="here-label">wealth</span></div>
         <div class="session-actions">
           <button id="share">copy link</button>
           <button id="clear">clear</button>
@@ -1391,8 +1404,9 @@ function poolNote() { return ctx.pool ? ` <em>among ${ctx.pool.label}</em>` : ''
 // the one editable cell: its coordinates are what's on screen. chat and the accordion
 // both write to it, and runCell rebuilds the answer keeping every other coordinate.
 // time is three-state: unset, one moment (a chosen year), or a run of years
-const cell = { place: null, span: null, year: null, since: null, against: null };
-function resetCell() { cell.place = null; cell.span = null; cell.year = null; cell.since = null; cell.against = null; }
+const cell = { place: null, scope: null, span: null, year: null, since: null, against: null, form: null };
+function resetCell() { cell.place = null; cell.scope = null; cell.span = null; cell.year = null;
+  cell.since = null; cell.against = null; cell.form = null; }
 // the years that metric actually carries for that country
 function seriesYears(iso, metric) {
   if (!iso) return [];
@@ -1403,6 +1417,11 @@ function syncCellFromFact(f) {
   if (!f || f.kind === 'opp') { resetCell(); return; }
   cell.against = (f.mode === 'scatter' && f.scatter && f.scatter.y && !isIneq(f.scatter.y)) ? f.scatter.y
     : (f.mode === 'path' && f.path && f.path.y) ? f.path.y : null;
+  cell.form = ['rank', 'delta_rank'].includes(f.kind) ? 'rank'
+    : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
+    : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
+  cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
+    : ctx.region ? ('r:' + ctx.region) : null;
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
     : f.kind === 'point' ? 'moment' : null;
   cell.year = (f.kind === 'point' && f.marker) ? f.marker.year : null;
@@ -1417,7 +1436,20 @@ function runCell() {
   ctx.metric = facetIneqDefault();
   ctx.lastIso = cell.place; ctx.lastAspect = cell.against;
   let p, q;
-  if (cell.place && cell.against && META[cell.against] && cell.span === 'run') {
+  const F = cell.form;
+  if (F === 'lorenz' && cell.place) {
+    p = { kind: 'lorenz', isos: [cell.place] };
+    q = `Lorenz curve for ${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place}`;
+  } else if (F === 'spread') {
+    p = { kind: 'spread', metric: ctx.metric, region: ctx.region }; q = 'the spread';
+  } else if (F === 'tiers' && cell.against && META[cell.against]) {
+    p = { kind: 'tiers', aspect: cell.against, lens: ctx.metric, region: ctx.region }; q = 'by tier';
+  } else if (F === 'break' && cell.against && META[cell.against]) {
+    p = { kind: 'break', metrics: [ctx.metric, cell.against] }; q = 'who breaks the pattern';
+  } else if (F === 'rank') {
+    p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true };
+    q = 'the ranking';
+  } else if (cell.place && cell.against && META[cell.against] && cell.span === 'run') {
     // a scatter that gains time becomes a trajectory: one country's path across the two
     p = { kind: 'path', iso: cell.place, x: ctx.metric, y: cell.against };
     q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} path`;
@@ -1450,8 +1482,7 @@ function runCell() {
 function applyDim(dim, val) {
   if (dim === 'place') {
     // a region is a place too: it sets the geography and drops the single country
-    if (val && val.slice(0, 2) === 'r:') { cell.place = null; setRegion(val.slice(2)); }
-    else { cell.place = val || null; if (!val) setRegion(null); }
+    cell.place = val || null;
   } else if (dim === 'time') {
     const bits = String(val || '').split(':');
     cell.span = bits[0] === 'run' ? 'run' : bits[0] === 'moment' ? 'moment' : null;
@@ -1461,6 +1492,18 @@ function applyDim(dim, val) {
       const ys = seriesYears(cell.place); cell.year = ys.length ? ys[ys.length - 1] : null;
     }
   } else if (dim === 'against') cell.against = val || null;
+  else if (dim === 'form') cell.form = val || null;
+  else if (dim === 'scope') {
+    cell.scope = val || null;
+    if (!val) { setRegion(null); ctx.pool = null; computePool(); }
+    else if (val.slice(0, 2) === 'r:') { setRegion(val.slice(2)); ctx.pool = null; computePool(); }
+    else if (val.slice(0, 5) === 'pool:') {
+      setRegion(null);
+      const rich = val.slice(5) === 'rich';
+      ctx.pool = { label: rich ? 'richer countries' : 'poorer countries', metric: 'gdp_pc', dir: rich ? 'high' : 'low' };
+      computePool();
+    }
+  }
   else if (dim === 'facet') {   // the measure of the face you're on
     const list = FACET_MEASURES[curFacet] || [];
     const i = list.findIndex(m => m[0] === val);
@@ -2184,7 +2227,9 @@ function placePool() {
 }
 // what the fold currently reads, in the same vocabulary the options use
 function dimCurrent(dim) {
-  if (dim === 'place') return ctx.region ? 'r:' + ctx.region : (cell.place || '');
+  if (dim === 'place') return cell.place || '';
+  if (dim === 'scope') return cell.scope || '';
+  if (dim === 'form') return cell.form || '';
   if (dim === 'time') return cell.span === 'run' ? 'run' + (cell.since ? ':' + cell.since : '')
     : cell.span === 'moment' ? 'moment' + (cell.year ? ':' + cell.year : '') : '';
   if (dim === 'facet') return facetMeasure(curFacet) || '';
@@ -2232,10 +2277,32 @@ function dimGroups(dim, filter) {
       const seed = ['FRA', 'DEU', 'BRA', 'USA', 'IND', 'NGA', 'JPN', 'ZAF'];
       g.push({ k: 'a country', opts: pool.filter(p => seed.includes(p[1])) });
     }
-    g.push({ k: 'a region', opts: REGION_KEYS.map(k => [REGION_LABEL[k], 'r:' + k]).concat([['all countries', '']]) });
+    g.push({ k: '', opts: [['all countries', '']] });
     g.push({ k: 'not in the atlas', gaps: [
       ['regions within a country', 'The series are country-level.', null],
       ['cities', 'The series are country-level.', null]] });
+    return g;
+  }
+  if (dim === 'scope') {
+    g.push({ k: 'the set', opts: [['the whole world', ''],
+      ['richer countries', 'pool:rich'], ['poorer countries', 'pool:poor']] });
+    g.push({ k: 'a region', opts: REGION_KEYS.map(k => [REGION_LABEL[k], 'r:' + k]) });
+    g.push({ k: 'not in the atlas', gaps: [
+      ['World Bank income groups', 'The pools here are terciles of GDP per person.', null],
+      ['the OECD, the EU, the G20', 'The atlas has no membership lists.', null]] });
+    return g;
+  }
+  if (dim === 'form') {
+    const opts = [['the plain reading', ''], ['a ranking', 'rank'], ['the spread', 'spread']];
+    if (cell.place) opts.push(['a Lorenz curve', 'lorenz']);
+    if (cell.against && META[cell.against]) opts.push(['by tier', 'tiers'], ['who breaks the pattern', 'break']);
+    g.push({ k: 'shown as', opts });
+    const gaps = [];
+    if (!cell.place) gaps.push(['a Lorenz curve', 'A Lorenz curve is drawn for one country, so name a place first.', null]);
+    if (!cell.against) gaps.push(['by tier', 'Tiers split countries by one measure against another, so add a measure first.', null],
+      ['who breaks the pattern', 'Outliers are read off a relationship, so add a measure first.', null]);
+    gaps.push(['a map', 'The world map is on the database side, not in the cell.', null]);
+    g.push({ k: 'not in the atlas', gaps });
     return g;
   }
   if (dim === 'time') {
@@ -2287,8 +2354,10 @@ function dimGroups(dim, filter) {
   }
   return g;
 }
+let keepOpen = null, reopenAfter = null;
 function closeDrawer() {
   document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
+  document.querySelectorAll('.rib-head').forEach(h => h.setAttribute('aria-expanded', 'false'));
   const d = document.getElementById('rib-drawer');
   if (d) { d.hidden = true; d.innerHTML = ''; }
 }
@@ -2313,9 +2382,11 @@ function renderDrawer(dim, rib, opts, filter) {
   html += '<p class="opt-note" hidden></p>';
   opts.innerHTML = html;
   opts.querySelectorAll('.opt:not(.gone):not(.go), .opt-row').forEach(btn => btn.addEventListener('click', () => {
+    const stay = dim === 'place' && btn.dataset.val;   // comparing places means staying in the fold
+    if (curFacet === 'opportunity') { closeDrawer(); ask(btn.dataset.val); return; }
+    if (stay) { keepOpen = dim; applyDim(dim, btn.dataset.val); keepOpen = null; return; }
     closeDrawer();
-    if (curFacet === 'opportunity') ask(btn.dataset.val);   // opportunity runs the query as-is
-    else applyDim(dim, btn.dataset.val);                    // the global facets amend the cell
+    applyDim(dim, btn.dataset.val);
   }));
   // the second door: read the face you're on, which is what carries you into the answer
   const go = opts.querySelector('.opt.go');
@@ -2352,9 +2423,11 @@ function toggleRib(dim) {
   renderDrawer(dim, rib, drawer, '');
   drawer.hidden = false;
   rib.classList.add('expanded');
+  const head = rib.querySelector('.rib-head');
+  if (head) head.setAttribute('aria-expanded', 'true');
 }
 function wireCell() {
-  ['facet', 'place', 'time', 'against'].forEach(dim => {   // every fold opens onto its alternatives
+  ['facet', 'place', 'scope', 'time', 'against', 'form'].forEach(dim => {   // every fold opens onto its alternatives
     const head = document.querySelector('#rib-' + dim + ' .rib-head');
     if (head) head.addEventListener('click', () => toggleRib(dim));
   });
@@ -2478,6 +2551,19 @@ function initCube() {
   scene.addEventListener('pointercancel', end);
   document.querySelectorAll('.fchip').forEach(el =>
     el.addEventListener('click', () => chooseFacet(el.dataset.facet)));
+  scene.setAttribute('tabindex', '0');
+  scene.setAttribute('role', 'group');
+  scene.setAttribute('aria-label', 'The inequality cube. Arrow keys turn it to another face.');
+  scene.addEventListener('keydown', e => {
+    const step = { ArrowLeft: [0, -90], ArrowRight: [0, 90], ArrowUp: [90, 0], ArrowDown: [-90, 0] }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    motion = 'still';
+    if (motRAF) { cancelAnimationFrame(motRAF); motRAF = null; }
+    clearTimeout(settleT);
+    cRotX += step[0]; cRotY += step[1];
+    cubeApply(); cubeSnap();
+  });
   paintFacet('wealth'); cubeApply(); startIdle();
   window.addEventListener('scroll', syncDeck, { passive: true });
   window.addEventListener('resize', syncDeck);
@@ -2612,7 +2698,7 @@ function setSlot(id, value, hint, color) {
 const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence'];
 // the accordion reads the cell, the single source of truth, so it always matches the edits
 function updateCell() {
-  closeDrawer();
+  if (keepOpen) { reopenAfter = keepOpen; } else closeDrawer();
   const last = chain.length ? chain[chain.length - 1] : null;
   if (last && last.kind === 'opp') {   // opportunity has no cell; read its fact
     setSlot('place', 'US commuting zones', 'a country, or all of them');
@@ -2621,14 +2707,27 @@ function updateCell() {
     setSlot('against', o.covLabel || o.label || null, 'another measure to hold it to', '#c98a2b');
     return;
   }
-  let place = cell.place && BY_ISO[cell.place] ? esc(BY_ISO[cell.place].name)
-    : ctx.region ? REGION_LABEL[ctx.region] : ctx.pool ? esc(ctx.pool.label) : (last ? 'all countries' : null);
+  const place = cell.place && BY_ISO[cell.place] ? esc(BY_ISO[cell.place].name) : (last ? 'all countries' : null);
   setSlot('place', place, 'pick a country');
+  setSlot('scope', ctx.pool ? esc(ctx.pool.label) : ctx.region ? REGION_LABEL[ctx.region] : null, 'the whole world');
+  const FORM_LABEL = { rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
+    tiers: 'by tier', break: 'who breaks the pattern' };
+  setSlot('form', FORM_LABEL[cell.form] || null, 'the plain reading');
   setSlot('time', cell.span === 'run' ? (cell.since ? 'since ' + cell.since : 'over the years')
     : cell.span === 'moment' ? (cell.year ? 'in ' + cell.year : 'a single moment') : null, 'pick a span');
   const agKey = cell.against && META[cell.against] ? cell.against : null;
   setSlot('against', agKey ? META[agKey].label : null, 'pick a measure', agKey ? metricColor(agKey) : null);
   buildAddRow(last);
+  if (reopenAfter) {   // reopen outright: toggling would read as "already open" and shut it
+    const d = reopenAfter; reopenAfter = null;
+    const rib = document.getElementById('rib-' + d), drawer = document.getElementById('rib-drawer');
+    if (rib && drawer) {
+      renderDrawer(d, rib, drawer, '');
+      drawer.hidden = false;
+      rib.classList.add('expanded');
+      const h = rib.querySelector('.rib-head'); if (h) h.setAttribute('aria-expanded', 'true');
+    }
+  }
 }
 // only offer the dimensions that aren't in the cell yet; the accordion grows as you add them
 function buildAddRow(last) {
@@ -2641,6 +2740,8 @@ function buildAddRow(last) {
     if (!cell.place && !ctx.region && !ctx.pool) chips.push(['place', '+ a place']);
     if (!cell.span) chips.push(['time', '+ over time']);
     if (!cell.against) chips.push(['against', '+ another measure']);
+    if (!cell.scope) chips.push(['scope', '+ a set']);
+    if (!cell.form) chips.push(['form', '+ shown as']);
   }
   el.innerHTML = chips.map(c => `<button type="button" class="add-chip" data-add="${c[0]}">${c[1]}</button>`).join('');
   el.querySelectorAll('.add-chip').forEach(b => b.addEventListener('click', () => {
@@ -3481,7 +3582,7 @@ function setHelp(open, filter) {
       if (!list.length) continue;
       hits += list.length;
       html += `<div class="help-g"><div class="help-g-k">${esc(g.k)}</div>` +
-        list.map(q => `<button type="button" class="q-item">${esc(q)}</button>`).join('') + '</div>';
+        list.map(q => `<button type="button" class="q-item" role="option" aria-selected="false">${esc(q)}</button>`).join('') + '</div>';
     }
     el.innerHTML = hits ? html
       : '<p class="opt-note">Nothing written matches. Press enter to ask it as you typed it.</p>';
@@ -3489,6 +3590,8 @@ function setHelp(open, filter) {
       b.addEventListener('click', () => { setHelp(false); runPrompt(b.textContent); }));
   }
   el.hidden = !open;
+  const q = document.getElementById('q');
+  if (q) q.setAttribute('aria-expanded', open ? 'true' : 'false');
   document.getElementById('helpbtn').classList.toggle('on', open);
 }
 
@@ -3558,9 +3661,25 @@ function boot() {
   }
   // the example stays a grey placeholder; Tab drops it in to complete, arrows flick between them
   qEl.addEventListener('keydown', e => {
-    if (e.key === 'Tab' && !qEl.value) { e.preventDefault(); fillPrompt(); }
-    else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !qEl.value) {
-      e.preventDefault(); cyclePrompt(e.key === 'ArrowDown' ? 1 : -1);
+    const hp = document.getElementById('help');
+    const items = (hp && !hp.hidden) ? [...hp.querySelectorAll('.q-item')] : [];
+    if (e.key === 'Tab' && !qEl.value) { e.preventDefault(); fillPrompt(); return; }
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      if (items.length) {           // a list is open: the arrows walk it
+        e.preventDefault();
+        const cur = items.findIndex(b => b.getAttribute('aria-selected') === 'true');
+        const next = (cur + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+        items.forEach(b => b.setAttribute('aria-selected', 'false'));
+        items[next].setAttribute('aria-selected', 'true');
+        items[next].scrollIntoView({ block: 'nearest' });
+      } else if (!qEl.value) {      // nothing open: the arrows turn the reel
+        e.preventDefault(); cyclePrompt(e.key === 'ArrowDown' ? 1 : -1);
+      }
+      return;
+    }
+    if (e.key === 'Enter') {
+      const sel = items.find(b => b.getAttribute('aria-selected') === 'true');
+      if (sel) { e.preventDefault(); setHelp(false); runPrompt(sel.textContent); }
     }
   });
   // the on-screen steppers do the same as the arrow keys
