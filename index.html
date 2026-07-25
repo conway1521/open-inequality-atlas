@@ -275,8 +275,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .cube .f-income      { --fc: var(--income);      transform: rotateY(90deg) translateZ(92px); }
 .cube .f-opportunity { --fc: var(--opportunity); transform: rotateY(180deg) translateZ(92px); }
 .cube .f-health      { --fc: var(--health);      transform: rotateY(-90deg) translateZ(92px); }
-.cube .f-interplay   { --fc: var(--ink-2);       transform: rotateX(90deg) translateZ(92px); }
-.cube .f-scope       { --fc: var(--ink-2);       transform: rotateX(-90deg) translateZ(92px); }
+.cube .f-link        { --fc: var(--ink-2);       transform: rotateX(90deg) translateZ(92px); }
+.cube .f-extend      { --fc: var(--ink-2);       transform: rotateX(-90deg) translateZ(92px); }
+.cube .f-link, .cube .f-extend { border-style: dashed; }
 .cube .face.lit { border-color: var(--fc); box-shadow: 0 0 0 1px var(--fc); }
 .facet-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .fchip { font-size: 12.5px; padding: 4px 12px; border-radius: 100px; border: 1px solid var(--border);
@@ -345,8 +346,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .cell { max-width: 720px; margin: 12px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); margin-bottom: 8px; }
-.ribs { position: relative; display: flex; align-items: stretch;
-  border: 1px solid var(--border-2); border-radius: 6px; background: var(--surface); }
+.ribs { position: relative; display: flex; align-items: stretch; border-radius: 3px;
+  background: var(--surface); box-shadow: 0 1px 0 var(--pleat-hi) inset,
+    0 6px 14px -8px color-mix(in srgb, var(--ink) 40%, transparent); }
 .rib { position: relative; flex: 1 1 0; min-width: 0; }
 .rib.facet { flex: 1.35 1 0; }
 /* the crease between two pleats, leaning like folded paper */
@@ -354,7 +356,11 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   width: 1px; background: color-mix(in srgb, var(--ink) 20%, transparent); transform: skewX(-13deg); }
 .rib + .rib::after { content: ''; position: absolute; left: 1.5px; top: 4px; bottom: 4px;
   width: 1px; background: var(--pleat-hi); transform: skewX(-13deg); }
-.rib:nth-child(even) { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+/* each pleat leans toward or away from the light, so the ribbon has depth */
+.rib:nth-child(odd)  { background: linear-gradient(101deg, transparent 0%,
+  color-mix(in srgb, var(--ink) 4%, transparent) 100%); }
+.rib:nth-child(even) { background: linear-gradient(101deg,
+  color-mix(in srgb, var(--ink) 4%, transparent) 0%, transparent 100%); }
 .rib-head { display: flex; flex-direction: column; gap: 1px; padding: 6px 10px 9px; min-height: 44px;
   width: 100%; background: none; border: 0; font: inherit; color: inherit; text-align: left; }
 .rib[data-dim] .rib-head { cursor: pointer; }
@@ -366,11 +372,18 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib.facet .val { font-weight: 600; }
 .fmeasure { color: var(--ink-3); font-weight: 400; font-size: 11px; margin-left: 6px; }
 /* the colour bar: which variable this pleat carries */
-.rib .spine { position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
-  background: var(--rc, var(--border-2)); }
+.rib .spine { position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  background: var(--rc, var(--border-2));
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--ink) 12%, transparent) inset; }
 .rib:first-child .spine { border-bottom-left-radius: 5px; }
 .rib:last-child .spine { border-bottom-right-radius: 5px; }
 .rib.facet { --rc: var(--accent); }
+.rib-step { position: absolute; bottom: 4px; background: none; border: 0; cursor: pointer;
+  color: var(--ink-3); font-size: 9px; line-height: 1; padding: 2px 3px; opacity: 0;
+  transition: opacity .15s ease; }
+.rib-step.prev { right: 20px; } .rib-step.next { right: 6px; }
+.rib:hover .rib-step, .rib-step:focus-visible { opacity: 1; }
+.rib-step:hover { color: var(--ink); }
 .rib-x { position: absolute; top: 1px; right: 3px; font-family: var(--mono); background: none;
   border: none; cursor: pointer; color: var(--ink-3); font-size: 12px; line-height: 1;
   padding: 1px 3px; opacity: 0; transition: opacity .15s ease; }
@@ -589,8 +602,8 @@ footer a { color: inherit; }
             <div class="face f-income" data-facet="income"><span class="lab">income</span><div class="q">How unevenly income is shared out.</div></div>
             <div class="face f-opportunity" data-facet="opportunity"><span class="lab">opportunity</span><div class="q">How much your parents' income sets your own.</div></div>
             <div class="face f-health" data-facet="health"><span class="lab">health</span><div class="q">How much longer the rich live than the poor.</div></div>
-            <div class="face f-interplay" data-facet="interplay"><span class="lab">interplay</span><div class="q">How the four inequalities line up.</div></div>
-            <div class="face f-scope" data-facet="scope"><span class="lab">scope</span><div class="q">The world, or one commuting zone.</div></div>
+            <div class="face f-link" data-facet="link"><span class="lab">link</span><div class="q">Hold this face against another one.</div></div>
+            <div class="face f-extend" data-facet="extend"><span class="lab">extend</span><div class="q">Take this face somewhere finer.</div></div>
           </div>
         </div>
         <div class="facet-chips" id="facet-chips">
@@ -603,7 +616,7 @@ footer a { color: inherit; }
       <form class="askbox" id="ask-form">
         <input id="q" type="text" autocomplete="off" spellcheck="false" role="combobox"
                aria-expanded="false" aria-controls="help" aria-autocomplete="list"
-               placeholder="how unequal is France?" aria-label="Ask the atlas">
+               placeholder="how unequal is France?" aria-label="Ask the atlas, or edit the question you asked">
         <span class="qsteps">
           <button type="button" id="q-up" aria-label="previous question">&#9650;</button>
           <button type="button" id="q-dn" aria-label="next question">&#9660;</button>
@@ -615,11 +628,11 @@ footer a { color: inherit; }
       <div class="cell" id="cell">
         <div class="ribs" id="ribs">
           <div class="rib facet" id="rib-facet" data-dim="facet"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">facet</span><span class="val" id="v-facet"></span></button><span class="spine"></span></div>
-          <div class="rib" id="rib-place" data-dim="place"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">place</span><span class="val" id="v-place"></span></button><span class="spine"></span><button class="rib-x" data-clear="place" aria-label="remove place">&times;</button></div>
-          <div class="rib" id="rib-scope" data-dim="scope"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">among</span><span class="val" id="v-scope"></span></button><span class="spine"></span><button class="rib-x" data-clear="scope" aria-label="remove the set">&times;</button></div>
-          <div class="rib" id="rib-time" data-dim="time"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">when</span><span class="val" id="v-time"></span></button><span class="spine"></span><button class="rib-x" data-clear="time" aria-label="remove when">&times;</button></div>
-          <div class="rib" id="rib-against" data-dim="against"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">against</span><span class="val" id="v-against"></span></button><span class="spine"></span><button class="rib-x" data-clear="against" aria-label="remove against">&times;</button></div>
-          <div class="rib" id="rib-form" data-dim="form"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">shown as</span><span class="val" id="v-form"></span></button><span class="spine"></span><button class="rib-x" data-clear="form" aria-label="remove the form">&times;</button></div>
+          <div class="rib" id="rib-place" data-dim="place"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">place</span><span class="val" id="v-place"></span></button><span class="spine"></span><button class="rib-x" data-clear="place" aria-label="remove place">&times;</button><button class="rib-step prev" data-step="place" data-dir="-1" aria-label="previous place">&#9664;</button><button class="rib-step next" data-step="place" data-dir="1" aria-label="next place">&#9654;</button></div>
+          <div class="rib" id="rib-scope" data-dim="scope"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">among</span><span class="val" id="v-scope"></span></button><span class="spine"></span><button class="rib-x" data-clear="scope" aria-label="remove the set">&times;</button><button class="rib-step prev" data-step="scope" data-dir="-1" aria-label="previous scope">&#9664;</button><button class="rib-step next" data-step="scope" data-dir="1" aria-label="next scope">&#9654;</button></div>
+          <div class="rib" id="rib-time" data-dim="time"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">when</span><span class="val" id="v-time"></span></button><span class="spine"></span><button class="rib-x" data-clear="time" aria-label="remove when">&times;</button><button class="rib-step prev" data-step="time" data-dir="-1" aria-label="previous time">&#9664;</button><button class="rib-step next" data-step="time" data-dir="1" aria-label="next time">&#9654;</button></div>
+          <div class="rib" id="rib-against" data-dim="against"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">against</span><span class="val" id="v-against"></span></button><span class="spine"></span><button class="rib-x" data-clear="against" aria-label="remove against">&times;</button><button class="rib-step prev" data-step="against" data-dir="-1" aria-label="previous against">&#9664;</button><button class="rib-step next" data-step="against" data-dir="1" aria-label="next against">&#9654;</button></div>
+          <div class="rib" id="rib-form" data-dim="form"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">shown as</span><span class="val" id="v-form"></span></button><span class="spine"></span><button class="rib-x" data-clear="form" aria-label="remove the form">&times;</button><button class="rib-step prev" data-step="form" data-dir="-1" aria-label="previous form">&#9664;</button><button class="rib-step next" data-step="form" data-dir="1" aria-label="next form">&#9654;</button></div>
         </div>
         <div class="bellow-drawer" id="rib-drawer" hidden></div>
         <div class="add-row" id="add-row"></div>
@@ -1426,9 +1439,9 @@ function syncCellFromFact(f) {
     : f.kind === 'point' ? 'moment' : null;
   cell.year = (f.kind === 'point' && f.marker) ? f.marker.year : null;
   cell.since = null;
-  const focus = (f.scatter && f.scatter.focus) || f.isos || [];
+  const focus = (f.scatter && f.scatter.focus) || [];
   cell.place = (SINGLE_PLACE.includes(f.kind) && f.isos && f.isos.length) ? f.isos[f.isos.length - 1]
-    : (focus.length ? focus[focus.length - 1] : null);
+    : (focus.length === 1 ? focus[0] : null);
 }
 // build the answer straight from the cell's coordinates, keeping the others intact
 function runCell() {
@@ -2007,7 +2020,8 @@ function ask(q) {
   chain.push(f);
   syncCellFromFact(f);   // the typed question becomes the cell the accordion can amend
   render();
-  document.getElementById('q').value = '';
+  const qb = document.getElementById('q');
+  if (qb) { qb.value = q; qb.setSelectionRange(q.length, q.length); }   // keep it, to edit
 }
 
 // re-run the whole chain from its queries on a fresh context; flag lines whose answer shifted
@@ -2042,11 +2056,10 @@ const FACETS = {
   opportunity: { i: 2, side: true, color: 'var(--opportunity)', metric: null, sub: 'commuting zones' },
   health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'rich vs poor',
                  note: 'Health inequality here is how many more years the rich live than the poor. That measure is being wired in next.' },
-  interplay:   { i: -1, side: false, color: 'var(--ink-2)', sub: 'across the four',
-                 note: 'Interplay holds two inequalities against each other across places. The scatter view is coming next.' },
-  scope:       { i: -1, side: false, color: 'var(--ink-2)', sub: 'world to zone',
-                 note: 'Scope drops the same measure from countries down to commuting zones. The local data is coming next.' },
 };
+// the two poles of the cube are not faces of inequality: they are what you do to a
+// face. link holds it against another face; extend takes the same face somewhere finer.
+const INTERACTIONS = { link: 'link', extend: 'extend' };
 // example prompts, per facet, all runnable: enter on the empty box executes the one showing
 // ten distinct things the accordion and chat can do; each cycles through the box, fillable
 const PROMPT_SETS = {
@@ -2151,7 +2164,7 @@ function facetFromAngles() {
   const sa = Math.sin(a), ca = Math.cos(a), sb = Math.sin(b), cb = Math.cos(b);
   const z = {
     wealth: ca * cb, income: -ca * sb, opportunity: -ca * cb,
-    health: ca * sb, interplay: -sa, scope: sa,
+    health: ca * sb, link: -sa, extend: sa,
   };
   return Object.keys(z).reduce((best, k) => z[k] > z[best] ? k : best, 'wealth');
 }
@@ -2273,10 +2286,10 @@ function dimGroups(dim, filter) {
     if (reg) {
       const near = pool.filter(p => p[1] !== cur && regionOf(p[1]) === reg).slice(0, 9);
       if (near.length) g.push({ k: 'nearby', opts: near });
-    } else {
-      const seed = ['FRA', 'DEU', 'BRA', 'USA', 'IND', 'NGA', 'JPN', 'ZAF'];
-      g.push({ k: 'a country', opts: pool.filter(p => seed.includes(p[1])) });
     }
+    // every country the measure covers, in full, so the fold is browsable not a sample
+    g.push({ k: reg ? `all ${pool.length} countries` : `every country (${pool.length})`,
+      opts: pool.filter(p => p[1] !== cur) });
     g.push({ k: '', opts: [['all countries', '']] });
     g.push({ k: 'not in the atlas', gaps: [
       ['regions within a country', 'The series are country-level.', null],
@@ -2414,6 +2427,14 @@ function renderDrawer(dim, rib, opts, filter) {
     if (nf) { nf.focus(); nf.setSelectionRange(v.length, v.length); }
   });
 }
+function stepDim(dim, dir) {
+  const flat = [];
+  for (const g of dimGroups(dim, '')) for (const o of (g.opts || [])) if (o[1]) flat.push(o[1]);
+  if (!flat.length) return;
+  const cur = dimCurrent(dim);
+  const at = flat.indexOf(cur);
+  applyDim(dim, flat[(at + dir + flat.length) % flat.length]);
+}
 function toggleRib(dim) {
   const rib = document.getElementById('rib-' + dim); if (!rib) return;
   const drawer = document.getElementById('rib-drawer'); if (!drawer) return;
@@ -2434,6 +2455,9 @@ function wireCell() {
   document.querySelectorAll('.rib-x').forEach(x => x.addEventListener('click', e => {
     e.stopPropagation(); applyDim(x.dataset.clear, '');   // X out a branch of the cell
   }));
+  document.querySelectorAll('.rib-step').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation(); stepDim(btn.dataset.step, +btn.dataset.dir);
+  }));
   const ub = document.getElementById('us-back');
   if (ub) ub.addEventListener('click', () => flipTo('ask', true));
 }
@@ -2449,8 +2473,8 @@ let baseX = 0, baseY = 0, cubeScale = 1;   // the resting orientation of the act
 function faceToFront(name) {
   const f = FACETS[name];
   let tx, ty;
-  if (f.side) { tx = 0; ty = -90 * f.i; }
-  else if (name === 'interplay') { tx = -90; ty = 0; }
+  if (f && f.side) { tx = 0; ty = -90 * f.i; }
+  else if (name === 'link') { tx = -90; ty = 0; }
   else { tx = 90; ty = 0; }
   // land on the nearest wound copy of the target so the turn is always the short way
   cRotX = nearestEquivalent(tx, cRotX);
@@ -2459,7 +2483,22 @@ function faceToFront(name) {
   cubeApply();
 }
 // user turns to a facet: switch the lens, refresh the starters, recompute what's on screen
+// an interaction acts on the face you're on, then hands the cube back to it
+function runInteraction(name) {
+  const f = FACETS[curFacet];
+  if (name === 'link') {
+    if (!chain.length) ask((PROMPT_SETS[curFacet] || PROMPT_SETS.default)[0]);
+    toggleRib('against');
+    showNotice('Link holds ' + curFacet + ' against another face of the cube.');
+  } else {
+    showNotice('Extend takes ' + curFacet + ' somewhere finer. The United States is the layer that exists.');
+    const us = document.getElementById('us-enter');
+    if (us) us.focus();
+  }
+  faceToFront(curFacet); settle(); paintFacet(curFacet);
+}
 function chooseFacet(name) {
+  if (INTERACTIONS[name]) { runInteraction(name); return; }
   if (!FACETS[name]) return;
   paintFacet(name);
   faceToFront(name);
@@ -2763,6 +2802,30 @@ const BASE_LAYOUT = {
   showlegend: false,
 };
 const CFG = { responsive: true, displayModeBar: false };
+// shaded years: only global, dated episodes, so a turn in a line can be read against them
+const ERAS = [
+  { a: 2000, b: 2002, k: 'dot-com bust' },
+  { a: 2007, b: 2009, k: 'financial crisis' },
+  { a: 2010, b: 2012, k: 'euro debt crisis' },
+  { a: 2020, b: 2021, k: 'pandemic' },
+];
+// bands behind the lines, labelled once at the top, clipped to the years on screen
+function eraShapes(lo, hi) {
+  // plain rgba: Plotly writes this straight into an SVG fill, where color-mix does not land
+  return ERAS.filter(e => e.b >= lo && e.a <= hi).map(e => ({
+    type: 'rect', xref: 'x', yref: 'paper', layer: 'below',
+    x0: Math.max(e.a, lo), x1: Math.min(e.b, hi), y0: 0, y1: 1,
+    fillcolor: 'rgba(128,132,140,0.13)', line: { width: 0 },
+  }));
+}
+function eraLabels(lo, hi) {
+  return ERAS.filter(e => e.b >= lo && e.a <= hi).map((e, i) => ({
+    // inside the plot, along the floor: a sticky chart title would sit on top of them
+    x: (Math.max(e.a, lo) + Math.min(e.b, hi)) / 2, y: 0, xref: 'x', yref: 'paper',
+    yanchor: 'bottom', yshift: i % 2 ? 18 : 5, text: e.k, showarrow: false,
+    font: { size: 9.5, color: cssVar('--ink-3', '#999999') },
+  }));
+}
 // pull the grid/axis/text colours from the live theme so charts go dark too
 function cssVar(name, fallback) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -2937,7 +3000,7 @@ function drawChart() {
     const traces = [
       { type: 'scatter', mode: 'lines', name: cap(w.label),
         x: wLine.map(d => d.year), y: wLine.map(d => d.v / wBase * 100),
-        line: { color: metricColor('wealth_top1'), width: 2.4 },
+        line: { color: metricColor('wealth_top1'), width: 2.4, shape: 'spline', smoothing: 0.6 },
         hovertemplate: cap(w.label) + ' %{y:.0f} (base ' + base + ' = 100)<extra></extra>' },
       { type: 'scatter', mode: 'lines', name: 'Income Gini',
         x: iLine.map(d => d.year), y: iLine.map(d => d.v / iBase * 100),
@@ -2945,8 +3008,9 @@ function drawChart() {
         hovertemplate: 'Income Gini %{y:.0f} (base ' + base + ' = 100)<extra></extra>' },
     ];
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
-      showlegend: true, legend: { orientation: 'h', y: 1.1, font: { size: 11 } },
-      margin: { t: 8, r: 16, b: 40, l: 48 },
+      showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
+      margin: { t: 14, r: 16, b: 40, l: 48 },
+      shapes: eraShapes(base, 2025), annotations: eraLabels(base, 2025),
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: `indexed to ${base} = 100`, font: { size: 11 } } }),
     }), CFG);
     title.textContent = `${BY_ISO[dv.iso] ? BY_ISO[dv.iso].name : dv.iso}: wealth and income inequality since ${base}`;
@@ -3074,14 +3138,17 @@ function drawChart() {
     lineFacts.forEach(f => f.isos.forEach(i => { if (!isoSet.includes(i)) isoSet.push(i); }));
     const wantWorld = chain.some(f => f.world);
     const fromYear = chain.slice().reverse().map(f => f.fromYear).find(Boolean) || null;
+    let eLo = Infinity, eHi = -Infinity;
     const traces = [];
     for (const iso of isoSet) {
       const s = seriesOf(metric, iso);
       if (!s.length) continue;
+      eLo = Math.min(eLo, s[0].year); eHi = Math.max(eHi, s[s.length - 1].year);
       traces.push({
         type: 'scatter', mode: s.length < 25 ? 'lines+markers' : 'lines', name: BY_ISO[iso].name,
         x: s.map(d => d.year), y: s.map(d => d.v),
-        line: { color: isoSet.length === 1 ? metricColor(metric) : assignColor(iso), width: 2.2 },
+        line: { color: isoSet.length === 1 ? metricColor(metric) : assignColor(iso), width: 2.2,
+          shape: 'spline', smoothing: 0.6 },
         marker: { size: 5 },
         hovertemplate: BY_ISO[iso].name + ': ' + m.hover + '<extra></extra>',
       });
@@ -3126,13 +3193,14 @@ function drawChart() {
     })) : [];
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
       showlegend: traces.filter(t => t.showlegend !== false).length >= 2,
-      legend: { orientation: 'h', y: 1.08, font: { size: 11 } },
+      legend: { orientation: 'h', y: 1.16, font: { size: 11 } },
       hovermode: 'x unified',
-      annotations,
+      annotations: annotations.concat(eraLabels(eLo, eHi)),
+      shapes: eraShapes(eLo, eHi),
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis, fromYear ? { range: [fromYear, 2025], autorange: false } : {}),
       // a share reads as a share on the axis too, matching the sentence above it
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, m.fmt === pc ? { tickformat: '.0%' } : {}),
-      margin: { t: 8, r: labelable.length <= 4 ? 110 : 16, b: 40, l: 46 },
+      margin: { t: 12, r: labelable.length <= 4 ? 110 : 16, b: 40, l: 46 },
     }), CFG);
     title.textContent = `${cap(m.label)} over time`;
     src.textContent = m.lineSrc || '';
@@ -3579,15 +3647,23 @@ function setHelp(open, filter) {
     let html = '', hits = 0;
     for (const g of groups) {
       const list = f ? g.qs.filter(q => norm(q).includes(f)) : g.qs;
-      if (!list.length) continue;
-      hits += list.length;
-      html += `<div class="help-g"><div class="help-g-k">${esc(g.k)}</div>` +
-        list.map(q => `<button type="button" class="q-item" role="option" aria-selected="false">${esc(q)}</button>`).join('') + '</div>';
+      for (const q of list) {
+        hits++;
+        html += `<button type="button" class="q-item" role="option" aria-selected="false"` +
+          `${g.facet ? ` data-facet="${esc(g.facet)}"` : ''}>${esc(q)}</button>`;
+      }
     }
     el.innerHTML = hits ? html
       : '<p class="opt-note">Nothing written matches. Press enter to ask it as you typed it.</p>';
-    el.querySelectorAll('.q-item').forEach(b =>
-      b.addEventListener('click', () => { setHelp(false); runPrompt(b.textContent); }));
+    el.querySelectorAll('.q-item').forEach(b => {
+      b.addEventListener('mousedown', e => e.preventDefault());   // never blur the box out from under the click
+      b.addEventListener('click', () => {
+        setHelp(false);
+        const want = b.dataset.facet;                    // a question belonging to another face turns to it first
+        if (want && want !== curFacet) chooseFacet(want);
+        runPrompt(b.textContent);
+      });
+    });
   }
   el.hidden = !open;
   const q = document.getElementById('q');
