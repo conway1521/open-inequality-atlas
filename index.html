@@ -410,8 +410,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .cell { max-width: 760px; margin: 26px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); margin-bottom: 8px; }
-.ribs-frame { width: fit-content; max-width: 100%; margin: 0 auto; padding: 8px 10px 12px;
-  background: none; border: 0; }
+.ribs-frame { position: relative; width: fit-content; max-width: 100%; margin: 0 auto;
+  padding: 4px 2px 6px; background: none; border: 0; }
 .ribs { position: relative; display: flex; align-items: stretch; border-radius: 0;
   width: 100%; max-width: 100%; margin: 0; overflow: visible; background: none;
 }
@@ -420,29 +420,16 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
    place, among, when and the form are not measures, so they stay neutral. */
 .rib[data-dim] { --rc: var(--border-2); }
 /* the crease between two pleats, leaning like folded paper */
-/* a ribbon folded back on itself: each panel leans the other way from its
-   neighbour and steps down a little, so the outer edge zigzags along the line */
-.rib { --lean: -9deg; --drop: 0px;
-  transform: skewX(var(--lean)) translateY(var(--drop));
-  border-top: 1.5px solid var(--accent); border-bottom: 1.5px solid var(--accent);
-  background: var(--surface); margin-left: -1px;
-  transition: transform .25s ease, flex-basis .22s ease; }
-/* one lean throughout, so the panels tile into a single unbroken ribbon;
-   the fold reads from the shading and the seam, not from a change of angle */
-.rib:nth-child(even) { --drop: 0px; }
-.rib:first-child { border-left: 1.5px solid var(--accent); }
-.rib:last-child { border-right: 1.5px solid var(--accent); }
-/* the crease each panel folds on */
-.rib + .rib { box-shadow: -1px 0 0 color-mix(in srgb, var(--ink) 14%, transparent) inset,
-  1px 0 0 var(--pleat-hi) inset; }
-/* the writing stays upright while the panel leans */
-.rib .rib-head { transform: skewX(calc(-1 * var(--lean))); }
-.rib .spine { transform: none; }
-.rib:nth-child(odd)  { background: linear-gradient(101deg, transparent 0%,
-  color-mix(in srgb, var(--ink) 4%, transparent) 100%); }
-.rib:nth-child(even) { background: linear-gradient(101deg,
-  color-mix(in srgb, var(--ink) 4%, transparent) 0%, transparent 100%); }
-.rib-head { display: flex; flex-direction: column; gap: 1px; padding: 15px 10px 17px; min-height: 62px;
+/* the outline is one drawn path (see drawRibbon): the panels themselves carry
+   no edges, so the ribbon can genuinely fold back on itself between sections */
+.ribbon { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; overflow: visible; }
+.rb-face { fill: var(--surface); stroke: var(--accent); stroke-width: 1.6;
+  stroke-linejoin: round; stroke-linecap: round; }
+.rb-seam { stroke: color-mix(in srgb, var(--ink) 20%, transparent); stroke-width: 1; }
+.rb-hi { stroke: var(--pleat-hi); stroke-width: 1; }
+.rib { position: relative; z-index: 1; background: none; border: 0; transition: flex-basis .22s ease; }
+
+.rib-head { display: flex; flex-direction: column; gap: 1px; padding: 21px 11px 23px; min-height: 74px;
   overflow: hidden; align-items: flex-start;
   width: 100%; background: none; border: 0; font: inherit; color: inherit; text-align: left; }
 .rib[data-dim] .rib-head { cursor: pointer; }
@@ -461,12 +448,15 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib.facet .val { font-weight: 600; }
 .fmeasure { color: var(--ink-3); font-weight: 400; font-size: 11px; margin-left: 6px; }
 /* the colour bar: which variable this pleat carries */
+#view-ask.stage-chain .rib .spine, #view-ask.stage-result .rib .spine { display: none; }
 .rib .spine { position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
   background: var(--rc, var(--border-2));
   box-shadow: 0 -1px 0 color-mix(in srgb, var(--ink) 12%, transparent) inset; }
 .rib:first-child .spine { border-bottom-left-radius: 5px; }
 .rib:last-child .spine { border-bottom-right-radius: 5px; }
-.rib.facet { --rc: var(--accent); }
+/* .facet is also a legacy chip class: keep its paint off the fold */
+.rib.facet { --rc: var(--accent); display: block; background: none; border: 0;
+  border-radius: 0; padding: 0; gap: 0; font-size: inherit; box-shadow: none; }
 .rib-step { position: absolute; bottom: 3px; background: none; border: 0; cursor: pointer;
   color: var(--ink-3); font-size: 9px; line-height: 1; padding: 2px 3px; opacity: .45;
   transition: opacity .15s ease; }
@@ -490,9 +480,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* a folded pleat is squeezed flat: a narrow band with its name down the crease.
    opening one stretches it out and the whole bellows gets longer. */
 .rib[data-dim]:not(.filled):not(.expanded) {
-  flex: 0 0 26px; min-width: 26px; max-width: 26px; overflow: hidden;
-  background: linear-gradient(101deg,
-    color-mix(in srgb, var(--ink) 9%, transparent), color-mix(in srgb, var(--ink) 2%, transparent)); }
+  flex: 0 0 26px; min-width: 26px; max-width: 26px; overflow: hidden; background: none; }
 .rib[data-dim]:not(.filled):not(.expanded) .rib-head {
   padding: 10px 0; align-items: center; justify-content: center; min-height: 0; }
 .rib[data-dim]:not(.filled):not(.expanded) .dim {
@@ -503,7 +491,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib[data-dim]:not(.filled):not(.expanded) .rib-x { display: none; }
 .rib[data-dim]:not(.filled):not(.expanded) .spine { opacity: .25; }
 .rib[data-dim]:not(.filled):hover .dim { writing-mode: horizontal-tb; transform: none; font-size: 8.5px; }
-.rib[data-dim]:not(.filled):hover .rib-head { padding: 15px 10px 17px; align-items: flex-start; justify-content: flex-start; }
+.rib[data-dim]:not(.filled):hover .rib-head { padding: 21px 11px 23px; align-items: flex-start; justify-content: flex-start; }
 .rib[data-dim]:not(.filled):hover .val { display: inline-block; }
 
 /* the add row: pull another pleat out of the strip */
@@ -729,6 +717,7 @@ footer a { color: inherit; }
       <div class="help" id="help" role="listbox" aria-label="Questions you can ask" hidden></div>
       <div class="cell" id="cell">
         <div class="ribs-frame" id="ribs-frame">
+        <svg class="ribbon" id="ribbon" aria-hidden="true"></svg>
         <div class="ribs" id="ribs">
           <div class="rib facet" id="rib-facet" data-dim="facet"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">facet</span><span class="val" id="v-facet"></span></button><span class="spine"></span></div>
           <div class="rib" id="rib-place" data-dim="place"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">place</span><span class="val" id="v-place"></span></button><span class="spine"></span><button class="rib-x" data-clear="place" aria-label="remove place">&times;</button><button class="rib-step prev" data-step="place" data-dir="-1" aria-label="previous place">&#9664;</button><button class="rib-step next" data-step="place" data-dir="1" aria-label="next place">&#9654;</button></div>
@@ -2497,6 +2486,36 @@ function dimGroups(dim, filter) {
   return g;
 }
 let keepOpen = null, reopenAfter = null;
+// the ribbon: one path across every section, pinching at every other seam so the
+// strip reads as a folded band, the way the cube's net would hinge open
+function drawRibbon() {
+  const ribs = document.getElementById('ribs'), svg = document.getElementById('ribbon');
+  if (!ribs || !svg) return;
+  const panels = [...ribs.children].filter(r => r.offsetWidth > 0);
+  if (!panels.length) { svg.innerHTML = ''; return; }
+  const H = Math.round(ribs.getBoundingClientRect().height);
+  if (!H) return;
+  const fold = 11;                       // how far the band pinches at a fold
+  const xs = [0];
+  let acc = 0;
+  for (const p of panels) { acc += p.getBoundingClientRect().width; xs.push(Math.round(acc)); }
+  const W = xs[xs.length - 1];
+  const top = i => (i % 2 ? fold : 0);
+  const bot = i => (i % 2 ? H - fold : H);
+  let d = `M ${xs[0]} ${top(0)}`;
+  for (let i = 1; i < xs.length; i++) d += ` L ${xs[i]} ${top(i)}`;
+  for (let i = xs.length - 1; i >= 0; i--) d += ` L ${xs[i]} ${bot(i)}`;
+  d += ' Z';
+  let seams = '';
+  for (let i = 1; i < xs.length - 1; i++) {
+    seams += `<line class="rb-seam" x1="${xs[i]}" y1="${top(i)}" x2="${xs[i]}" y2="${bot(i)}"/>` +
+      `<line class="rb-hi" x1="${xs[i] + 1.5}" y1="${top(i)}" x2="${xs[i] + 1.5}" y2="${bot(i)}"/>`;
+  }
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', W); svg.setAttribute('height', H);
+  svg.innerHTML = `<path class="rb-face" d="${d}"/>${seams}`;
+}
+window.addEventListener('resize', () => requestAnimationFrame(drawRibbon));
 function closeDrawer() {
   document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
   document.querySelectorAll('.rib-head').forEach(h => h.setAttribute('aria-expanded', 'false'));
@@ -2966,6 +2985,7 @@ function updateCell() {
     : null;
   setSlot('against', agHtml, 'add', agKey ? metricColor(agKey) : null);
   buildAddRow(last);
+  requestAnimationFrame(drawRibbon);
   if (reopenAfter) {   // reopen outright: toggling would read as "already open" and shut it
     const d = reopenAfter; reopenAfter = null;
     const rib = document.getElementById('rib-' + d), drawer = document.getElementById('rib-drawer');
