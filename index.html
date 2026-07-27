@@ -326,14 +326,14 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 }
 #view-ask.engaged .deck.condensed::after { opacity: 1; }
 #view-ask.engaged .cubebox { margin: 0 auto 8px; gap: 8px; transition: margin .3s ease; }
-#view-ask.engaged .scene { height: 140px; margin-bottom: 2px; display: flex;
+#view-ask.engaged .scene { height: 112px; margin-bottom: 0; display: flex;
   align-items: center; justify-content: center; transition: height .28s ease; }
 #view-ask.engaged .cube .face { justify-content: center; align-items: center; padding: 10px; }
 #view-ask.engaged .cube .face .q { display: none; }
 #view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
 /* condensed: the same cube, smaller, with the strip still attached */
 #view-ask.engaged .deck.condensed { padding: 16px 0 8px; }
-#view-ask.engaged .deck.condensed .scene { height: 92px; margin-bottom: 0; }
+#view-ask.engaged .deck.condensed .scene { height: 78px; margin-bottom: 0; }
 #view-ask.engaged .deck.condensed .facet-chips,
 #view-ask.engaged .deck.condensed .helpbtn { display: none; }
 #view-ask.engaged .deck.condensed .askbox { max-width: 420px; }
@@ -354,10 +354,21 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .sendbtn:hover { opacity: .85; }
 #q:not(:placeholder-shown) ~ .sendbtn { display: inline-flex; }
 #q:not(:placeholder-shown) ~ .slash { display: none; }
-.sendbtn.wide { position: static; transform: none; display: inline-flex; margin: 12px auto 0;
-  width: auto; height: 32px; border-radius: 100px; padding: 0 16px; gap: 8px;
-  font: 500 12.5px 'Inter', system-ui, sans-serif; }
-#view-ask.stage-chain .cell { text-align: center; }
+.sendbtn.wide { position: static; transform: none; display: inline-flex; margin: 0;
+  width: auto; height: 34px; border-radius: 100px; padding: 0 18px; gap: 8px;
+  font: 500 13px 'Inter', system-ui, sans-serif; }
+#view-ask.stage-chain .cell { max-width: 620px; margin: 0 auto; }
+#view-ask.stage-chain .ribs { width: 100%; border-radius: 10px;
+  box-shadow: 0 0 0 1px var(--accent) inset, 0 1px 2px rgba(16,20,28,.05), 0 8px 30px rgba(16,20,28,.06); }
+#view-ask.stage-chain .rib { flex: 1 1 0; min-width: 0; max-width: none; }
+#view-ask.stage-chain .rib-head { min-height: 52px; }
+#view-ask.stage-chain .rib .val { font-size: 13.5px; }
+#view-ask.stage-chain .rib-ask { flex: 0 0 auto; }
+#view-ask.stage-chain .rib-ask .rib-head { min-width: 92px; }
+.chain-foot { display: flex; justify-content: center; margin-top: 14px; }
+#rib-asked { display: none; }
+#rib-asked.filled { display: block; }
+#view-ask.stage-chain #rib-asked .val { font-style: normal; color: var(--ink-2); }
 .cell, .askbox { animation: slot-in .3s cubic-bezier(.22, 1, .36, 1); }
 @keyframes slot-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .cell, .askbox { animation: none; } }
@@ -662,10 +673,11 @@ footer a { color: inherit; }
           <div class="rib" id="rib-time" data-dim="time"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">when</span><span class="val" id="v-time"></span></button><span class="spine"></span><button class="rib-x" data-clear="time" aria-label="remove when">&times;</button><button class="rib-step prev" data-step="time" data-dir="-1" aria-label="previous time">&#9664;</button><button class="rib-step next" data-step="time" data-dir="1" aria-label="next time">&#9654;</button></div>
           <div class="rib" id="rib-against" data-dim="against"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">against</span><span class="val" id="v-against"></span></button><span class="spine"></span><button class="rib-x" data-clear="against" aria-label="remove against">&times;</button><button class="rib-step prev" data-step="against" data-dir="-1" aria-label="previous against">&#9664;</button><button class="rib-step next" data-step="against" data-dir="1" aria-label="next against">&#9654;</button></div>
           <div class="rib" id="rib-form" data-dim="form"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">shown as</span><span class="val" id="v-form"></span></button><span class="spine"></span><button class="rib-x" data-clear="form" aria-label="remove the form">&times;</button><button class="rib-step prev" data-step="form" data-dir="-1" aria-label="previous form">&#9664;</button><button class="rib-step next" data-step="form" data-dir="1" aria-label="next form">&#9654;</button></div>
+          <div class="rib" id="rib-asked"><button type="button" class="rib-head" aria-label="The question"><span class="dim">question</span><span class="val" id="v-asked"></span></button><span class="spine"></span></div>
           <div class="rib rib-ask" id="rib-ask"><button type="button" class="rib-head" aria-label="Ask a different question"><span class="dim">ask</span><span class="val">something else</span></button><span class="spine"></span></div>
         </div>
         <div class="bellow-drawer" id="rib-drawer" hidden></div>
-        <button type="button" class="sendbtn wide" id="send-chain" aria-label="Show the answer">&#8594;</button>
+        <div class="chain-foot"><button type="button" class="sendbtn wide" id="send-chain">show me &#8594;</button></div>
         <div class="add-row" id="add-row"></div>
       </div>
       </div>
@@ -1462,9 +1474,10 @@ function poolNote() { return ctx.pool ? ` <em>among ${ctx.pool.label}</em>` : ''
 // the one editable cell: its coordinates are what's on screen. chat and the accordion
 // both write to it, and runCell rebuilds the answer keeping every other coordinate.
 // time is three-state: unset, one moment (a chosen year), or a run of years
-const cell = { place: null, scope: null, span: null, year: null, since: null, against: null, form: null };
+const cell = { place: null, scope: null, span: null, year: null, since: null, against: null,
+  form: null, raw: null, asked: null };
 function resetCell() { cell.place = null; cell.scope = null; cell.span = null; cell.year = null;
-  cell.since = null; cell.against = null; cell.form = null; }
+  cell.since = null; cell.against = null; cell.form = null; cell.raw = null; cell.asked = null; }
 // the years that metric actually carries for that country
 function seriesYears(iso, metric) {
   if (!iso) return [];
@@ -1568,7 +1581,8 @@ function applyDim(dim, val) {
     if (i >= 0) { facetMeasureIdx[curFacet] = i; ctx.metric = val; paintFacet(curFacet); }
     if (!chain.length) { updateCell(); return; }   // browsing the faces must not force an answer
   }
-  runCell();
+  // while composing, editing the chain edits a draft. only sending computes.
+  if (stage === 'result') runCell(); else updateCell();
 }
 // re-read the current cell under a changed facet or measure (never drops back to the landing)
 function rerunCurrent() {
@@ -2067,7 +2081,7 @@ function ask(q) {
   render();
   const qb = document.getElementById('q');
   if (qb) qb.value = q;          // kept, so reopening the box shows what you asked
-  if (stage === 'compose') setStage('chain');   // the box becomes the chain, not the answer
+  setStage('result');
 }
 
 // re-run the whole chain from its queries on a fresh context; flag lines whose answer shifted
@@ -2168,10 +2182,12 @@ function cyclePrompt(dir) {
   promptIdx = (promptIdx + dir + set.length) % set.length;
   el.placeholder = set[promptIdx];
 }
+// a written question is read into the chain first; nothing runs until you send it
 function runPrompt(text) {
-  // strip the verb, split a chained example into its steps, run them in order
-  const steps = text.replace(/^\w+:\s*/, '').split(/,?\s+then\s+/);
-  steps.forEach(s => { if (s.trim()) ask(s.trim()); });
+  const q = text.replace(/^\w+:\s*/, '').trim();
+  const el = document.getElementById('q');
+  if (el) el.value = q;
+  if (previewQuestion(q)) setStage('chain');
 }
 const FACET_HEX = { wealth: '#2a78d6', income: '#2f9e8f', opportunity: '#c98a2b', health: '#c0607a' };
 const ACC = () => FACET_HEX[curFacet] || '#2a78d6';   // the UI accent follows the facet you're on
@@ -2570,19 +2586,53 @@ function cubeSnap() {
   chooseFacet(facetFromAngles());
 }
 let deckCondensed = false;
-let stage = 'compose';   // compose -> chain -> result
+let stage = 'compose', stageFocus = true;   // compose -> chain -> result
 function setStage(next) {
   stage = next;
   const v = document.getElementById('view-ask');
   if (v) { v.classList.remove('stage-compose', 'stage-chain', 'stage-result'); v.classList.add('stage-' + next); }
   const q = document.getElementById('q');
-  if (next === 'compose') { if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
+  if (next === 'compose') { if (q && stageFocus) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
   else setHelp(false);
   if (next !== 'result') closeDrawer();
   render();
   requestAnimationFrame(syncDeck);
 }
-function sendCell() { if (chain.length) setStage('result'); }
+// kinds the cell has no coordinates for: keep the words, run them verbatim on send
+const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'us_shares', 'among'];
+function previewQuestion(q) {
+  if (curFacet === 'opportunity') { resetCell(); cell.raw = q; updateCell(); return true; }
+  let p;
+  try { p = parse(q); } catch (e) { p = { kind: 'unknown' }; }
+  if (p.kind === 'unknown' || p.kind === 'pending') {
+    showNotice('Could not read that one. Try a country, a ranking, "over time", or a measure to hold it against.');
+    return false;
+  }
+  resetCell();
+  const iso = p.iso || (p.isos && p.isos.length === 1 ? p.isos[0] : null);
+  if (iso) cell.place = iso;
+  if (p.region) cell.scope = 'r:' + p.region;
+  if (p.pool) cell.scope = 'pool:' + (p.pool.dir === 'high' ? 'rich' : 'poor');
+  if (p.kind === 'time') { cell.span = 'run'; cell.since = p.year || null; }
+  else if (p.kind === 'point') { cell.span = 'moment'; cell.year = p.year || null; }
+  else if (p.kind === 'correlate') cell.against = p.y || null;
+  else if (p.kind === 'tiers') { cell.form = 'tiers'; cell.against = p.aspect || null; }
+  else if (p.kind === 'break') { cell.form = 'break';
+    cell.against = (p.metrics || []).find(m => META[m] && !isIneq(m)) || null; }
+  else if (p.kind === 'rank' || p.kind === 'delta_rank') cell.form = 'rank';
+  else if (p.kind === 'spread') cell.form = 'spread';
+  else if (p.kind === 'lorenz') { cell.form = 'lorenz'; if (p.isos && p.isos[0]) cell.place = p.isos[0]; }
+  if (RAW_KINDS.includes(p.kind)) cell.raw = q;
+  cell.asked = q;
+  updateCell();
+  return true;
+}
+// only now is anything computed
+function sendCell() {
+  if (cell.raw) { const q = cell.raw; ask(q); return; }
+  runCell();
+  if (chain.length) setStage('result'); else showNotice('Nothing to show for that yet.');
+}
 function syncDeck() {
   const deck = document.getElementById('deck');
   const view = document.getElementById('view-ask');
@@ -2591,7 +2641,7 @@ function syncDeck() {
   if (want !== deckCondensed) {
     deckCondensed = want;
     deck.classList.toggle('condensed', want);
-    cubeScale = want ? 0.44 : 0.7;
+    cubeScale = want ? 0.36 : 0.55;
     cubeApply();
   }
   document.documentElement.style.setProperty('--deckh',
@@ -2733,11 +2783,12 @@ function render() {
     deckCondensed = false;
     const dk = document.getElementById('deck'); if (dk) dk.classList.remove('condensed');
   }
-  const wantScale = engaged ? (deckCondensed ? 0.44 : 0.7) : 1.08;   // sending lifts the cube out of the way
+  const wantScale = engaged ? (deckCondensed ? 0.36 : 0.55) : 1.08;   // sending lifts the cube out of the way
   requestAnimationFrame(syncDeck);   // the deck's height drives where the graph's head sits
   if (wantScale !== cubeScale) { cubeScale = wantScale; cubeApply(); }
   if (chain.length === 0) {
-    if (stage !== 'compose') { stage = 'compose'; const v = document.getElementById('view-ask');
+    // an empty chain is normal while composing: the cell is a draft, nothing is computed yet
+    if (stage === 'result') { stage = 'compose'; const v = document.getElementById('view-ask');
       if (v) { v.classList.remove('stage-chain', 'stage-result'); v.classList.add('stage-compose'); } }
     session.hidden = true;
     updateCell();   // back to just the facet, the other slots empty
@@ -2783,6 +2834,10 @@ function updateCell() {
   const FORM_LABEL = { rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
     tiers: 'by tier', break: 'who breaks the pattern' };
   setSlot('form', FORM_LABEL[cell.form] || null, 'the plain reading');
+  const av = document.getElementById('v-asked');
+  if (av) av.textContent = cell.raw ? cell.raw : '';
+  const ar = document.getElementById('rib-asked');
+  if (ar) ar.classList.toggle('filled', !!cell.raw);
   setSlot('time', cell.span === 'run' ? (cell.since ? 'since ' + cell.since : 'over the years')
     : cell.span === 'moment' ? (cell.year ? 'in ' + cell.year : 'a single moment') : null, 'pick a span');
   const agKey = cell.against && META[cell.against] ? cell.against : null;
@@ -3760,8 +3815,8 @@ function boot() {
     const el = document.getElementById('q');
     const v = el.value.trim();
     setHelp(false);
-    if (v) { if (/,?\s+then\s+/.test(v)) { runPrompt(v); el.value = ''; } else ask(v); }
-    else runPrompt(el.placeholder);   // enter on the empty box runs the example showing
+    if (stage === 'chain') { sendCell(); return; }      // a second enter sends it
+    runPrompt(v || el.placeholder);                      // the first reads it into the chain
   });
   // pull the cycling example into the box to complete it: Tab, or click the empty prompt
   const qEl = document.getElementById('q');
@@ -3815,7 +3870,7 @@ function boot() {
   const vfacet = document.getElementById('v-facet');
   if (vfacet) vfacet.addEventListener('click', e => { if (e.target.closest('.submeasure')) cycleMeasure(); });
   wireCell();
-  setStage('compose');   // the page opens as a box
+  stageFocus = false; setStage('compose'); stageFocus = true;   // opens quiet, no list
   // theme toggle: follow the OS, or override it and remember
   const themeBtn = document.getElementById('theme');
   if (themeBtn) themeBtn.addEventListener('click', () => {
