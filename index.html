@@ -360,7 +360,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.stage-chain .ribs { width: 100%; border-radius: 0; box-shadow: none; }
 #view-ask.stage-chain .rib { flex: 1 1 0; min-width: 0; max-width: none; }
 /* a closed fold takes only the room its name needs; the open ones share the rest */
-#view-ask.stage-chain .rib[data-dim]:not(.filled):not(.expanded) { flex: 0 0 auto; }
+#view-ask.stage-chain .rib[data-dim]:not(.filled):not(.expanded) { flex: 0 0 26px; }
 #view-ask.stage-chain .rib-head { min-height: 52px; }
 #view-ask.stage-chain .rib .val { font-size: 13.5px; }
 /* the facet pill carries two words: give it room instead of clipping them */
@@ -486,13 +486,22 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib.expanded { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 /* a pleat exists only once its variable is set; the face is always there */
 .rib[data-dim] { display: block; }
-/* closed: a compressed pleat, just its name, waiting to be opened */
-.rib[data-dim]:not(.filled):not(.expanded) { flex: 0 0 auto; max-width: none; min-width: 0; }
-.rib[data-dim]:not(.filled):not(.expanded) .rib-head { padding: 6px 9px 9px; align-items: center; }
-.rib[data-dim]:not(.filled):not(.expanded) .dim { color: var(--ink-3); opacity: .8; }
-.rib[data-dim]:not(.filled):not(.expanded) .val { font-size: 11px; color: var(--ink-3);
-  background: none; border: 1px dashed var(--border-2); padding: 1px 8px; }
-.rib[data-dim]:not(.filled):not(.expanded) .spine { opacity: .3; }
+/* a folded pleat is squeezed flat: a narrow band with its name down the crease.
+   opening one stretches it out and the whole bellows gets longer. */
+.rib[data-dim]:not(.filled):not(.expanded) {
+  flex: 0 0 26px; min-width: 26px; max-width: 26px; overflow: hidden;
+  background: linear-gradient(101deg,
+    color-mix(in srgb, var(--ink) 9%, transparent), color-mix(in srgb, var(--ink) 2%, transparent)); }
+.rib[data-dim]:not(.filled):not(.expanded) .rib-head {
+  padding: 10px 0; align-items: center; justify-content: center; min-height: 0; }
+.rib[data-dim]:not(.filled):not(.expanded) .dim {
+  writing-mode: vertical-rl; transform: rotate(180deg); font-size: 8px;
+  letter-spacing: .12em; padding: 0; color: var(--ink-3); }
+.rib[data-dim]:not(.filled):not(.expanded) .val,
+.rib[data-dim]:not(.filled):not(.expanded) .rib-step,
+.rib[data-dim]:not(.filled):not(.expanded) .rib-x { display: none; }
+.rib[data-dim]:not(.filled):not(.expanded) .spine { opacity: .25; }
+.rib[data-dim]:not(.filled):not(.expanded) .rib-head:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
 /* the add row: pull another pleat out of the strip */
 .add-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 0; justify-content: center; }
