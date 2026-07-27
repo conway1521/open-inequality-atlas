@@ -9,6 +9,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+/* VOICE. Applies to every string a reader can see: headings, chip labels, notes,
+   answer sentences, chart titles, commit messages.
+     Say the thing. No throat-clearing, no framing, no "simply", no "just".
+     No fragment-plus-period headlines. No trailing period on a title or a label.
+     No cutesy explanation of what the interface is doing.
+     No metaphor that isn't literally true of the data.
+     A question ends in a question mark; a label does not end in anything.
+     If a sentence could open a marketing email, delete it. */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -58,6 +66,7 @@
 html { scroll-behavior: smooth; }
 
 body {
+  min-height: 100vh; display: flex; flex-direction: column;
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.6;
@@ -69,7 +78,8 @@ body {
 .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
 
 /* the flip: atlas and US are two faces of the same cube, turning to the right */
-main { perspective: 1250px; perspective-origin: center 38%; }
+main { perspective: 1250px; perspective-origin: center 38%; flex: 1 0 auto; }
+footer { flex-shrink: 0; margin-top: auto; }
 .flipping { transform-origin: center; backface-visibility: hidden; will-change: transform, opacity; }
 .us-back { display: flex; align-items: center; gap: 12px; padding: 16px 0 4px; }
 .us-back button { font: 500 13px 'Inter', system-ui, sans-serif; color: var(--ink-2);
@@ -129,7 +139,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .ask h1 .turn { color: var(--accent); transition: color .4s ease; }
 
 /* ask view */
-.ask { padding: 52px 0 12px; text-align: center; }
+.ask { padding: 64px 0 0; text-align: center; }
 .ask h1 {
   font-size: clamp(28px, 5vw, 38px);
   font-weight: 700; letter-spacing: -0.03em; line-height: 1.15;
@@ -171,7 +181,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* the hints belong to the empty box only; once you type, they step aside */
 #q:not(:placeholder-shown) ~ .slash, #q:not(:placeholder-shown) ~ .qsteps { visibility: hidden; }
 .helpbtn {
-  display: block; margin: 10px auto 0;
+  display: block; margin: 14px auto 0;
   font-family: var(--mono); font-size: 11px; color: var(--ink-3);
   background: none; border: none; cursor: pointer; letter-spacing: .03em;
 }
@@ -256,7 +266,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 
 /* ── the cube: the facet selector, centred with the stack beneath ─── */
 .cubebox { display: flex; flex-direction: column; align-items: center; gap: 12px;
-  margin: 26px auto 22px; user-select: none; -webkit-user-select: none; overflow: visible; }
+  margin: 74px auto 34px; user-select: none; -webkit-user-select: none; overflow: visible; }
 .scene { width: 232px; height: 232px; perspective: 760px; touch-action: none; cursor: grab;
   margin-bottom: 8px; overflow: visible; }
 .scene:active { cursor: grabbing; }
@@ -343,14 +353,14 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
    across, not down. Slanted creases separate the pleats; a colour bar along the
    bottom of each says which variable it carries. */
 .deck { text-align: center; }
-.cell { max-width: 720px; margin: 12px auto 0; text-align: left; }
+.cell { max-width: 760px; margin: 26px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); margin-bottom: 8px; }
 .ribs { position: relative; display: flex; align-items: stretch; border-radius: 3px;
+  width: fit-content; max-width: 100%; margin: 0 auto;
   background: var(--surface); box-shadow: 0 1px 0 var(--pleat-hi) inset,
     0 6px 14px -8px color-mix(in srgb, var(--ink) 40%, transparent); }
-.rib { position: relative; flex: 1 1 0; min-width: 0; }
-.rib.facet { flex: 1.35 1 0; }
+.rib { position: relative; flex: 0 1 auto; min-width: 104px; max-width: 210px; }
 /* the crease between two pleats, leaning like folded paper */
 .rib + .rib::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
   width: 1px; background: color-mix(in srgb, var(--ink) 20%, transparent); transform: skewX(-13deg); }
@@ -407,30 +417,26 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .add-chip:hover { color: var(--ink); border-color: var(--ink-3); }
 
 /* one drawer for the whole strip, opening under the pleat you touched */
-.bellow-drawer { border: 1px solid var(--border-2); border-top: 0; border-radius: 0 0 6px 6px;
-  background: var(--surface); padding: 9px 12px 10px; max-height: 300px; overflow-y: auto; text-align: left; }
+.bellow-drawer { background: var(--surface); border-radius: 0 0 3px 3px; padding: 9px 11px 10px;
+  max-height: 250px; overflow-y: auto; text-align: left;
+  box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--ink) 40%, transparent); }
 .bellow-drawer[hidden] { display: none; }
-.opt-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 7px; }
-.opt-group-k { width: 100%; font-family: var(--mono); font-size: 8.5px; letter-spacing: .09em;
-  text-transform: uppercase; color: var(--ink-3); margin-bottom: 1px; }
-.bellow-drawer .opt { font-size: 11.5px; padding: 3px 9px; border-radius: 100px; border: 1px solid var(--border);
-  background: var(--bg); color: var(--ink-2); cursor: pointer; }
+.opt-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+.bellow-drawer .opt { font-size: 11.5px; padding: 3px 10px; border-radius: 100px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--ink-2); cursor: pointer; }
 .bellow-drawer .opt:hover { color: var(--ink); border-color: var(--ink-3); }
-.bellow-drawer .opt.on { border-color: var(--accent); color: var(--ink); }
-.bellow-drawer .opt.gone { border-style: dotted; color: var(--ink-3); opacity: .7; background: transparent; }
-.bellow-drawer .opt.gone:hover { opacity: 1; color: var(--ink-2); }
-.bellow-drawer .opt.go { border-style: solid; border-color: var(--accent); color: var(--accent); margin-top: 2px; }
-.bellow-drawer .opt.go:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
-/* a fold can hold a small table instead of chips: the measure and what it covers */
-.opt-row { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 12px;
-  background: none; border: none; border-bottom: 1px solid var(--border); cursor: pointer;
-  padding: 5px 2px; text-align: left; }
-.opt-row:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-.opt-row-k { font-size: 12.5px; color: var(--ink-2); }
-.opt-row.on .opt-row-k { color: var(--ink); font-weight: 600; }
-.opt-row.on .opt-row-k::after { content: ' \2022'; color: var(--accent); }
-.opt-row-v { font-family: var(--mono); font-size: 9.5px; color: var(--ink-3); white-space: nowrap; }
-.opt-note { font-size: 11.5px; line-height: 1.5; color: var(--ink-2); margin: 2px 0 4px; }
+.bellow-drawer .opt.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.opt-miss { font-size: 10.5px; color: var(--ink-3); margin-top: 8px; line-height: 1.6; }
+.opt-gap { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer;
+  text-decoration: underline dotted; }
+.opt-gap:hover { color: var(--ink); }
+.opt-find { width: 100%; font: 400 12px 'Inter', system-ui, sans-serif; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 8px; outline: none; margin-bottom: 8px; }
+.opt-find:focus { border-color: var(--accent); }
+.opt-note { font-size: 11.5px; line-height: 1.5; color: var(--ink-2); margin: 8px 0 0; }
+.opt-near { font: inherit; color: var(--accent); background: none; border: none;
+  border-bottom: 1px solid currentColor; padding: 0; cursor: pointer; }
 .opt-note b { font-weight: 600; color: var(--ink); }
 .opt-near { font: inherit; color: var(--accent); background: none; border: none;
   border-bottom: 1px solid currentColor; padding: 0; cursor: pointer; }
@@ -566,12 +572,10 @@ footer a { color: inherit; }
 <header>
   <div class="wrap">
     <button class="wordmark" data-view="ask" id="home">Open Inequality Atlas</button>
-    <button class="us-enter" id="us-enter">United States &rsaquo;</button>
     <button class="deeper" id="deeper" aria-expanded="false">deeper &rsaquo;</button>
     <div class="top-links">
       <button class="theme-toggle" id="theme" aria-label="Toggle dark mode" title="Light / dark">&#9681;</button>
-      <span class="ver">v0.4.0</span>
-      <a href="https://github.com/conway1521/wealth_ineq" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://conway1521.github.io/applied/" target="_blank" rel="noopener">About</a>
     </div>
   </div>
   <nav class="tabs" id="tabs" hidden>
@@ -589,8 +593,7 @@ footer a { color: inherit; }
 
   <div id="view-ask" class="wrap">
     <section class="ask">
-      <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality.</h1>
-      <p class="sub">Wealth, income, opportunity, health. Pick a face and ask.</p>
+      <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality</h1>
     </section>
 
     <div class="deck" id="deck">
@@ -602,8 +605,8 @@ footer a { color: inherit; }
             <div class="face f-income" data-facet="income"><span class="lab">income</span><div class="q">How unevenly income is shared out.</div></div>
             <div class="face f-opportunity" data-facet="opportunity"><span class="lab">opportunity</span><div class="q">How much your parents' income sets your own.</div></div>
             <div class="face f-health" data-facet="health"><span class="lab">health</span><div class="q">How much longer the rich live than the poor.</div></div>
-            <div class="face f-link" data-facet="link"><span class="lab">link</span><div class="q">Hold this face against another one.</div></div>
-            <div class="face f-extend" data-facet="extend"><span class="lab">extend</span><div class="q">Take this face somewhere finer.</div></div>
+            <div class="face f-link" data-facet="link"><span class="lab">link</span><div class="q">One face read alongside another</div></div>
+            <div class="face f-extend" data-facet="extend"><span class="lab">extend</span><div class="q">The same face through time and across geography</div></div>
           </div>
         </div>
         <div class="facet-chips" id="facet-chips">
@@ -623,7 +626,7 @@ footer a { color: inherit; }
         </span>
         <span class="slash" id="fillhint">tab to fill</span>
       </form>
-      <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">? what can I ask</button>
+      <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">what can I ask?</button>
       <div class="help" id="help" role="listbox" aria-label="Questions you can ask" hidden></div>
       <div class="cell" id="cell">
         <div class="ribs" id="ribs">
@@ -2092,30 +2095,20 @@ const PROMPT_SETS = {
     'does mobility follow income?',
   ],
 };
+// one question per kind of analysis the atlas can do. the strip tunes them from here.
 const QUESTIONS = [
-  { k: 'one country', qs: [
-    'how unequal is France?', 'how unequal is Brazil?', 'how unequal is South Africa?',
-    'France in 2008', 'the United States in 1995', 'Brazil against France', 'France and Germany'] },
-  { k: 'the league table', qs: [
-    'where is wealth most concentrated?', 'where is income most unequal?',
-    'where is wealth least concentrated?', 'which countries are most equal?',
-    'which countries are above 30%?', 'the most unequal in Europe'] },
-  { k: 'over time', qs: [
-    'how has France changed over time?', 'France since 2000', 'how has the world changed?',
-    'who rose the most since 1990?', 'who fell the most since 1990?', 'wealth vs income in the US'] },
-  { k: 'two things together', qs: [
-    'does life expectancy track inequality?', 'does poverty follow inequality?',
-    'does life satisfaction track inequality?', 'does median income track inequality?',
-    'does GDP per person track inequality?', 'does CO2 per person track inequality?',
-    'life expectancy by inequality tier', 'who breaks the pattern?',
-    'what about among rich countries?', 'which countries are happiest?'] },
-  { k: 'the shape of it', qs: [
-    'Lorenz curve for the United States', 'how spread out is wealth?',
-    'the top 1% share', 'the top 10% share', 'the bottom 50% share'] },
-  { k: 'opportunity, in US zones', facet: 'opportunity', qs: [
-    'where do children climb highest?', "how does credit differ by parents' income?",
-    "how do mortgages differ by parents' income?", "how does delinquency differ by parents' income?",
-    'does mobility follow income?', 'does mobility follow poverty?', 'does mobility follow rent?'] },
+  { k: '', qs: [
+    'how unequal is France?',
+    'where is wealth most concentrated?',
+    'how has France changed since 1990?',
+    'does life expectancy track inequality?',
+    'which countries break the pattern?',
+    'are wealth and income pulling apart in the US?',
+    'how spread out is wealth?',
+    'how does life expectancy differ by inequality tier?'] },
+  { k: '', facet: 'opportunity', qs: [
+    'where do poor children climb highest?',
+    "how does credit differ by parents' income?"] },
 ];
 let promptIdx = 0;
 function nextPrompt(jump) {
@@ -2376,46 +2369,41 @@ function closeDrawer() {
 }
 function renderDrawer(dim, rib, opts, filter) {
   const groups = dimGroups(dim, filter), cur = dimCurrent(dim);
+  const pills = [], gaps = [];
+  for (const grp of groups) {
+    for (const o of grp.opts || []) pills.push(o);
+    for (const r of grp.rows || []) pills.push([r[0], r[1]]);
+    for (const gp of grp.gaps || []) gaps.push(gp);
+    if (grp.go) pills.push(['read this face', '\u0000go']);
+  }
+  const capped = (dim === 'place' && !filter) ? pills.slice(0, 14) : pills;
   let html = '';
   if (dim === 'place' && curFacet !== 'opportunity')
-    html += `<div class="opt-find"><input type="text" id="opt-q" autocomplete="off" spellcheck="false" placeholder="find a country" value="${esc(filter || '')}"></div>`;
-  for (const grp of groups) {
-    html += '<div class="opt-group">';
-    if (grp.k) html += `<span class="opt-group-k">${esc(grp.k)}</span>`;
-    for (const o of grp.opts || [])
-      html += `<button type="button" class="opt${o[1] === cur ? ' on' : ''}" data-val="${esc(o[1])}">${esc(o[0])}</button>`;
-    for (const r of grp.rows || [])
-      html += `<button type="button" class="opt-row${r[1] === cur ? ' on' : ''}" data-val="${esc(r[1])}">` +
-        `<span class="opt-row-k">${esc(r[0])}</span><span class="opt-row-v">${esc(r[2] || '')}</span></button>`;
-    for (const gp of grp.gaps || [])
-      html += `<button type="button" class="opt gone" data-gap="${esc(gp[0])}" data-why="${esc(gp[1] || '')}" data-near="${esc(gp[2] || '')}">${esc(gp[0])}</button>`;
-    if (grp.go) html += '<button type="button" class="opt go" data-go="1">read this face &rsaquo;</button>';
-    html += '</div>';
-  }
+    html += `<input type="text" class="opt-find" id="opt-q" autocomplete="off" spellcheck="false" placeholder="find a country" value="${esc(filter || '')}">`;
+  html += '<div class="opt-wrap">' + capped.map(o =>
+    `<button type="button" class="opt${o[1] === cur ? ' on' : ''}" data-val="${esc(o[1])}">${esc(o[0])}</button>`).join('') + '</div>';
+  if (dim === 'place' && !filter && pills.length > capped.length)
+    html += `<p class="opt-miss">${pills.length - capped.length} more. Type to find one.</p>`;
+  if (gaps.length) html += '<p class="opt-miss">not in the atlas: ' + gaps.map((gp, i) =>
+    `<button type="button" class="opt-gap" data-g="${i}">${esc(gp[0])}</button>`).join(', ') + '</p>';
   html += '<p class="opt-note" hidden></p>';
   opts.innerHTML = html;
-  opts.querySelectorAll('.opt:not(.gone):not(.go), .opt-row').forEach(btn => btn.addEventListener('click', () => {
-    const stay = dim === 'place' && btn.dataset.val;   // comparing places means staying in the fold
-    if (curFacet === 'opportunity') { closeDrawer(); ask(btn.dataset.val); return; }
-    if (stay) { keepOpen = dim; applyDim(dim, btn.dataset.val); keepOpen = null; return; }
+
+  opts.querySelectorAll('.opt').forEach(btn => btn.addEventListener('click', () => {
+    const v = btn.dataset.val;
+    if (v === '\u0000go') { closeDrawer(); runPrompt((PROMPT_SETS[curFacet] || PROMPT_SETS.default)[0]); return; }
+    if (curFacet === 'opportunity' && dim !== 'facet') { closeDrawer(); ask(v); return; }
+    if (dim === 'place' && v) { keepOpen = dim; applyDim(dim, v); keepOpen = null; return; }
     closeDrawer();
-    applyDim(dim, btn.dataset.val);
+    applyDim(dim, v);
   }));
-  // the second door: read the face you're on, which is what carries you into the answer
-  const go = opts.querySelector('.opt.go');
-  if (go) go.addEventListener('click', () => {
-    closeDrawer();
-    runPrompt((PROMPT_SETS[curFacet] || PROMPT_SETS.default)[0]);
-  });
   // a gap never answers: it says what is missing, and offers the nearest real measure
   const note = opts.querySelector('.opt-note');
-  opts.querySelectorAll('.opt.gone').forEach(btn => btn.addEventListener('click', () => {
-    const near = btn.dataset.near, why = btn.dataset.why;
-    note.innerHTML = `<b>${esc(btn.dataset.gap)}</b> is not in the atlas.` +
-      (why ? ' ' + esc(why) : '') +
-      (near && META[near] ? ` Closest it holds: <button type="button" class="opt-near" data-val="${esc(near)}">${esc(META[near].label)}</button>` : '');
+  opts.querySelectorAll('.opt-gap').forEach(btn => btn.addEventListener('click', () => {
+    const gp = gaps[+btn.dataset.g], near = gp[2];
+    note.innerHTML = `<b>${esc(gp[0])}</b> is not in the atlas.` + (gp[1] ? ' ' + esc(gp[1]) : '') +
+      (near && META[near] ? ` Closest: <button type="button" class="opt-near" data-val="${esc(near)}">${esc(META[near].label)}</button>` : '');
     note.hidden = false;
-    note.scrollIntoView({ block: 'nearest' });
     const nb = note.querySelector('.opt-near');
     if (nb) nb.addEventListener('click', () => { closeDrawer(); applyDim(dim, nb.dataset.val); });
   }));
@@ -2426,14 +2414,6 @@ function renderDrawer(dim, rib, opts, filter) {
     const nf = opts.querySelector('#opt-q');
     if (nf) { nf.focus(); nf.setSelectionRange(v.length, v.length); }
   });
-}
-function stepDim(dim, dir) {
-  const flat = [];
-  for (const g of dimGroups(dim, '')) for (const o of (g.opts || [])) if (o[1]) flat.push(o[1]);
-  if (!flat.length) return;
-  const cur = dimCurrent(dim);
-  const at = flat.indexOf(cur);
-  applyDim(dim, flat[(at + dir + flat.length) % flat.length]);
 }
 function toggleRib(dim) {
   const rib = document.getElementById('rib-' + dim); if (!rib) return;
@@ -2485,17 +2465,11 @@ function faceToFront(name) {
 // user turns to a facet: switch the lens, refresh the starters, recompute what's on screen
 // an interaction acts on the face you're on, then hands the cube back to it
 function runInteraction(name) {
-  const f = FACETS[curFacet];
-  if (name === 'link') {
-    if (!chain.length) ask((PROMPT_SETS[curFacet] || PROMPT_SETS.default)[0]);
-    toggleRib('against');
-    showNotice('Link holds ' + curFacet + ' against another face of the cube.');
-  } else {
-    showNotice('Extend takes ' + curFacet + ' somewhere finer. The United States is the layer that exists.');
-    const us = document.getElementById('us-enter');
-    if (us) us.focus();
-  }
-  faceToFront(curFacet); settle(); paintFacet(curFacet);
+  // you land on the pole and stay there. the face you were reading is untouched.
+  document.querySelectorAll('#cube .face').forEach(el => el.classList.toggle('lit', el.dataset.facet === name));
+  showNotice(name === 'link'
+    ? `Link reads ${curFacet} alongside another face. Open <em>against</em> in the strip to choose it.`
+    : `Extend reads ${curFacet} through time and across geography. Open <em>when</em> or <em>place</em> in the strip.`);
 }
 function chooseFacet(name) {
   if (INTERACTIONS[name]) { runInteraction(name); return; }
