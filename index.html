@@ -325,23 +325,39 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   opacity: 0; transition: opacity .28s ease;
 }
 #view-ask.engaged .deck.condensed::after { opacity: 1; }
-#view-ask.engaged .cubebox { margin: 0 auto 10px; gap: 8px; }
-#view-ask.engaged .scene { height: 188px; margin-bottom: 4px; display: flex;
+#view-ask.engaged .cubebox { margin: 0 auto 8px; gap: 8px; transition: margin .3s ease; }
+#view-ask.engaged .scene { height: 140px; margin-bottom: 2px; display: flex;
   align-items: center; justify-content: center; transition: height .28s ease; }
 #view-ask.engaged .cube .face { justify-content: center; align-items: center; padding: 10px; }
 #view-ask.engaged .cube .face .q { display: none; }
 #view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
 /* condensed: the same cube, smaller, with the strip still attached */
 #view-ask.engaged .deck.condensed { padding: 16px 0 8px; }
-#view-ask.engaged .deck.condensed .scene { height: 104px; margin-bottom: 0; }
+#view-ask.engaged .deck.condensed .scene { height: 92px; margin-bottom: 0; }
 #view-ask.engaged .deck.condensed .facet-chips,
 #view-ask.engaged .deck.condensed .helpbtn { display: none; }
 #view-ask.engaged .deck.condensed .askbox { max-width: 420px; }
 #view-ask.engaged .deck.condensed #q { height: 38px; font-size: 13.5px; }
 #view-ask.engaged .deck.condensed .cell { margin-top: 8px; }
- /* the box and the strip share one slot: typing becomes coordinates, and back */
-#view-ask.asking .cell { display: none; }
-#view-ask:not(.asking) .askbox, #view-ask:not(.asking) .helpbtn, #view-ask:not(.asking) .help { display: none; }
+/* three beats. write it, see it as a chain, send it.
+   the cube is large for the first two and rises out of the way for the third. */
+#view-ask.stage-compose .cell, #view-ask.stage-compose #session { display: none; }
+#view-ask.stage-chain .askbox, #view-ask.stage-chain .helpbtn,
+#view-ask.stage-chain .help, #view-ask.stage-chain #session { display: none; }
+#view-ask.stage-result .askbox, #view-ask.stage-result .helpbtn, #view-ask.stage-result .help { display: none; }
+#view-ask.stage-result #send-chain { display: none; }
+/* the arrow: black, appears once there is something to send */
+.sendbtn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 30px; height: 30px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--ink); color: var(--bg); font-size: 15px; line-height: 1;
+  display: none; align-items: center; justify-content: center; padding: 0; }
+.sendbtn:hover { opacity: .85; }
+#q:not(:placeholder-shown) ~ .sendbtn { display: inline-flex; }
+#q:not(:placeholder-shown) ~ .slash { display: none; }
+.sendbtn.wide { position: static; transform: none; display: inline-flex; margin: 12px auto 0;
+  width: auto; height: 32px; border-radius: 100px; padding: 0 16px; gap: 8px;
+  font: 500 12.5px 'Inter', system-ui, sans-serif; }
+#view-ask.stage-chain .cell { text-align: center; }
 .cell, .askbox { animation: slot-in .3s cubic-bezier(.22, 1, .36, 1); }
 @keyframes slot-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .cell, .askbox { animation: none; } }
@@ -349,7 +365,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib-ask .val { color: var(--ink-3); }
 .rib-ask .rib-head:hover .val { color: var(--ink); }
 /* before you ask, the strip is just the face you're on */
-#view-ask:not(.engaged) .add-row { display: none; }
+#view-ask.stage-compose .add-row { display: none; }
 /* the showing: full width, on the page, under the deck */
 #view-ask.engaged #session { padding-top: 18px; }
 #view-ask.engaged .answer { font-size: 19px; line-height: 1.45; margin-bottom: 14px; }
@@ -634,6 +650,7 @@ footer a { color: inherit; }
           <button type="button" id="q-dn" aria-label="next question">&#9660;</button>
         </span>
         <span class="slash" id="fillhint">tab to fill</span>
+        <button type="button" class="sendbtn" id="send-compose" aria-label="Send">&#8594;</button>
       </form>
       <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">what can I ask?</button>
       <div class="help" id="help" role="listbox" aria-label="Questions you can ask" hidden></div>
@@ -648,6 +665,7 @@ footer a { color: inherit; }
           <div class="rib rib-ask" id="rib-ask"><button type="button" class="rib-head" aria-label="Ask a different question"><span class="dim">ask</span><span class="val">something else</span></button><span class="spine"></span></div>
         </div>
         <div class="bellow-drawer" id="rib-drawer" hidden></div>
+        <button type="button" class="sendbtn wide" id="send-chain" aria-label="Show the answer">&#8594;</button>
         <div class="add-row" id="add-row"></div>
       </div>
       </div>
@@ -2049,7 +2067,7 @@ function ask(q) {
   render();
   const qb = document.getElementById('q');
   if (qb) qb.value = q;          // kept, so reopening the box shows what you asked
-  setAskMode(false);             // the box becomes the strip
+  if (stage === 'compose') setStage('chain');   // the box becomes the chain, not the answer
 }
 
 // re-run the whole chain from its queries on a fresh context; flag lines whose answer shifted
@@ -2401,14 +2419,12 @@ function renderDrawer(dim, rib, opts, filter) {
     for (const gp of grp.gaps || []) gaps.push(gp);
     if (grp.go) pills.push(['read this face', '\u0000go']);
   }
-  const capped = (dim === 'place' && !filter) ? pills.slice(0, 14) : pills;
+  const capped = filter ? pills.slice(0, 18) : pills.slice(0, 8);
   let html = '';
   if (dim === 'place' && curFacet !== 'opportunity')
     html += `<input type="text" class="opt-find" id="opt-q" autocomplete="off" spellcheck="false" placeholder="find a country" value="${esc(filter || '')}">`;
   html += '<div class="opt-wrap">' + capped.map(o =>
     `<button type="button" class="opt${o[1] === cur ? ' on' : ''}" data-val="${esc(o[1])}">${esc(o[0])}</button>`).join('') + '</div>';
-  if (dim === 'place' && !filter && pills.length > capped.length)
-    html += `<p class="opt-miss">${pills.length - capped.length} more. Type to find one.</p>`;
   if (gaps.length) html += '<p class="opt-miss">not in the atlas: ' + gaps.map((gp, i) =>
     `<button type="button" class="opt-gap" data-g="${i}">${esc(gp[0])}</button>`).join(', ') + '</p>';
   html += '<p class="opt-note" hidden></p>';
@@ -2554,16 +2570,19 @@ function cubeSnap() {
   chooseFacet(facetFromAngles());
 }
 let deckCondensed = false;
-let askMode = true;
-function setAskMode(on) {
-  askMode = on;
+let stage = 'compose';   // compose -> chain -> result
+function setStage(next) {
+  stage = next;
   const v = document.getElementById('view-ask');
-  if (v) v.classList.toggle('asking', on);
+  if (v) { v.classList.remove('stage-compose', 'stage-chain', 'stage-result'); v.classList.add('stage-' + next); }
   const q = document.getElementById('q');
-  if (on && q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  if (next === 'compose') { if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
   else setHelp(false);
+  if (next !== 'result') closeDrawer();
+  render();
   requestAnimationFrame(syncDeck);
 }
+function sendCell() { if (chain.length) setStage('result'); }
 function syncDeck() {
   const deck = document.getElementById('deck');
   const view = document.getElementById('view-ask');
@@ -2572,7 +2591,7 @@ function syncDeck() {
   if (want !== deckCondensed) {
     deckCondensed = want;
     deck.classList.toggle('condensed', want);
-    cubeScale = want ? 0.5 : 0.95;
+    cubeScale = want ? 0.44 : 0.7;
     cubeApply();
   }
   document.documentElement.style.setProperty('--deckh',
@@ -2708,22 +2727,24 @@ function render() {
   const list = document.getElementById('facts');
   updateChips();
   // once you're working, the cube shrinks so the ask box and cell stay the controls
-  const engaged = chain.length > 0;
+  const engaged = stage === 'result' && chain.length > 0;
   document.getElementById('view-ask').classList.toggle('engaged', engaged);
   if (!engaged && deckCondensed) {   // back home: the deck stands up again
     deckCondensed = false;
     const dk = document.getElementById('deck'); if (dk) dk.classList.remove('condensed');
   }
-  const wantScale = engaged ? (deckCondensed ? 0.5 : 0.95) : 1.08;   // the same cube, condensed
+  const wantScale = engaged ? (deckCondensed ? 0.44 : 0.7) : 1.08;   // sending lifts the cube out of the way
   requestAnimationFrame(syncDeck);   // the deck's height drives where the graph's head sits
   if (wantScale !== cubeScale) { cubeScale = wantScale; cubeApply(); }
   if (chain.length === 0) {
-    if (!askMode) setAskMode(true);
+    if (stage !== 'compose') { stage = 'compose'; const v = document.getElementById('view-ask');
+      if (v) { v.classList.remove('stage-chain', 'stage-result'); v.classList.add('stage-compose'); } }
     session.hidden = true;
     updateCell();   // back to just the facet, the other slots empty
     const a0 = document.getElementById('answer'); if (a0) a0.innerHTML = '';
     return;
   }
+  if (stage !== 'result') { session.hidden = true; updateCell(); return; }
   session.hidden = false;
   // one cell, one answer: the current reading of it
   const last = chain[chain.length - 1];
@@ -3647,7 +3668,7 @@ function resetAll() {
   const onUS = !document.getElementById('view-us').hidden;
   chain.length = 0; facetMeasureIdx.wealth = 0; facetMeasureIdx.income = 0;
   resetCell(); resetCtx(); render();
-  chooseFacet('wealth'); startIdle(); setAskMode(true);
+  chooseFacet('wealth'); startIdle(); setStage('compose');
   if (onUS) flipTo('ask', true); else window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 }
 
@@ -3785,7 +3806,8 @@ function boot() {
   const homebtn = document.getElementById('homebtn');
   if (homebtn) homebtn.addEventListener('click', resetAll);
   const askPleat = document.querySelector('#rib-ask .rib-head');
-  if (askPleat) askPleat.addEventListener('click', () => setAskMode(true));
+  if (askPleat) askPleat.addEventListener('click', () => setStage('compose'));
+  document.querySelectorAll('.sendbtn').forEach(el => el.addEventListener('click', sendCell));
   document.getElementById('clear').addEventListener('click', resetAll);
   // the prompt cycles through the premade questions on its own; arrows step it by hand
   setInterval(() => nextPrompt(false), 3800);
@@ -3793,7 +3815,7 @@ function boot() {
   const vfacet = document.getElementById('v-facet');
   if (vfacet) vfacet.addEventListener('click', e => { if (e.target.closest('.submeasure')) cycleMeasure(); });
   wireCell();
-  setAskMode(true);   // the page opens as a box, not as a strip
+  setStage('compose');   // the page opens as a box
   // theme toggle: follow the OS, or override it and remember
   const themeBtn = document.getElementById('theme');
   if (themeBtn) themeBtn.addEventListener('click', () => {
