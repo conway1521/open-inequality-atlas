@@ -339,6 +339,15 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.engaged .deck.condensed .askbox { max-width: 420px; }
 #view-ask.engaged .deck.condensed #q { height: 38px; font-size: 13.5px; }
 #view-ask.engaged .deck.condensed .cell { margin-top: 8px; }
+ /* the box and the strip share one slot: typing becomes coordinates, and back */
+#view-ask.asking .cell { display: none; }
+#view-ask:not(.asking) .askbox, #view-ask:not(.asking) .helpbtn, #view-ask:not(.asking) .help { display: none; }
+.cell, .askbox { animation: slot-in .3s cubic-bezier(.22, 1, .36, 1); }
+@keyframes slot-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cell, .askbox { animation: none; } }
+.rib-ask { --rc: var(--border-2); }
+.rib-ask .val { color: var(--ink-3); }
+.rib-ask .rib-head:hover .val { color: var(--ink); }
 /* before you ask, the strip is just the face you're on */
 #view-ask:not(.engaged) .add-row { display: none; }
 /* the showing: full width, on the page, under the deck */
@@ -636,6 +645,7 @@ footer a { color: inherit; }
           <div class="rib" id="rib-time" data-dim="time"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">when</span><span class="val" id="v-time"></span></button><span class="spine"></span><button class="rib-x" data-clear="time" aria-label="remove when">&times;</button><button class="rib-step prev" data-step="time" data-dir="-1" aria-label="previous time">&#9664;</button><button class="rib-step next" data-step="time" data-dir="1" aria-label="next time">&#9654;</button></div>
           <div class="rib" id="rib-against" data-dim="against"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">against</span><span class="val" id="v-against"></span></button><span class="spine"></span><button class="rib-x" data-clear="against" aria-label="remove against">&times;</button><button class="rib-step prev" data-step="against" data-dir="-1" aria-label="previous against">&#9664;</button><button class="rib-step next" data-step="against" data-dir="1" aria-label="next against">&#9654;</button></div>
           <div class="rib" id="rib-form" data-dim="form"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">shown as</span><span class="val" id="v-form"></span></button><span class="spine"></span><button class="rib-x" data-clear="form" aria-label="remove the form">&times;</button><button class="rib-step prev" data-step="form" data-dir="-1" aria-label="previous form">&#9664;</button><button class="rib-step next" data-step="form" data-dir="1" aria-label="next form">&#9654;</button></div>
+          <div class="rib rib-ask" id="rib-ask"><button type="button" class="rib-head" aria-label="Ask a different question"><span class="dim">ask</span><span class="val">something else</span></button><span class="spine"></span></div>
         </div>
         <div class="bellow-drawer" id="rib-drawer" hidden></div>
         <div class="add-row" id="add-row"></div>
@@ -914,6 +924,19 @@ const SERIES = {};          // metric -> iso -> [{year, v}]
 const SLOTS = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#e34948'];
 const colorOf = {};
 let nextSlot = 0;
+// mix a hex toward white or black: one hue, many steps
+function shade(hex, t) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const m = t < 0 ? [255, 255, 255] : [12, 14, 18], k = Math.abs(t);
+  const mix = (c, i) => Math.round(c + (m[i] - c) * k);
+  return '#' + [mix(r, 0), mix(g, 1), mix(b, 2)].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+// n steps across one facet's hue, light to dark
+function shadesOf(hex, n) {
+  if (n <= 1) return [hex];
+  return Array.from({ length: n }, (_, i) => shade(hex, -0.55 + (i / (n - 1)) * 1.05));
+}
 function assignColor(key) {
   if (!(key in colorOf)) { colorOf[key] = SLOTS[nextSlot % SLOTS.length]; nextSlot++; }
   return colorOf[key];
@@ -1200,9 +1223,10 @@ function isIneq(key) { return INEQ_METRICS.includes(key); }
 // each facet offers a few measures; the accordion lets you click between them
 const FACET_MEASURES = {
   wealth: [['wealth_top1', 'top 1% share'], ['wealth_gini', 'wealth Gini'], ['wealth_bottom50', 'bottom 50% share']],
-  income: [['income_gini', 'income Gini']],
+  income: [['income_gini', 'income Gini'], ['median_income', 'median income'], ['poverty_rate', 'poverty rate']],
+  health: [['life_exp', 'life expectancy'], ['life_satisfaction', 'life satisfaction']],
 };
-const facetMeasureIdx = { wealth: 0, income: 0 };
+const facetMeasureIdx = { wealth: 0, income: 0, health: 0 };
 function facetMeasure(name) {
   const list = FACET_MEASURES[name]; if (!list) return null;
   return list[(facetMeasureIdx[name] || 0) % list.length][0];
@@ -2024,7 +2048,8 @@ function ask(q) {
   syncCellFromFact(f);   // the typed question becomes the cell the accordion can amend
   render();
   const qb = document.getElementById('q');
-  if (qb) { qb.value = q; qb.setSelectionRange(q.length, q.length); }   // keep it, to edit
+  if (qb) qb.value = q;          // kept, so reopening the box shows what you asked
+  setAskMode(false);             // the box becomes the strip
 }
 
 // re-run the whole chain from its queries on a fresh context; flag lines whose answer shifted
@@ -2529,6 +2554,16 @@ function cubeSnap() {
   chooseFacet(facetFromAngles());
 }
 let deckCondensed = false;
+let askMode = true;
+function setAskMode(on) {
+  askMode = on;
+  const v = document.getElementById('view-ask');
+  if (v) v.classList.toggle('asking', on);
+  const q = document.getElementById('q');
+  if (on && q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  else setHelp(false);
+  requestAnimationFrame(syncDeck);
+}
 function syncDeck() {
   const deck = document.getElementById('deck');
   const view = document.getElementById('view-ask');
@@ -2683,6 +2718,7 @@ function render() {
   requestAnimationFrame(syncDeck);   // the deck's height drives where the graph's head sits
   if (wantScale !== cubeScale) { cubeScale = wantScale; cubeApply(); }
   if (chain.length === 0) {
+    if (!askMode) setAskMode(true);
     session.hidden = true;
     updateCell();   // back to just the facet, the other slots empty
     const a0 = document.getElementById('answer'); if (a0) a0.innerHTML = '';
@@ -2836,7 +2872,10 @@ function drawChart() {
       type: 'bar', orientation: 'h',
       y: rows.map(r => r.geo_name),
       x: vals,
-      marker: { color: rows.map(r => r.geo_id === bar.highlight ? '#eb6834' : metricColor(isDelta ? bar.metric : bar.key)) },
+      marker: { color: (() => {
+        const ramp = shadesOf(metricColor(isDelta ? bar.metric : bar.key), rows.length);
+        return rows.map((r, i) => r.geo_id === bar.highlight ? '#eb6834' : ramp[i]);
+      })() },
       text: labels,
       textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
       hovertemplate: '%{y}: %{text}<extra></extra>',
@@ -3121,7 +3160,8 @@ function drawChart() {
       traces.push({
         type: 'scatter', mode: s.length < 25 ? 'lines+markers' : 'lines', name: BY_ISO[iso].name,
         x: s.map(d => d.year), y: s.map(d => d.v),
-        line: { color: isoSet.length === 1 ? metricColor(metric) : assignColor(iso), width: 2.2,
+        line: { color: isoSet.length === 1 ? metricColor(metric)
+          : shadesOf(metricColor(metric), isoSet.length)[isoSet.indexOf(iso)], width: 2.2,
           shape: 'spline', smoothing: 0.6 },
         marker: { size: 5 },
         hovertemplate: BY_ISO[iso].name + ': ' + m.hover + '<extra></extra>',
@@ -3607,7 +3647,7 @@ function resetAll() {
   const onUS = !document.getElementById('view-us').hidden;
   chain.length = 0; facetMeasureIdx.wealth = 0; facetMeasureIdx.income = 0;
   resetCell(); resetCtx(); render();
-  chooseFacet('wealth'); startIdle();
+  chooseFacet('wealth'); startIdle(); setAskMode(true);
   if (onUS) flipTo('ask', true); else window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 }
 
@@ -3744,6 +3784,8 @@ function boot() {
   if (qdn) qdn.addEventListener('click', () => cyclePrompt(1));
   const homebtn = document.getElementById('homebtn');
   if (homebtn) homebtn.addEventListener('click', resetAll);
+  const askPleat = document.querySelector('#rib-ask .rib-head');
+  if (askPleat) askPleat.addEventListener('click', () => setAskMode(true));
   document.getElementById('clear').addEventListener('click', resetAll);
   // the prompt cycles through the premade questions on its own; arrows step it by hand
   setInterval(() => nextPrompt(false), 3800);
@@ -3751,6 +3793,7 @@ function boot() {
   const vfacet = document.getElementById('v-facet');
   if (vfacet) vfacet.addEventListener('click', e => { if (e.target.closest('.submeasure')) cycleMeasure(); });
   wireCell();
+  setAskMode(true);   // the page opens as a box, not as a strip
   // theme toggle: follow the OS, or override it and remember
   const themeBtn = document.getElementById('theme');
   if (themeBtn) themeBtn.addEventListener('click', () => {
