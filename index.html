@@ -365,7 +365,10 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.stage-chain .rib .val { font-size: 13.5px; }
 #view-ask.stage-chain .rib-ask { flex: 0 0 auto; }
 #view-ask.stage-chain .rib-ask .rib-head { min-width: 92px; }
-.chain-foot { display: flex; justify-content: center; margin-top: 14px; }
+.chain-foot { display: flex; flex-direction: column; align-items: center; gap: 9px; margin-top: 16px; }
+.asknew { background: none; border: 0; cursor: pointer; font-family: var(--mono); font-size: 11px;
+  color: var(--ink-3); padding: 2px 6px; }
+.asknew:hover { color: var(--ink); }
 #rib-asked { display: none; }
 #rib-asked.filled { display: block; }
 #view-ask.stage-chain #rib-asked .val { font-style: normal; color: var(--ink-2); }
@@ -397,6 +400,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   background: var(--surface); box-shadow: 0 1px 0 var(--pleat-hi) inset,
     0 6px 14px -8px color-mix(in srgb, var(--ink) 40%, transparent); }
 .rib { position: relative; flex: 0 1 auto; min-width: 104px; max-width: 210px; }
+/* a fold takes the colour of the face unless it carries a measure of its own */
+.rib[data-dim] { --rc: var(--accent); }
 /* the crease between two pleats, leaning like folded paper */
 .rib + .rib::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
   width: 1px; background: color-mix(in srgb, var(--ink) 20%, transparent); transform: skewX(-13deg); }
@@ -414,6 +419,12 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib .dim { font-family: var(--mono); font-size: 8.5px; letter-spacing: .09em;
   text-transform: uppercase; color: var(--ink-3); }
 .rib .val { font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rib[data-dim].filled .val, .rib.facet .val {
+  display: inline-block; padding: 2px 10px; border-radius: 100px; overflow: visible;
+  background: color-mix(in srgb, var(--rc, var(--ink-3)) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rc, var(--ink-3)) 45%, transparent);
+  text-decoration: none; }
+.rib[data-dim] .rib-head:hover .val { border-color: var(--rc, var(--ink-3)); }
 .rib .val .muted { color: var(--ink-3); }
 .rib.facet .val { font-weight: 600; }
 .fmeasure { color: var(--ink-3); font-weight: 400; font-size: 11px; margin-left: 6px; }
@@ -424,11 +435,12 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib:first-child .spine { border-bottom-left-radius: 5px; }
 .rib:last-child .spine { border-bottom-right-radius: 5px; }
 .rib.facet { --rc: var(--accent); }
-.rib-step { position: absolute; bottom: 4px; background: none; border: 0; cursor: pointer;
-  color: var(--ink-3); font-size: 9px; line-height: 1; padding: 2px 3px; opacity: 0;
+.rib-step { position: absolute; bottom: 3px; background: none; border: 0; cursor: pointer;
+  color: var(--ink-3); font-size: 9px; line-height: 1; padding: 2px 3px; opacity: .45;
   transition: opacity .15s ease; }
 .rib-step.prev { right: 20px; } .rib-step.next { right: 6px; }
 .rib:hover .rib-step, .rib-step:focus-visible { opacity: 1; }
+.rib[data-dim]:not(.filled) .rib-step { display: none; }
 .rib-step:hover { color: var(--ink); }
 .rib-x { position: absolute; top: 1px; right: 3px; font-family: var(--mono); background: none;
   border: none; cursor: pointer; color: var(--ink-3); font-size: 12px; line-height: 1;
@@ -627,7 +639,7 @@ footer a { color: inherit; }
 
 <main>
 
-  <div id="view-ask" class="wrap">
+  <div id="view-ask" class="wrap stage-compose">
     <section class="ask">
       <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality</h1>
     </section>
@@ -674,10 +686,9 @@ footer a { color: inherit; }
           <div class="rib" id="rib-against" data-dim="against"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">against</span><span class="val" id="v-against"></span></button><span class="spine"></span><button class="rib-x" data-clear="against" aria-label="remove against">&times;</button><button class="rib-step prev" data-step="against" data-dir="-1" aria-label="previous against">&#9664;</button><button class="rib-step next" data-step="against" data-dir="1" aria-label="next against">&#9654;</button></div>
           <div class="rib" id="rib-form" data-dim="form"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">shown as</span><span class="val" id="v-form"></span></button><span class="spine"></span><button class="rib-x" data-clear="form" aria-label="remove the form">&times;</button><button class="rib-step prev" data-step="form" data-dir="-1" aria-label="previous form">&#9664;</button><button class="rib-step next" data-step="form" data-dir="1" aria-label="next form">&#9654;</button></div>
           <div class="rib" id="rib-asked"><button type="button" class="rib-head" aria-label="The question"><span class="dim">question</span><span class="val" id="v-asked"></span></button><span class="spine"></span></div>
-          <div class="rib rib-ask" id="rib-ask"><button type="button" class="rib-head" aria-label="Ask a different question"><span class="dim">ask</span><span class="val">something else</span></button><span class="spine"></span></div>
         </div>
         <div class="bellow-drawer" id="rib-drawer" hidden></div>
-        <div class="chain-foot"><button type="button" class="sendbtn wide" id="send-chain">show me &#8594;</button></div>
+        <div class="chain-foot"><button type="button" class="sendbtn wide" id="send-chain">show me &#8594;</button><button type="button" class="asknew" id="ask-new">ask something else</button></div>
         <div class="add-row" id="add-row"></div>
       </div>
       </div>
@@ -2155,14 +2166,14 @@ const PROMPT_SETS = {
 // one question per kind of analysis the atlas can do. the strip tunes them from here.
 const QUESTIONS = [
   { k: '', qs: [
-    'how unequal is France?',
     'where is wealth most concentrated?',
-    'how has France changed since 1990?',
+    'how has inequality changed over time?',
     'does life expectancy track inequality?',
     'which countries break the pattern?',
-    'are wealth and income pulling apart in the US?',
     'how spread out is wealth?',
-    'how does life expectancy differ by inequality tier?'] },
+    'how does life expectancy differ by inequality tier?',
+    'what is the Lorenz curve?',
+    'are wealth and income pulling apart in the US?'] },
   { k: '', facet: 'opportunity', qs: [
     'where do poor children climb highest?',
     "how does credit differ by parents' income?"] },
@@ -2472,6 +2483,14 @@ function renderDrawer(dim, rib, opts, filter) {
     if (nf) { nf.focus(); nf.setSelectionRange(v.length, v.length); }
   });
 }
+// walk to the next value of a variable without opening anything
+function stepDim(dim, dir) {
+  const flat = [];
+  for (const g of dimGroups(dim, '')) for (const o of (g.opts || [])) if (o[1]) flat.push(o[1]);
+  if (!flat.length) return;
+  const at = flat.indexOf(dimCurrent(dim));
+  applyDim(dim, flat[(at + dir + flat.length) % flat.length]);
+}
 function toggleRib(dim) {
   const rib = document.getElementById('rib-' + dim); if (!rib) return;
   const drawer = document.getElementById('rib-drawer'); if (!drawer) return;
@@ -2629,6 +2648,13 @@ function previewQuestion(q) {
 }
 // only now is anything computed
 function sendCell() {
+  // a question left general on purpose has to be finished before it can answer
+  if (cell.form === 'lorenz' && !cell.place) {
+    showNotice('A Lorenz curve is drawn for one country. Add a place first.'); return;
+  }
+  if (cell.span === 'run' && !cell.place && !ctx.region && !ctx.pool) {
+    showNotice('Over the years needs somewhere to follow. Add a place, or a region.'); return;
+  }
   if (cell.raw) { const q = cell.raw; ask(q); return; }
   runCell();
   if (chain.length) setStage('result'); else showNotice('Nothing to show for that yet.');
@@ -3861,7 +3887,14 @@ function boot() {
   const homebtn = document.getElementById('homebtn');
   if (homebtn) homebtn.addEventListener('click', resetAll);
   const askPleat = document.querySelector('#rib-ask .rib-head');
-  if (askPleat) askPleat.addEventListener('click', () => setStage('compose'));
+  const askNew = document.getElementById('ask-new');
+  if (askNew) askNew.addEventListener('click', () => {
+    const q = document.getElementById('q');
+    if (q) q.value = '';        // a fresh question, not the last one back again
+    resetCell(); chain.length = 0; resetCtx();
+    setStage('compose');
+    if (q) q.focus();
+  });
   document.querySelectorAll('.sendbtn').forEach(el => el.addEventListener('click', sendCell));
   document.getElementById('clear').addEventListener('click', resetAll);
   // the prompt cycles through the premade questions on its own; arrows step it by hand
