@@ -356,8 +356,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   width: auto; height: 34px; border-radius: 100px; padding: 0 18px; gap: 8px;
   font: 500 13px 'Inter', system-ui, sans-serif; }
 #view-ask.stage-chain .cell { max-width: 620px; margin: 0 auto; }
-#view-ask.stage-chain .ribs { width: 100%; border-radius: 10px;
-  box-shadow: 0 0 0 1px var(--accent) inset, 0 1px 2px rgba(16,20,28,.05), 0 8px 30px rgba(16,20,28,.06); }
+#view-ask.stage-chain .ribs-frame { width: 100%; }
+#view-ask.stage-chain .ribs { width: 100%; border-radius: 0; box-shadow: none; }
 #view-ask.stage-chain .rib { flex: 1 1 0; min-width: 0; max-width: none; }
 /* a closed fold takes only the room its name needs; the open ones share the rest */
 #view-ask.stage-chain .rib[data-dim]:not(.filled):not(.expanded) { flex: 0 0 auto; }
@@ -407,13 +407,32 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .cell { max-width: 760px; margin: 26px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); margin-bottom: 8px; }
-.ribs { position: relative; display: flex; align-items: stretch; border-radius: 3px;
-  width: fit-content; max-width: 100%; margin: 0 auto;
+.ribs-frame { width: fit-content; max-width: 100%; margin: 0 auto;
+  background: var(--accent); padding: 1.5px 1.5px 2px;
+  -webkit-mask:
+    linear-gradient(#000 0 0) 50% 50%/100% calc(100% - 14px) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% 100%/18px 7px repeat-x,
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% 0/18px 7px repeat-x;
+  mask:
+    linear-gradient(#000 0 0) 50% 50%/100% calc(100% - 14px) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% 100%/18px 7px repeat-x,
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% 0/18px 7px repeat-x; }
+.ribs { position: relative; display: flex; align-items: stretch; border-radius: 0;
+  width: 100%; max-width: 100%; margin: 0;
+  -webkit-mask:
+    linear-gradient(#000 0 0) 50% 50%/100% calc(100% - 14px) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% 100%/18px 7px repeat-x,
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% 0/18px 7px repeat-x;
+  mask:
+    linear-gradient(#000 0 0) 50% 50%/100% calc(100% - 14px) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% 100%/18px 7px repeat-x,
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% 0/18px 7px repeat-x;
   background: var(--surface); box-shadow: 0 1px 0 var(--pleat-hi) inset,
     0 6px 14px -8px color-mix(in srgb, var(--ink) 40%, transparent); }
 .rib { position: relative; flex: 0 1 auto; min-width: 104px; max-width: 210px; }
-/* a fold takes the colour of the face unless it carries a measure of its own */
-.rib[data-dim] { --rc: var(--accent); }
+/* a fold's colour says what it carries: the face, or the measure held against it.
+   place, among, when and the form are not measures, so they stay neutral. */
+.rib[data-dim] { --rc: var(--border-2); }
 /* the crease between two pleats, leaning like folded paper */
 .rib + .rib::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
   width: 1px; background: color-mix(in srgb, var(--ink) 20%, transparent); transform: skewX(-13deg); }
@@ -424,7 +443,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   color-mix(in srgb, var(--ink) 4%, transparent) 100%); }
 .rib:nth-child(even) { background: linear-gradient(101deg,
   color-mix(in srgb, var(--ink) 4%, transparent) 0%, transparent 100%); }
-.rib-head { display: flex; flex-direction: column; gap: 1px; padding: 6px 10px 9px; min-height: 44px;
+.rib-head { display: flex; flex-direction: column; gap: 1px; padding: 15px 10px 17px; min-height: 62px;
   width: 100%; background: none; border: 0; font: inherit; color: inherit; text-align: left; }
 .rib[data-dim] .rib-head { cursor: pointer; }
 .rib[data-dim]:hover .rib-head { background: color-mix(in srgb, var(--accent) 6%, transparent); }
@@ -697,6 +716,7 @@ footer a { color: inherit; }
       <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">what can I ask?</button>
       <div class="help" id="help" role="listbox" aria-label="Questions you can ask" hidden></div>
       <div class="cell" id="cell">
+        <div class="ribs-frame" id="ribs-frame">
         <div class="ribs" id="ribs">
           <div class="rib facet" id="rib-facet" data-dim="facet"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">facet</span><span class="val" id="v-facet"></span></button><span class="spine"></span></div>
           <div class="rib" id="rib-place" data-dim="place"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">place</span><span class="val" id="v-place"></span></button><span class="spine"></span><button class="rib-x" data-clear="place" aria-label="remove place">&times;</button><button class="rib-step prev" data-step="place" data-dir="-1" aria-label="previous place">&#9664;</button><button class="rib-step next" data-step="place" data-dir="1" aria-label="next place">&#9654;</button></div>
@@ -705,6 +725,7 @@ footer a { color: inherit; }
           <div class="rib" id="rib-against" data-dim="against"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">against</span><span class="val" id="v-against"></span></button><span class="spine"></span><button class="rib-x" data-clear="against" aria-label="remove against">&times;</button><button class="rib-step prev" data-step="against" data-dir="-1" aria-label="previous against">&#9664;</button><button class="rib-step next" data-step="against" data-dir="1" aria-label="next against">&#9654;</button></div>
           <div class="rib" id="rib-form" data-dim="form"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">shown as</span><span class="val" id="v-form"></span></button><span class="spine"></span><button class="rib-x" data-clear="form" aria-label="remove the form">&times;</button><button class="rib-step prev" data-step="form" data-dir="-1" aria-label="previous form">&#9664;</button><button class="rib-step next" data-step="form" data-dir="1" aria-label="next form">&#9654;</button></div>
           <div class="rib" id="rib-asked"><button type="button" class="rib-head" aria-label="The question"><span class="dim">question</span><span class="val" id="v-asked"></span></button><span class="spine"></span></div>
+        </div>
         </div>
         <div class="bellow-drawer" id="rib-drawer" hidden></div>
         <div class="chain-foot"><div class="foot-row"><button type="button" class="sendbtn wide" id="send-chain">show me &#8594;</button><button type="button" class="refresh" id="homebtn" aria-label="Start over" title="Start over">&#8635;</button></div><button type="button" class="asknew" id="ask-new">ask something else</button></div>
@@ -1592,7 +1613,11 @@ function applyDim(dim, val) {
     if (cell.span === 'moment' && !cell.year) {   // no year named: read the latest one there is
       const ys = seriesYears(cell.place); cell.year = ys.length ? ys[ys.length - 1] : null;
     }
-  } else if (dim === 'against') cell.against = val || null;
+  } else if (dim === 'against') {
+    cell.against = val || null;
+    if (!cell.against && ['tiers', 'break'].includes(cell.form)) cell.form = null;
+    if (cell.against && ['rank', 'spread', 'lorenz'].includes(cell.form)) cell.form = null;
+  }
   else if (dim === 'form') cell.form = val || null;
   else if (dim === 'scope') {
     cell.scope = val || null;
@@ -2388,15 +2413,25 @@ function dimGroups(dim, filter) {
     return g;
   }
   if (dim === 'form') {
-    const opts = [['the plain reading', ''], ['a ranking', 'rank'], ['the spread', 'spread']];
-    if (cell.place) opts.push(['a Lorenz curve', 'lorenz']);
-    if (cell.against && META[cell.against]) opts.push(['by tier', 'tiers'], ['who breaks the pattern', 'break']);
-    g.push({ k: 'shown as', opts });
+    // only the shapes this cell can actually take. the rest are said to be unavailable.
+    const held = cell.against && META[cell.against];
+    const opts = [['the plain reading', '']];
     const gaps = [];
-    if (!cell.place) gaps.push(['a Lorenz curve', 'A Lorenz curve is drawn for one country, so name a place first.', null]);
-    if (!cell.against) gaps.push(['by tier', 'Tiers split countries by one measure against another, so add a measure first.', null],
-      ['who breaks the pattern', 'Outliers are read off a relationship, so add a measure first.', null]);
-    gaps.push(['a map', 'The world map is on the database side, not in the cell.', null]);
+    if (held) {
+      opts.push(['by tier', 'tiers'], ['who breaks the pattern', 'break']);
+      gaps.push(['a ranking', 'A ranking reads one measure. Drop what it is held against.', null],
+        ['the spread', 'The spread reads one measure. Drop what it is held against.', null],
+        ['a Lorenz curve', 'A Lorenz curve draws one country\'s wealth, not two measures against each other.', null]);
+    } else {
+      opts.push(['a ranking', 'rank'], ['the spread', 'spread']);
+      if (cell.place && curFacet === 'wealth') opts.push(['a Lorenz curve', 'lorenz']);
+      else gaps.push(['a Lorenz curve', cell.place
+        ? 'A Lorenz curve splits wealth across a population, so it needs the wealth face.'
+        : 'A Lorenz curve is drawn for one country, so name a place first.', null]);
+      gaps.push(['by tier', 'Tiers need a second measure to split by.', null],
+        ['who breaks the pattern', 'Outliers are read off a relationship, so add a measure first.', null]);
+    }
+    g.push({ k: 'shown as', opts });
     g.push({ k: 'not in the atlas', gaps });
     return g;
   }
@@ -2914,7 +2949,10 @@ function updateCell() {
   setSlot('time', cell.span === 'run' ? (cell.since ? 'since ' + cell.since : 'over the years')
     : cell.span === 'moment' ? (cell.year ? 'in ' + cell.year : 'a single moment') : null, 'add');
   const agKey = cell.against && META[cell.against] ? cell.against : null;
-  setSlot('against', agKey ? META[agKey].label : null, 'add', agKey ? metricColor(agKey) : null);
+  const agHtml = agKey
+    ? `${esc(AGAINST_FAMILY[agKey] || 'other')}<span class="fmeasure">${esc(META[agKey].label)}</span>`
+    : null;
+  setSlot('against', agHtml, 'add', agKey ? metricColor(agKey) : null);
   buildAddRow(last);
   if (reopenAfter) {   // reopen outright: toggling would read as "already open" and shut it
     const d = reopenAfter; reopenAfter = null;
