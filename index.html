@@ -311,10 +311,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.engaged .ask { padding: 0; }
 #view-ask.engaged .ask h1, #view-ask.engaged .ask .sub { display: none; }
 /* the way back to the cube room; only present once you're working */
-.homebtn { display: none; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11px;
-  color: var(--ink-3); background: none; border: 0; cursor: pointer; padding: 2px 4px; }
-.homebtn:hover { color: var(--ink); }
-#view-ask.engaged .homebtn { display: inline-flex; position: absolute; left: 0; top: 10px; margin: 0; z-index: 2; }
+
+
 #view-ask.engaged .deck {
   position: sticky; top: 0; z-index: 20; background: var(--bg);
   padding: 26px 0 12px; transition: padding .28s ease, box-shadow .28s ease;
@@ -361,11 +359,25 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.stage-chain .ribs { width: 100%; border-radius: 10px;
   box-shadow: 0 0 0 1px var(--accent) inset, 0 1px 2px rgba(16,20,28,.05), 0 8px 30px rgba(16,20,28,.06); }
 #view-ask.stage-chain .rib { flex: 1 1 0; min-width: 0; max-width: none; }
+/* a closed fold takes only the room its name needs; the open ones share the rest */
+#view-ask.stage-chain .rib[data-dim]:not(.filled):not(.expanded) { flex: 0 0 auto; }
 #view-ask.stage-chain .rib-head { min-height: 52px; }
 #view-ask.stage-chain .rib .val { font-size: 13.5px; }
+/* the facet pill carries two words: give it room instead of clipping them */
+#view-ask.stage-chain .rib.facet { flex: 1.5 1 0; }
+#view-ask.stage-chain .rib.facet .val { white-space: normal; line-height: 1.25; }
+#view-ask.stage-chain .fmeasure { display: block; margin: 1px 0 0; }
 #view-ask.stage-chain .rib-ask { flex: 0 0 auto; }
 #view-ask.stage-chain .rib-ask .rib-head { min-width: 92px; }
 .chain-foot { display: flex; flex-direction: column; align-items: center; gap: 9px; margin-top: 16px; }
+.foot-row { display: flex; align-items: center; gap: 10px; }
+.refresh { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border-2);
+  background: var(--surface); color: var(--ink-3); cursor: pointer; font-size: 15px; line-height: 1; padding: 0; }
+.refresh:hover { color: var(--ink); border-color: var(--ink-3); }
+.shake { display: block; margin: 0 auto 10px; background: none; border: 0; cursor: pointer;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: .04em; padding: 2px 8px; }
+.shake:hover { color: var(--ink); }
+#view-ask.stage-result .shake { display: none; }
 .asknew { background: none; border: 0; cursor: pointer; font-family: var(--mono); font-size: 11px;
   color: var(--ink-3); padding: 2px 6px; }
 .asknew:hover { color: var(--ink); }
@@ -454,8 +466,14 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib[data-dim]:not(.filled) .rib-x { display: none; }
 .rib.expanded { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 /* a pleat exists only once its variable is set; the face is always there */
-.rib[data-dim] { display: none; }
-.rib[data-dim].filled, .rib[data-dim].expanded, .ribs .rib.facet { display: block; }
+.rib[data-dim] { display: block; }
+/* closed: a compressed pleat, just its name, waiting to be opened */
+.rib[data-dim]:not(.filled):not(.expanded) { flex: 0 0 auto; max-width: none; min-width: 0; }
+.rib[data-dim]:not(.filled):not(.expanded) .rib-head { padding: 6px 9px 9px; align-items: center; }
+.rib[data-dim]:not(.filled):not(.expanded) .dim { color: var(--ink-3); opacity: .8; }
+.rib[data-dim]:not(.filled):not(.expanded) .val { font-size: 11px; color: var(--ink-3);
+  background: none; border: 1px dashed var(--border-2); padding: 1px 8px; }
+.rib[data-dim]:not(.filled):not(.expanded) .spine { opacity: .3; }
 
 /* the add row: pull another pleat out of the strip */
 .add-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 0; justify-content: center; }
@@ -645,7 +663,7 @@ footer a { color: inherit; }
     </section>
 
     <div class="deck" id="deck">
-      <button type="button" class="homebtn" id="homebtn">&lsaquo; home</button>
+      
       <div class="cubebox">
         <div class="scene" id="scene">
           <div class="cube" id="cube">
@@ -657,6 +675,7 @@ footer a { color: inherit; }
             <div class="face f-extend" data-facet="extend"><span class="lab">extend</span><div class="q">The same face through time and across geography</div></div>
           </div>
         </div>
+        <button type="button" class="shake" id="shake" aria-label="Shake for a question">shake</button>
         <div class="facet-chips" id="facet-chips">
           <button class="fchip w" data-facet="wealth" aria-pressed="true">wealth</button>
           <button class="fchip i" data-facet="income" aria-pressed="false">income</button>
@@ -688,7 +707,7 @@ footer a { color: inherit; }
           <div class="rib" id="rib-asked"><button type="button" class="rib-head" aria-label="The question"><span class="dim">question</span><span class="val" id="v-asked"></span></button><span class="spine"></span></div>
         </div>
         <div class="bellow-drawer" id="rib-drawer" hidden></div>
-        <div class="chain-foot"><button type="button" class="sendbtn wide" id="send-chain">show me &#8594;</button><button type="button" class="asknew" id="ask-new">ask something else</button></div>
+        <div class="chain-foot"><div class="foot-row"><button type="button" class="sendbtn wide" id="send-chain">show me &#8594;</button><button type="button" class="refresh" id="homebtn" aria-label="Start over" title="Start over">&#8635;</button></div><button type="button" class="asknew" id="ask-new">ask something else</button></div>
         <div class="add-row" id="add-row"></div>
       </div>
       </div>
@@ -2484,6 +2503,31 @@ function renderDrawer(dim, rib, opts, filter) {
   });
 }
 // walk to the next value of a variable without opening anything
+function randomOf(a) { return a[Math.floor(Math.random() * a.length)]; }
+function shakeCube() {
+  motion = 'still';
+  if (motRAF) { cancelAnimationFrame(motRAF); motRAF = null; }
+  clearTimeout(settleT);
+  cRotX += 360 + Math.floor(Math.random() * 4) * 90;
+  cRotY += 360 + Math.floor(Math.random() * 4) * 90;
+  cubeApply();
+  setTimeout(() => {
+    const face = randomOf(['wealth', 'income', 'health']);
+    chooseFacet(face);
+    const qs = QUESTIONS.filter(g => !g.facet).flatMap(g => g.qs);
+    const q = randomOf(qs);
+    const el = document.getElementById('q'); if (el) el.value = q;
+    if (previewQuestion(q)) {
+      // fill whatever the question deliberately left open, so the shake lands on something whole
+      if (!cell.place && (cell.span || cell.form === 'lorenz')) {
+        const pool = placePool();
+        if (pool.length) cell.place = randomOf(pool)[1];
+      }
+      updateCell();
+      setStage('chain');
+    }
+  }, 620);
+}
 function stepDim(dim, dir) {
   const flat = [];
   for (const g of dimGroups(dim, '')) for (const o of (g.opts || [])) if (o[1]) flat.push(o[1]);
@@ -2641,6 +2685,7 @@ function previewQuestion(q) {
   else if (p.kind === 'rank' || p.kind === 'delta_rank') cell.form = 'rank';
   else if (p.kind === 'spread') cell.form = 'spread';
   else if (p.kind === 'lorenz') { cell.form = 'lorenz'; if (p.isos && p.isos[0]) cell.place = p.isos[0]; }
+  if (cell.against === facetIneqDefault()) cell.against = null;   // nothing is held against itself
   if (RAW_KINDS.includes(p.kind)) cell.raw = q;
   cell.asked = q;
   updateCell();
@@ -2855,19 +2900,21 @@ function updateCell() {
     return;
   }
   const place = cell.place && BY_ISO[cell.place] ? esc(BY_ISO[cell.place].name) : (last ? 'all countries' : null);
-  setSlot('place', place, 'pick a country');
-  setSlot('scope', ctx.pool ? esc(ctx.pool.label) : ctx.region ? REGION_LABEL[ctx.region] : null, 'the whole world');
+  setSlot('place', place, 'add');
+  setSlot('scope', ctx.pool ? esc(ctx.pool.label) : ctx.region ? REGION_LABEL[ctx.region] : null, 'all');
   const FORM_LABEL = { rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
     tiers: 'by tier', break: 'who breaks the pattern' };
-  setSlot('form', FORM_LABEL[cell.form] || null, 'the plain reading');
+  setSlot('form', FORM_LABEL[cell.form] || null, 'as is');
+  const rf = document.getElementById('rib-facet');
+  if (rf) rf.classList.add('filled');   // the face is always set, so its fold is always open
   const av = document.getElementById('v-asked');
   if (av) av.textContent = cell.raw ? cell.raw : '';
   const ar = document.getElementById('rib-asked');
   if (ar) ar.classList.toggle('filled', !!cell.raw);
   setSlot('time', cell.span === 'run' ? (cell.since ? 'since ' + cell.since : 'over the years')
-    : cell.span === 'moment' ? (cell.year ? 'in ' + cell.year : 'a single moment') : null, 'pick a span');
+    : cell.span === 'moment' ? (cell.year ? 'in ' + cell.year : 'a single moment') : null, 'add');
   const agKey = cell.against && META[cell.against] ? cell.against : null;
-  setSlot('against', agKey ? META[agKey].label : null, 'pick a measure', agKey ? metricColor(agKey) : null);
+  setSlot('against', agKey ? META[agKey].label : null, 'add', agKey ? metricColor(agKey) : null);
   buildAddRow(last);
   if (reopenAfter) {   // reopen outright: toggling would read as "already open" and shut it
     const d = reopenAfter; reopenAfter = null;
@@ -2882,6 +2929,11 @@ function updateCell() {
 }
 // only offer the dimensions that aren't in the cell yet; the accordion grows as you add them
 function buildAddRow(last) {
+  const el = document.getElementById('add-row');
+  if (el) el.innerHTML = '';    // nothing to add: every fold is already in the strip, closed
+  return;
+}
+function buildAddRowUnused(last) {
   const el = document.getElementById('add-row'); if (!el) return;
   let chips;
   if (last && last.kind === 'opp') {
@@ -3896,6 +3948,8 @@ function boot() {
     if (q) q.focus();
   });
   document.querySelectorAll('.sendbtn').forEach(el => el.addEventListener('click', sendCell));
+  const sh = document.getElementById('shake');
+  if (sh) sh.addEventListener('click', shakeCube);
   document.getElementById('clear').addEventListener('click', resetAll);
   // the prompt cycles through the premade questions on its own; arrows step it by hand
   setInterval(() => nextPrompt(false), 3800);
