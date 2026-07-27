@@ -373,6 +373,14 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.stage-chain .rib-ask { flex: 0 0 auto; }
 #view-ask.stage-chain .rib-ask .rib-head { min-width: 92px; }
 .chain-foot { display: flex; flex-direction: column; align-items: center; gap: 9px; margin-top: 16px; }
+@keyframes grow-send {
+  from { max-width: 34px; padding-left: 0; padding-right: 0; border-radius: 50%; }
+  to   { max-width: 240px; padding-left: 18px; padding-right: 18px; border-radius: 100px; }
+}
+#view-ask.stage-chain #send-chain { overflow: hidden; white-space: nowrap;
+  animation: grow-send .46s cubic-bezier(.22, 1, .36, 1); }
+@keyframes settle-in { from { opacity: 0; } to { opacity: 1; } }
+#view-ask.stage-chain .cell { animation: settle-in .3s ease; }
 .foot-row { display: flex; align-items: center; gap: 10px; }
 .refresh { width: 32px; height: 32px; border: 1px solid var(--ink-3); border-radius: 0;
   background: var(--surface); color: var(--ink-2); cursor: pointer; font-size: 14px; line-height: 1; padding: 0;
@@ -389,9 +397,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #rib-asked { display: none; }
 #rib-asked.filled { display: block; }
 #view-ask.stage-chain #rib-asked .val { font-style: normal; color: var(--ink-2); }
-.cell, .askbox { animation: slot-in .3s cubic-bezier(.22, 1, .36, 1); }
+.askbox { animation: slot-in .3s cubic-bezier(.22, 1, .36, 1); }
 @keyframes slot-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .cell, .askbox { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .cell, .askbox, #view-ask.stage-chain #send-chain { animation: none; } }
 .rib-ask { --rc: var(--border-2); }
 .rib-ask .val { color: var(--ink-3); }
 .rib-ask .rib-head:hover .val { color: var(--ink); }
@@ -2490,14 +2498,14 @@ function dimGroups(dim, filter) {
 let keepOpen = null, reopenAfter = null;
 // the ribbon: one path across every section, pinching at every other seam so the
 // strip reads as a folded band, the way the cube's net would hinge open
-function drawRibbon() {
+function drawRibbon(foldAt) {
   const ribs = document.getElementById('ribs'), svg = document.getElementById('ribbon');
   if (!ribs || !svg) return;
   const panels = [...ribs.children].filter(r => r.offsetWidth > 0);
   if (!panels.length) { svg.innerHTML = ''; return; }
   const H = Math.round(ribs.getBoundingClientRect().height);
   if (!H) return;
-  const fold = 11;                       // how far the band pinches at a fold
+  const fold = foldAt == null ? FOLD : foldAt;   // 0 is a plain rectangle: the box before it folds
   const xs = [0];
   let acc = 0;
   for (const p of panels) { acc += p.getBoundingClientRect().width; xs.push(Math.round(acc)); }
@@ -2523,7 +2531,21 @@ function drawRibbon() {
   svg.setAttribute('width', W); svg.setAttribute('height', H);
   svg.innerHTML = `<path class="rb-face" d="${d}"/>${seams}${edges}`;
 }
-window.addEventListener('resize', () => requestAnimationFrame(drawRibbon));
+const FOLD = 11;
+let foldRAF = null;
+// the box does not get swapped for the ribbon: the same outline folds into it,
+// from a flat rectangle (fold 0) to the pleated band (fold FOLD)
+function morphRibbon() {
+  cancelAnimationFrame(foldRAF);
+  const t0 = performance.now(), dur = 460;
+  const step = now => {
+    const k = Math.min(1, (now - t0) / dur);
+    drawRibbon(FOLD * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) foldRAF = requestAnimationFrame(step);
+  };
+  foldRAF = requestAnimationFrame(step);
+}
+window.addEventListener('resize', () => requestAnimationFrame(() => drawRibbon()));
 function closeDrawer() {
   document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
   document.querySelectorAll('.rib-head').forEach(h => h.setAttribute('aria-expanded', 'false'));
@@ -2727,6 +2749,7 @@ function cubeSnap() {
 let deckCondensed = false;
 let stage = 'compose', stageFocus = true;   // compose -> chain -> result
 function setStage(next) {
+  const from = stage;
   stage = next;
   const v = document.getElementById('view-ask');
   if (v) { v.classList.remove('stage-compose', 'stage-chain', 'stage-result'); v.classList.add('stage-' + next); }
@@ -2735,6 +2758,7 @@ function setStage(next) {
   else setHelp(false);
   if (next !== 'result') closeDrawer();
   render();
+  if (next === 'chain' && from === 'compose') requestAnimationFrame(morphRibbon);
   requestAnimationFrame(syncDeck);
 }
 // kinds the cell has no coordinates for: keep the words, run them verbatim on send
@@ -2995,7 +3019,7 @@ function updateCell() {
     : null;
   setSlot('against', agHtml, 'add', agKey ? metricColor(agKey) : null);
   buildAddRow(last);
-  requestAnimationFrame(drawRibbon);
+  requestAnimationFrame(() => drawRibbon());
   if (reopenAfter) {   // reopen outright: toggling would read as "already open" and shut it
     const d = reopenAfter; reopenAfter = null;
     const rib = document.getElementById('rib-' + d), drawer = document.getElementById('rib-drawer');
