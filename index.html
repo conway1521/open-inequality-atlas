@@ -410,25 +410,34 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .cell { max-width: 760px; margin: 26px auto 0; text-align: left; }
 .cell-lead { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-3); margin-bottom: 8px; }
-.ribs-frame { width: fit-content; max-width: 100%; margin: 0 auto;
-  background: var(--surface); border: 1.5px solid var(--accent); border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(16,20,28,.05), 0 8px 30px rgba(16,20,28,.06);
-  transition: border-color .4s ease; }
-.ribs { position: relative; display: flex; align-items: stretch; border-radius: 9px;
-  width: 100%; max-width: 100%; margin: 0; overflow: hidden; background: var(--surface);
+.ribs-frame { width: fit-content; max-width: 100%; margin: 0 auto; padding: 8px 10px 12px;
+  background: none; border: 0; }
+.ribs { position: relative; display: flex; align-items: stretch; border-radius: 0;
+  width: 100%; max-width: 100%; margin: 0; overflow: visible; background: none;
 }
 .rib { position: relative; flex: 0 1 auto; min-width: 104px; max-width: 210px; }
 /* a fold's colour says what it carries: the face, or the measure held against it.
    place, among, when and the form are not measures, so they stay neutral. */
 .rib[data-dim] { --rc: var(--border-2); }
 /* the crease between two pleats, leaning like folded paper */
-/* a folded seam between sections: one zigzag line down each boundary */
-.rib + .rib::before { content: ''; position: absolute; left: -5px; top: 4px; bottom: 4px; width: 10px;
-  background: color-mix(in srgb, var(--ink) 26%, transparent); z-index: 2;
-  -webkit-mask: var(--seam) repeat-y; mask: var(--seam) repeat-y; }
-.rib + .rib::after { content: ''; position: absolute; left: -3px; top: 4px; bottom: 4px; width: 10px;
-  background: var(--pleat-hi); z-index: 1;
-  -webkit-mask: var(--seam) repeat-y; mask: var(--seam) repeat-y; }
+/* a ribbon folded back on itself: each panel leans the other way from its
+   neighbour and steps down a little, so the outer edge zigzags along the line */
+.rib { --lean: -9deg; --drop: 0px;
+  transform: skewX(var(--lean)) translateY(var(--drop));
+  border-top: 1.5px solid var(--accent); border-bottom: 1.5px solid var(--accent);
+  background: var(--surface); margin-left: -1px;
+  transition: transform .25s ease, flex-basis .22s ease; }
+/* one lean throughout, so the panels tile into a single unbroken ribbon;
+   the fold reads from the shading and the seam, not from a change of angle */
+.rib:nth-child(even) { --drop: 0px; }
+.rib:first-child { border-left: 1.5px solid var(--accent); }
+.rib:last-child { border-right: 1.5px solid var(--accent); }
+/* the crease each panel folds on */
+.rib + .rib { box-shadow: -1px 0 0 color-mix(in srgb, var(--ink) 14%, transparent) inset,
+  1px 0 0 var(--pleat-hi) inset; }
+/* the writing stays upright while the panel leans */
+.rib .rib-head { transform: skewX(calc(-1 * var(--lean))); }
+.rib .spine { transform: none; }
 .rib:nth-child(odd)  { background: linear-gradient(101deg, transparent 0%,
   color-mix(in srgb, var(--ink) 4%, transparent) 100%); }
 .rib:nth-child(even) { background: linear-gradient(101deg,
