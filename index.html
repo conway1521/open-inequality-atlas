@@ -273,7 +273,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   margin-bottom: 8px; overflow: visible; }
 .scene:active { cursor: grabbing; }
 /* every 15s, a ring pulses on the cube for a few seconds: it can be turned */
-.cube-hint { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+.cube-hint { position: absolute; left: 50%; top: 31%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
   border: 1.5px solid var(--accent); border-radius: 50%; pointer-events: none; opacity: 0; z-index: 5;
   animation: hint-show 12s ease-in-out 3s infinite; }
 .cube-hint::after { content: ''; position: absolute; inset: -7px; border: 1.5px solid var(--accent);
@@ -379,8 +379,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.stage-chain .rib-head { min-height: 52px; }
 #view-ask.stage-chain .rib .val { font-size: 13.5px; }
 /* the facet pill carries two words: give it room instead of clipping them */
-#view-ask.stage-chain .rib.facet, #view-ask.stage-chain #rib-against { flex: 1.5 1 0; }
-#view-ask.stage-chain #rib-scope, #view-ask.stage-chain #rib-place { flex: 1.15 1 0; }
+#view-ask.stage-chain .rib.facet, #view-ask.stage-chain #rib-against.filled { flex: 1.5 1 0; }
+#view-ask.stage-chain #rib-scope.filled, #view-ask.stage-chain #rib-place.filled { flex: 1.15 1 0; }
 #view-ask.stage-chain .rib .val { white-space: normal; line-height: 1.22; overflow-wrap: normal; word-break: keep-all; }
 .fmeasure { display: block; margin: 1px 0 0; font-size: 10.5px; }
 #view-ask.stage-chain .rib-ask { flex: 0 0 auto; }
@@ -529,7 +529,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .bellow-drawer .opt { font-size: 11.5px; padding: 3px 10px; border-radius: 100px;
   border: 1px solid var(--border); background: var(--bg); color: var(--ink-2); cursor: pointer; }
 .bellow-drawer .opt:hover { color: var(--ink); border-color: var(--ink-3); }
-.bellow-drawer .opt.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.bellow-drawer .opt.on { background: var(--pick, var(--accent)); border-color: var(--pick, var(--accent)); color: #fff; }
 .opt-miss { font-size: 10.5px; color: var(--ink-3); margin-top: 8px; line-height: 1.6; }
 .opt-gap { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer;
   text-decoration: underline dotted; }
@@ -2547,6 +2547,9 @@ function renderDrawer(dim, rib, opts, filter) {
     `<button type="button" class="opt-gap" data-g="${i}">${esc(gp[0])}</button>`).join(', ') + '</p>';
   html += '<p class="opt-note" hidden></p>';
   opts.innerHTML = html;
+  // the drawer takes the colour of the thing being chosen, so the pick reads as that measure
+  opts.style.setProperty('--pick', dim === 'against' && cur && META[cur] ? metricColor(cur)
+    : dim === 'facet' ? ACC() : 'var(--accent)');
 
   opts.querySelectorAll('.opt').forEach(btn => btn.addEventListener('click', () => {
     const v = btn.dataset.val;
