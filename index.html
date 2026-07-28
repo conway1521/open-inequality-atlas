@@ -566,6 +566,14 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .answer .t { flex: 1; color: var(--ink-2); }
 .answer .t strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .answer .t em { font-style: normal; color: var(--ink-3); }
+/* how far the evidence goes, said next to the claim rather than under it */
+.flag { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: .05em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 100px; vertical-align: 2px;
+  white-space: nowrap; }
+.flag.thin { color: var(--opportunity); border: 1px solid color-mix(in srgb, var(--opportunity) 45%, transparent);
+  background: color-mix(in srgb, var(--opportunity) 12%, transparent); }
+.flag.bad { color: var(--health); border: 1px solid color-mix(in srgb, var(--health) 50%, transparent);
+  background: color-mix(in srgb, var(--health) 12%, transparent); }
 .answer .x { font-family: var(--mono); background: none; border: none; cursor: pointer;
   color: var(--ink-3); font-size: 13px; padding: 0 2px; flex-shrink: 0; }
 .answer .x:hover { color: var(--ink); }
@@ -1203,6 +1211,26 @@ function vintageOf(key) {
   return hi;
 }
 // one plain sentence naming what a measure is and how far it runs
+// how far apart the two sides of each pair are, and how many are contemporaneous
+function pairFitness(pts) {
+  const withYears = pts.filter(p => p.xYear && p.yYear);
+  if (!withYears.length) return { n: pts.length, level: 'ok' };
+  const gaps = withYears.map(p => p.gap).sort((a, b) => a - b);
+  const same = gaps.filter(g => g === 0).length;
+  const med = gaps[Math.floor(gaps.length / 2)];
+  const maxGap = gaps[gaps.length - 1];
+  let level = 'ok';
+  if (same === 0 && med >= 3) level = 'refuse';      // nothing is contemporaneous: not a relationship
+  else if (med >= 2 || same / withYears.length < 0.25) level = 'weak';
+  if (pts.length < 25 && level === 'ok') level = 'weak';
+  return { n: pts.length, same, med, maxGap, level, paired: withYears.length };
+}
+// the flag that sits beside the answer, where the eye already is
+function fitnessFlag(fit, note) {
+  if (!fit || fit.level === 'ok') return '';
+  const cls = fit.level === 'refuse' ? 'bad' : 'thin';
+  return ` <span class="flag ${cls}">${esc(note)}</span>`;
+}
 function provenance(keys) {
   const seen = [], out = [];
   for (const k of [].concat(keys)) {
@@ -1483,14 +1511,36 @@ function latestValOf(metric, iso) {
 }
 
 /* ── cross-metric helpers ──────────────────────────────────────────── */
+// pair each country on the latest year BOTH measures actually carry. a country with no
+// shared year is dropped rather than matched across a gap and counted as evidence.
 function pairedPoints(xMetric, yMetric, region) {
-  const out = [];
+  const out = [], dropped = [];
+  const xSer = META[xMetric] && META[xMetric].series, ySer = META[yMetric] && META[yMetric].series;
   for (const iso in BY_ISO) {
     if (!inScope(iso, region)) continue;
-    const xv = latestValOf(xMetric, iso), yv = latestValOf(yMetric, iso);
-    if (xv && yv) out.push({ iso, name: BY_ISO[iso].name, x: xv.val, y: yv.val,
-      xy: yv.year, xYear: xv.year, yYear: yv.year, gap: Math.abs(xv.year - yv.year) });
+    if (xSer && ySer) {
+      const xs = seriesOf(xMetric, iso), ys = seriesOf(yMetric, iso);
+      if (xs.length && ys.length) {
+        const yv = new Map(ys.map(d => [d.year, d.v]));
+        let hit = null;
+        for (let i = xs.length - 1; i >= 0; i--) {
+          if (yv.has(xs[i].year)) { hit = { year: xs[i].year, x: xs[i].v, y: yv.get(xs[i].year) }; break; }
+        }
+        if (hit) {
+          out.push({ iso, name: BY_ISO[iso].name, x: hit.x, y: hit.y,
+            xy: hit.year, xYear: hit.year, yYear: hit.year, gap: 0 });
+          continue;
+        }
+        dropped.push(iso);
+        continue;
+      }
+    }
+    // one side is a snapshot, so there is no year to match on: take latest and say the gap
+    const xv = latestValOf(xMetric, iso), yv2 = latestValOf(yMetric, iso);
+    if (xv && yv2) out.push({ iso, name: BY_ISO[iso].name, x: xv.val, y: yv2.val,
+      xy: yv2.year, xYear: xv.year, yYear: yv2.year, gap: Math.abs(xv.year - yv2.year) });
   }
+  out.dropped = dropped.length;
   return out;
 }
 // the wealth-concentration series for a country: the US gets the DFA top-1% share (the sharper gauge), others the WID wealth Gini
@@ -1739,9 +1789,22 @@ function buildAnswer(p, q) {
     if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
     f.mode = 'scatter';
     f.scatter = { x: p.x, y: p.y, pts, r, region: p.region, focus };
+    const fit = pairFitness(pts);
+    f.fit = fit;
     const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
-    let t = `Across ${pts.length} countries${where}, ${my.label} ${corrClause(r, mx.label)} ` +
-      `(r = ${r.toFixed(2)}).`;
+    let t;
+    if (fit.level === 'refuse') {
+      // the two sides are years apart for every country: this is not a relationship we can read
+      t = `This one cannot be read. Every one of the ${fit.paired} countries pairs a ${mx.label} figure ` +
+        `with a ${my.label} figure from a different year, typically ${fit.med} years apart. ` +
+        `A correlation across that gap is arithmetic, not evidence.` +
+        fitnessFlag(fit, 'no matching years');
+    } else {
+      t = `Across ${pts.length} countries${where}, ${my.label} ${corrClause(r, mx.label)} ` +
+        `(r = ${r.toFixed(2)}).` +
+        (pts.dropped ? ` <em>${pts.dropped} more countries carry both measures but never in the same year, so they are left out.</em>` : '') +
+        fitnessFlag(fit, fit.n < 25 ? `only ${fit.n} countries` : `years ${fit.med} apart`);
+    }
     if (focus.length === 1) {
       const pt = pts.find(x => x.iso === focus[0]);
       t += ` ${esc(pt.name)} is the highlighted point.`;
