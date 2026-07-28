@@ -1352,6 +1352,12 @@ function parse(raw) {
   const metric = metrics.length ? metrics[0] : null;
   if (metrics.includes('PENDING')) return { kind: 'pending' };
 
+  // REACH: did the country's growth arrive at the median, or somewhere else
+  if (/\breach(ed)? me\b|\breach the median\b|\bgot the growth\b|\bwho got\b|\btypical (income|person|wage)\b|\bgrowth actually\b/.test(r))
+    return { kind: 'reach', isos, iso: isos[0] || null };
+  // RATIO: the top against the bottom, said as a multiple instead of an index
+  if (/\brichest\b.*\bpoorest\b|\btop tenth\b|\bhow many times\b|\bhow much more\b.*\bhold\b|\btimes what\b/.test(r))
+    return { kind: 'ratio', isos, iso: isos[0] || null };
   // BREAK: who defies the current relationship
   if (/\bbreaks? the pattern\b|\bbreaks? the trend\b|\boutliers?\b|\boff the (trend|line|pattern)\b|\bexceptions?\b|\bdefy\w*\b|\bover[- ]?perform\w*\b|\bunder[- ]?perform\w*\b|\bbeat the (trend|pattern)\b|\bpunch\w* above\b/.test(r))
     return { kind: 'break', metrics };
@@ -1558,6 +1564,7 @@ function syncCellFromFact(f) {
   cell.against = (f.mode === 'scatter' && f.scatter && f.scatter.y && !isIneq(f.scatter.y)) ? f.scatter.y
     : (f.mode === 'path' && f.path && f.path.y) ? f.path.y : null;
   cell.form = ['rank', 'delta_rank'].includes(f.kind) ? 'rank'
+    : f.kind === 'reach' ? 'reach' : f.kind === 'ratio' ? 'ratio'
     : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
   cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
@@ -1586,6 +1593,12 @@ function runCell() {
     p = { kind: 'tiers', aspect: cell.against, lens: ctx.metric, region: ctx.region }; q = 'by tier';
   } else if (F === 'break' && cell.against && META[cell.against]) {
     p = { kind: 'break', metrics: [ctx.metric, cell.against] }; q = 'who breaks the pattern';
+  } else if (F === 'reach') {
+    p = { kind: 'reach', isos: cell.place ? [cell.place] : [], iso: cell.place || null };
+    q = 'did the growth reach the typical person';
+  } else if (F === 'ratio') {
+    p = { kind: 'ratio', isos: cell.place ? [cell.place] : [], iso: cell.place || null };
+    q = 'the richest tenth against the poorest half';
   } else if (F === 'rank') {
     p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true };
     q = 'the ranking';
@@ -1741,6 +1754,52 @@ function buildAnswer(p, q) {
         t += ` <em>Among rich countries it sharpens to r = ${rr.toFixed(2)}.</em>`;
     }
     f.text = t;
+  }
+
+  else if (p.kind === 'reach') {
+    // output per person against the income of the person in the middle
+    const iso = p.iso || ctx.lastIso || (focusIsos()[0] || null);
+    if (!iso || !BY_ISO[iso]) { showNotice('Name a country: this one holds a country\'s growth against its own median income.'); return null; }
+    const g = seriesOf('gdp_pc', iso), m = seriesOf('median_income', iso);
+    if (g.length < 2 || m.length < 2) return miss();
+    const base = Math.max(g[0].year, m[0].year);
+    const gs = g.filter(d => d.year >= base), ms = m.filter(d => d.year >= base);
+    if (gs.length < 2 || ms.length < 2) return miss();
+    const gPct = (gs[gs.length - 1].v / gs[0].v - 1) * 100;
+    const mPct = (ms[ms.length - 1].v / ms[0].v - 1) * 100;
+    ctx.lastIso = iso; f.isos = [iso];
+    f.mode = 'reach';
+    f.reach = { iso, base, gs, ms, gPct, mPct };
+    const pc1 = v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%';
+    f.text = `In <strong>${esc(BY_ISO[iso].name)}</strong> from ${base}, output per person grew ` +
+      `<strong>${pc1(gPct)}</strong> to ${gs[gs.length - 1].year}. The income of the person in the middle grew ` +
+      `<strong>${pc1(mPct)}</strong> to ${ms[ms.length - 1].year}.` +
+      (gPct - mPct > 5 ? ' The growth did not arrive in the middle.' : '') +
+      ` <em>The median rests on ${ms.length} survey${ms.length === 1 ? '' : 's'} between ${ms[0].year} and ${ms[ms.length - 1].year}.</em>`;
+  }
+
+  else if (p.kind === 'ratio') {
+    // the top tenth against the bottom half, as a multiple anyone can hold in their head
+    const rows = LATEST
+      .filter(x => x.top10_wealth_share != null && x.bottom50_wealth_share != null && x.bottom50_wealth_share > 0.0005)
+      .map(x => ({ geo_id: x.geo_id, geo_name: x.geo_name, val: x.top10_wealth_share / x.bottom50_wealth_share, year: x.year }))
+      .sort((a, b) => b.val - a.val);
+    if (!rows.length) return miss();
+    const iso = p.iso || ctx.lastIso || null;
+    const hit = iso ? rows.find(x => x.geo_id === iso) : null;
+    const med = rows[Math.floor(rows.length / 2)];
+    f.mode = 'ratio';
+    f.ratio = { rows, highlight: hit ? hit.geo_id : null };
+    if (hit) {
+      ctx.lastIso = hit.geo_id; f.isos = [hit.geo_id];
+      f.text = `In <strong>${esc(hit.geo_name)}</strong> the richest tenth hold ` +
+        `<strong>${hit.val.toFixed(1)} times</strong> what the poorest half hold (${hit.year}). ` +
+        `Across ${rows.length} countries the middle of the pack is ${med.val.toFixed(1)} times.`;
+    } else {
+      f.text = `The richest tenth hold <strong>${rows[0].val.toFixed(1)} times</strong> what the poorest half hold in ` +
+        `${esc(rows[0].geo_name)}, ${rows[1].val.toFixed(1)} times in ${esc(rows[1].geo_name)}. ` +
+        `Across ${rows.length} countries the middle of the pack is <strong>${med.val.toFixed(1)} times</strong>.`;
+    }
   }
 
   else if (p.kind === 'break') {
@@ -2227,6 +2286,8 @@ const PROMPT_SETS = {
 // one question per kind of analysis the atlas can do. the strip tunes them from here.
 const QUESTIONS = [
   { k: '', qs: [
+    'did the growth reach the typical person?',
+    'how much more do the richest hold than the poorest?',
     'where is wealth most concentrated?',
     'how has inequality changed over time?',
     'does life expectancy track inequality?',
@@ -2440,7 +2501,11 @@ function dimGroups(dim, filter) {
         ['the spread', 'The spread reads one measure. Drop what it is held against.', null],
         ['a Lorenz curve', 'A Lorenz curve draws one country\'s wealth, not two measures against each other.', null]);
     } else {
-      opts.push(['a ranking', 'rank'], ['the spread', 'spread']);
+      opts.push(['a ranking', 'rank'], ['the spread', 'spread'],
+        ['top tenth against bottom half', 'ratio']);
+      if (cell.place) opts.push(['growth against the middle', 'reach']);
+      else gaps.push(['growth against the middle',
+        'This holds one country\'s growth against its own median, so name a place first.', null]);
       if (cell.place && curFacet === 'wealth') opts.push(['a Lorenz curve', 'lorenz']);
       else gaps.push(['a Lorenz curve', cell.place
         ? 'A Lorenz curve splits wealth across a population, so it needs the wealth face.'
@@ -2808,6 +2873,8 @@ function previewQuestion(q) {
   else if (p.kind === 'break') { cell.form = 'break';
     cell.against = (p.metrics || []).find(m => META[m] && !isIneq(m)) || null; }
   else if (p.kind === 'rank' || p.kind === 'delta_rank') cell.form = 'rank';
+  else if (p.kind === 'reach') cell.form = 'reach';
+  else if (p.kind === 'ratio') cell.form = 'ratio';
   else if (p.kind === 'spread') cell.form = 'spread';
   else if (p.kind === 'lorenz') { cell.form = 'lorenz'; if (p.isos && p.isos[0]) cell.place = p.isos[0]; }
   if (cell.against === facetIneqDefault()) cell.against = null;   // nothing is held against itself
@@ -2819,6 +2886,9 @@ function previewQuestion(q) {
 // only now is anything computed
 function sendCell() {
   // a question left general on purpose has to be finished before it can answer
+  if (cell.form === 'reach' && !cell.place) {
+    showNotice('This holds one country\'s growth against its own median income. Add a place first.'); return;
+  }
   if (cell.form === 'lorenz' && !cell.place) {
     showNotice('A Lorenz curve is drawn for one country. Add a place first.'); return;
   }
@@ -3035,7 +3105,8 @@ function updateCell() {
   setSlot('place', place, 'add');
   setSlot('scope', ctx.pool ? esc(ctx.pool.label) : ctx.region ? REGION_LABEL[ctx.region] : null, 'all');
   const FORM_LABEL = { rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
-    tiers: 'by tier', break: 'who breaks the pattern' };
+    tiers: 'by tier', break: 'who breaks the pattern',
+    reach: 'growth against the middle', ratio: 'top tenth against bottom half' };
   setSlot('form', FORM_LABEL[cell.form] || null, 'as is');
   const rf = document.getElementById('rib-facet');
   if (rf) rf.classList.add('filled');   // the face is always set, so its fold is always open
@@ -3340,6 +3411,59 @@ function drawChart() {
     }), CFG);
     title.textContent = `${BY_ISO[pa.iso].name}: ${my.label} against ${mx.label} over time`;
     src.textContent = `The path runs light (earliest) to dark (latest). ${(mx.lineSrc || '').replace(/^Source: /, mx.label + ': ')} ` + provenance([pa.x, pa.y]);
+  }
+
+  else if (mode === 'reach') {
+    const rc = chain.slice().reverse().find(f => f.mode === 'reach').reach;
+    const idx = (arr, k) => arr.map(d => d.v / arr[0].v * 100);
+    const lastY = Math.max(rc.gs[rc.gs.length - 1].year, rc.ms[rc.ms.length - 1].year);
+    Plotly.react(el, [
+      { type: 'scatter', mode: 'lines', name: 'output per person',
+        x: rc.gs.map(d => d.year), y: idx(rc.gs),
+        line: { color: metricColor('gdp_pc'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
+      { type: 'scatter', mode: 'lines+markers', name: 'the income in the middle',
+        x: rc.ms.map(d => d.year), y: idx(rc.ms),
+        line: { color: '#eb6834', width: 2.6, shape: 'spline', smoothing: 0.6 }, marker: { size: 6 } },
+    ], Object.assign({}, BASE_LAYOUT, {
+      showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
+      margin: { t: 14, r: 16, b: 40, l: 52 },
+      shapes: eraShapes(rc.base, lastY), annotations: eraLabels(rc.base, lastY),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: `indexed to ${rc.base} = 100`, font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = `${BY_ISO[rc.iso].name}: the economy and the middle, since ${rc.base}`;
+    src.textContent = `Both indexed to ${rc.base} = 100, so the gap between them is the answer. ` +
+      `These are not like for like: output per person comes from national accounts, the median from household surveys, ` +
+      `and the two are built on different definitions. Read the shape of the gap, not the exact percentages. ` +
+      `Markers show where a survey actually landed; the line between them is drawn, not measured. ` +
+      provenance(['gdp_pc', 'median_income']);
+  }
+
+  else if (mode === 'ratio') {
+    const rt = chain.slice().reverse().find(f => f.mode === 'ratio').ratio;
+    let rows = rt.rows.slice(0, 12);
+    if (rt.highlight && !rows.some(r => r.geo_id === rt.highlight)) {
+      const h = rt.rows.find(r => r.geo_id === rt.highlight);
+      if (h) rows = rows.slice(0, 11).concat([h]);
+    }
+    rows = rows.slice().reverse();
+    const ramp = shadesOf(metricColor('wealth_top1'), rows.length);
+    Plotly.react(el, [{
+      type: 'bar', orientation: 'h',
+      y: rows.map(r => r.geo_name), x: rows.map(r => r.val),
+      marker: { color: rows.map((r, i) => r.geo_id === rt.highlight ? '#eb6834' : ramp[i]) },
+      text: rows.map(r => r.val.toFixed(1) + 'x'),
+      textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
+      hovertemplate: '%{y}: %{text} the bottom half<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 8, r: 60, b: 38, l: 150 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: 'times what the poorest half hold', font: { size: 12 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category' }),
+      bargap: 0.36,
+    }), CFG);
+    title.textContent = 'The richest tenth against the poorest half';
+    src.textContent = 'Top 10% share of household net wealth divided by the bottom 50% share, latest year per country. ' +
+      'A multiple, not an index: 10x means the top tenth hold ten times what the bottom half hold together. ' +
+      provenance(['wealth_top1']);
   }
 
   else if (mode === 'tiers') {
