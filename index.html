@@ -273,7 +273,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   margin-bottom: 8px; overflow: visible; }
 .scene:active { cursor: grabbing; }
 /* every 15s, a ring pulses on the cube for a few seconds: it can be turned */
-.cube-hint { position: absolute; left: 50%; top: 31%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+.cube-hint { position: absolute; left: 50%; top: 22%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
   border: 1.5px solid var(--accent); border-radius: 50%; pointer-events: none; opacity: 0; z-index: 5;
   animation: hint-show 12s ease-in-out 3s infinite; }
 .cube-hint::after { content: ''; position: absolute; inset: -7px; border: 1.5px solid var(--accent);
@@ -494,7 +494,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .scene:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 10px; }
 .q-item[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--ink); }
 .rib[data-dim]:not(.filled) .rib-x { display: none; }
-.rib.expanded { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.rib.expanded .dim { color: var(--accent); }
 /* a pleat exists only once its variable is set; the face is always there */
 .rib[data-dim] { display: block; }
 /* a folded pleat is squeezed flat: a narrow band with its name down the crease.
@@ -2527,6 +2527,7 @@ function closeDrawer() {
   document.querySelectorAll('.rib-head').forEach(h => h.setAttribute('aria-expanded', 'false'));
   const d = document.getElementById('rib-drawer');
   if (d) { d.hidden = true; d.innerHTML = ''; }
+  requestAnimationFrame(() => drawRibbon());
 }
 function renderDrawer(dim, rib, opts, filter) {
   const groups = dimGroups(dim, filter), cur = dimCurrent(dim);
@@ -2623,6 +2624,7 @@ function toggleRib(dim) {
   rib.classList.add('expanded');
   const head = rib.querySelector('.rib-head');
   if (head) head.setAttribute('aria-expanded', 'true');
+  requestAnimationFrame(() => drawRibbon());
 }
 function wireCell() {
   ['facet', 'place', 'scope', 'time', 'against', 'form'].forEach(dim => {   // every fold opens onto its alternatives
