@@ -274,13 +274,13 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .scene:active { cursor: grabbing; }
 /* every 15s, a ring pulses on the cube for a few seconds: it can be turned */
 .cube-hint { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
-  border: 1.5px solid var(--accent); border-radius: 50%; pointer-events: none; opacity: 0;
-  animation: hint-show 15s ease-in-out infinite; }
+  border: 1.5px solid var(--accent); border-radius: 50%; pointer-events: none; opacity: 0; z-index: 5;
+  animation: hint-show 12s ease-in-out 3s infinite; }
 .cube-hint::after { content: ''; position: absolute; inset: -7px; border: 1.5px solid var(--accent);
-  border-radius: 50%; animation: hint-ring 15s ease-in-out infinite; }
-@keyframes hint-show { 0%, 62% { opacity: 0; } 68%, 92% { opacity: .6; } 100% { opacity: 0; } }
-@keyframes hint-ring { 0%, 62% { transform: scale(.6); opacity: 0; }
-  68% { transform: scale(.6); opacity: .5; } 92%, 100% { transform: scale(1.5); opacity: 0; } }
+  border-radius: 50%; animation: hint-ring 12s ease-in-out 3s infinite; }
+@keyframes hint-show { 0% { opacity: 0; } 6%, 46% { opacity: .75; } 55%, 100% { opacity: 0; } }
+@keyframes hint-ring { 0% { transform: scale(.55); opacity: 0; }
+  6% { transform: scale(.55); opacity: .6; } 46%, 100% { transform: scale(1.6); opacity: 0; } }
 #view-ask:not(.stage-compose) .cube-hint { display: none; }
 @media (prefers-reduced-motion: reduce) { .cube-hint { display: none; } }
 .cube { position: relative; width: 184px; height: 184px; transform-style: preserve-3d;
@@ -379,9 +379,10 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.stage-chain .rib-head { min-height: 52px; }
 #view-ask.stage-chain .rib .val { font-size: 13.5px; }
 /* the facet pill carries two words: give it room instead of clipping them */
-#view-ask.stage-chain .rib.facet { flex: 1.5 1 0; }
-#view-ask.stage-chain .rib.facet .val { white-space: normal; line-height: 1.25; }
-#view-ask.stage-chain .fmeasure { display: block; margin: 1px 0 0; }
+#view-ask.stage-chain .rib.facet, #view-ask.stage-chain #rib-against { flex: 1.5 1 0; }
+#view-ask.stage-chain #rib-scope, #view-ask.stage-chain #rib-place { flex: 1.15 1 0; }
+#view-ask.stage-chain .rib .val { white-space: normal; line-height: 1.22; overflow-wrap: normal; word-break: keep-all; }
+.fmeasure { display: block; margin: 1px 0 0; font-size: 10.5px; }
 #view-ask.stage-chain .rib-ask { flex: 0 0 auto; }
 #view-ask.stage-chain .rib-ask .rib-head { min-width: 92px; }
 .chain-foot { display: flex; flex-direction: column; align-items: center; gap: 9px; margin-top: 16px; }
@@ -404,9 +405,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .asknew { background: none; border: 0; cursor: pointer; font-family: var(--mono); font-size: 11px;
   color: var(--ink-3); padding: 2px 6px; }
 .asknew:hover { color: var(--ink); }
-#rib-asked { display: none; }
-#rib-asked.filled { display: block; }
-#view-ask.stage-chain #rib-asked .val { font-style: normal; color: var(--ink-2); }
+
 .askbox { animation: slot-in .3s cubic-bezier(.22, 1, .36, 1); }
 @keyframes slot-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .cell, .askbox, #view-ask.stage-chain #send-chain { animation: none; } }
@@ -745,7 +744,6 @@ footer a { color: inherit; }
           <div class="rib" id="rib-time" data-dim="time"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">when</span><span class="val" id="v-time"></span></button><span class="spine"></span><button class="rib-x" data-clear="time" aria-label="remove when">&times;</button><button class="rib-step prev" data-step="time" data-dir="-1" aria-label="previous time">&#9664;</button><button class="rib-step next" data-step="time" data-dir="1" aria-label="next time">&#9654;</button></div>
           <div class="rib" id="rib-against" data-dim="against"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">against</span><span class="val" id="v-against"></span></button><span class="spine"></span><button class="rib-x" data-clear="against" aria-label="remove against">&times;</button><button class="rib-step prev" data-step="against" data-dir="-1" aria-label="previous against">&#9664;</button><button class="rib-step next" data-step="against" data-dir="1" aria-label="next against">&#9654;</button></div>
           <div class="rib" id="rib-form" data-dim="form"><button type="button" class="rib-head" aria-expanded="false" aria-controls="rib-drawer"><span class="dim">shown as</span><span class="val" id="v-form"></span></button><span class="spine"></span><button class="rib-x" data-clear="form" aria-label="remove the form">&times;</button><button class="rib-step prev" data-step="form" data-dir="-1" aria-label="previous form">&#9664;</button><button class="rib-step next" data-step="form" data-dir="1" aria-label="next form">&#9654;</button></div>
-          <div class="rib" id="rib-asked"><button type="button" class="rib-head" aria-label="The question"><span class="dim">question</span><span class="val" id="v-asked"></span></button><span class="spine"></span></div>
         </div>
         </div>
         <div class="bellow-drawer" id="rib-drawer" hidden></div>
@@ -2993,17 +2991,13 @@ function updateCell() {
   setSlot('form', FORM_LABEL[cell.form] || null, 'as is');
   const rf = document.getElementById('rib-facet');
   if (rf) rf.classList.add('filled');   // the face is always set, so its fold is always open
-  const av = document.getElementById('v-asked');
-  if (av) av.textContent = cell.raw ? cell.raw : '';
-  const ar = document.getElementById('rib-asked');
-  if (ar) ar.classList.toggle('filled', !!cell.raw);
   setSlot('time', cell.span === 'run' ? (cell.since ? 'since ' + cell.since : 'over the years')
     : cell.span === 'moment' ? (cell.year ? 'in ' + cell.year : 'a single moment') : null, 'add');
   const agKey = cell.against && META[cell.against] ? cell.against : null;
   const agHtml = agKey
     ? `${esc(AGAINST_FAMILY[agKey] || 'other')}<span class="fmeasure">${esc(META[agKey].label)}</span>`
     : null;
-  setSlot('against', agHtml, 'add', agKey ? ACC() : null);   // the face's colour leads, not the measure's
+  setSlot('against', agHtml, 'add', agKey ? metricColor(agKey) : null);   // it carries its own face's colour
   buildAddRow(last);
   requestAnimationFrame(() => drawRibbon());
   if (reopenAfter) {   // reopen outright: toggling would read as "already open" and shut it
@@ -4077,7 +4071,7 @@ function boot() {
   const vfacet = document.getElementById('v-facet');
   if (vfacet) vfacet.addEventListener('click', e => { if (e.target.closest('.submeasure')) cycleMeasure(); });
   wireCell();
-  stageFocus = false; setStage('compose'); stageFocus = true;   // opens quiet, no list
+  stageFocus = false; setStage('compose'); stageFocus = true; setHelp(false);   // opens quiet, no list
   // theme toggle: follow the OS, or override it and remember
   const themeBtn = document.getElementById('theme');
   if (themeBtn) themeBtn.addEventListener('click', () => {
