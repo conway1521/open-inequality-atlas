@@ -1180,6 +1180,40 @@ const META = {
   bottom50_wealth_share: { label: 'bottom 50% share', topic: 'wealth', snap: true, us: 'bottom50_share', fmt: pc, fmtD: pc },
 };
 
+// how each series came to exist. this is stated on every chart that draws it.
+const BASIS = {
+  survey:    'measured in household surveys, one point per survey year',
+  modelled:  'modelled, with annual values imputed for most countries from the smaller set that has tax records',
+  estimated: 'an estimated annual series, interpolated between benchmark years',
+};
+const SERIES_BASIS = {
+  wealth_gini: 'modelled', wealth_top1: 'modelled', wealth_bottom50: 'modelled',
+  income_gini: 'survey', poverty_rate: 'survey', median_income: 'survey',
+  life_exp: 'estimated', co2_pc: 'estimated', gdp_pc: 'estimated',
+  life_satisfaction: 'survey',
+};
+// the last year the series actually carries, read from the data rather than assumed
+const vintageCache = {};
+function vintageOf(key) {
+  if (key in vintageCache) return vintageCache[key];
+  const ser = SERIES[key]; let hi = null;
+  if (ser) for (const i in ser) { const a = ser[i]; if (a && a.length) {
+    const y = a[a.length - 1].year; if (hi == null || y > hi) hi = y; } }
+  vintageCache[key] = hi;
+  return hi;
+}
+// one plain sentence naming what a measure is and how far it runs
+function provenance(keys) {
+  const seen = [], out = [];
+  for (const k of [].concat(keys)) {
+    if (!k || !META[k] || seen.includes(k)) continue;
+    seen.push(k);
+    const b = SERIES_BASIS[k], v = vintageOf(k);
+    if (!b) continue;
+    out.push(`${cap(META[k].label)} is ${BASIS[b]}, running to ${v}.`);
+  }
+  return out.join(' ');
+}
 const poolCache = {};
 function poolOf(metric) {
   if (poolCache[metric]) return poolCache[metric];
@@ -1448,7 +1482,8 @@ function pairedPoints(xMetric, yMetric, region) {
   for (const iso in BY_ISO) {
     if (!inScope(iso, region)) continue;
     const xv = latestValOf(xMetric, iso), yv = latestValOf(yMetric, iso);
-    if (xv && yv) out.push({ iso, name: BY_ISO[iso].name, x: xv.val, y: yv.val, xy: yv.year });
+    if (xv && yv) out.push({ iso, name: BY_ISO[iso].name, x: xv.val, y: yv.val,
+      xy: yv.year, xYear: xv.year, yYear: yv.year, gap: Math.abs(xv.year - yv.year) });
   }
   return out;
 }
@@ -3127,7 +3162,7 @@ function drawChart() {
       src.textContent = (META[bar.metric].poolSrc || '') + ' Change from the first year at or after the start year to the latest.';
     } else {
       title.textContent = `${cap(m.label)}${bar.note || ''}, latest year` + (hl ? `, around ${hl.name}` : '');
-      src.textContent = m.poolSrc || 'Source: WID, latest available year per country. Shares are of household net wealth.';
+      src.textContent = (m.poolSrc || 'Source: WID, latest available year per country.') + ' ' + provenance([bar.key === 'delta' ? bar.metric : bar.key]);
     }
   }
 
@@ -3198,8 +3233,21 @@ function drawChart() {
     }), CFG);
     title.textContent = (sc.fit ? `Who breaks the pattern: ${my.label} against ${mx.label}` :
       `${cap(my.label)} against ${mx.label}`) + (sc.region ? ` in ${REGION_LABEL[sc.region]}` : '');
+    const yrs = sc.pts.filter(p => p.xYear && p.yYear);
+    let pairNote = '';
+    if (yrs.length) {
+      const gaps = yrs.map(p => p.gap);
+      const worst = Math.max(...gaps);
+      const same = gaps.filter(g => g === 0).length;
+      const xs2 = yrs.map(p => p.xYear), ys2 = yrs.map(p => p.yYear);
+      pairNote = `Each dot pairs a country's latest ${mx.label} (${Math.min(...xs2)} to ${Math.max(...xs2)}) ` +
+        `with its latest ${my.label} (${Math.min(...ys2)} to ${Math.max(...ys2)}). ` +
+        (worst === 0 ? 'Every pair is from the same year. '
+          : `${same} of ${yrs.length} pairs are from the same year; the widest gap is ${worst} years. `);
+    }
     src.textContent = (sc.fit ? 'Dashed line is a robust (Theil-Sen) fit; labelled countries sit furthest from it. ' : '') +
-      `Each dot is a country at its latest overlapping year. ${(mx.poolSrc || '').replace(/^Source: /, 'Inequality: ')} ${(my.poolSrc || '').replace(/^Source: /, 'Aspect: ')}`;
+      pairNote + provenance([sc.x, sc.y]) + ' ' +
+      `${(mx.poolSrc || '').replace(/^Source: /, 'Inequality: ')} ${(my.poolSrc || '').replace(/^Source: /, 'Aspect: ')}`;
   }
 
   else if (mode === 'contrast') {
@@ -3242,6 +3290,9 @@ function drawChart() {
     const iBase = iMap[base] || (inc.find(d => d.year >= base) || {}).v;
     const wLine = w.series.filter(d => d.year >= base);
     const iLine = inc.filter(d => d.year >= base);
+    // never shade an era the lines do not reach
+    const dvHi = Math.max(wLine.length ? wLine[wLine.length - 1].year : base,
+      iLine.length ? iLine[iLine.length - 1].year : base);
     const traces = [
       { type: 'scatter', mode: 'lines', name: cap(w.label),
         x: wLine.map(d => d.year), y: wLine.map(d => d.v / wBase * 100),
@@ -3255,12 +3306,14 @@ function drawChart() {
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
       showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
       margin: { t: 14, r: 16, b: 40, l: 48 },
-      shapes: eraShapes(base, 2025), annotations: eraLabels(base, 2025),
+      shapes: eraShapes(base, dvHi), annotations: eraLabels(base, dvHi),
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: `indexed to ${base} = 100`, font: { size: 11 } } }),
     }), CFG);
     title.textContent = `${BY_ISO[dv.iso] ? BY_ISO[dv.iso].name : dv.iso}: wealth and income inequality since ${base}`;
     src.textContent = `Both indexed to ${base} = 100, so the lines start together and you can read how far each has moved. ` +
-      (dv.iso === 'USA' ? 'Wealth: Fed Distributional Financial Accounts. Income: World Bank PIP.' : 'Wealth: WID. Income: World Bank PIP.') + ' via OWID.';
+      (dv.iso === 'USA' ? 'Wealth: Fed Distributional Financial Accounts. Income: World Bank PIP.' : 'Wealth: WID. Income: World Bank PIP.') + ' via OWID. ' +
+      `The two lines end in different years (wealth ${wLine.length ? wLine[wLine.length - 1].year : 'n/a'}, income ${iLine.length ? iLine[iLine.length - 1].year : 'n/a'}). ` +
+      provenance(['wealth_top1', 'income_gini']);
   }
 
   else if (mode === 'path') {
@@ -3286,7 +3339,7 @@ function drawChart() {
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' }),
     }), CFG);
     title.textContent = `${BY_ISO[pa.iso].name}: ${my.label} against ${mx.label} over time`;
-    src.textContent = `The path runs light (earliest) to dark (latest). ${(mx.lineSrc || '').replace(/^Source: /, mx.label + ': ')}`;
+    src.textContent = `The path runs light (earliest) to dark (latest). ${(mx.lineSrc || '').replace(/^Source: /, mx.label + ': ')} ` + provenance([pa.x, pa.y]);
   }
 
   else if (mode === 'tiers') {
@@ -3309,7 +3362,7 @@ function drawChart() {
       bargap: 0.4,
     }), CFG);
     title.textContent = `${cap(my.label)} by ${ml.label} tier`;
-    src.textContent = `Countries split into thirds by ${ml.label}, latest year. Bars show the mean of each third; the count follows each bar.`;
+    src.textContent = `Countries split into thirds by ${ml.label}, latest year. Bars show the mean of each third; the count follows each bar. ` + provenance([t.aspect, t.lens]);
   }
 
   else if (mode === 'strip') {
@@ -3343,7 +3396,7 @@ function drawChart() {
       yaxis: { visible: false, type: 'linear', range: [-1, 1], autorange: false },
     }), CFG);
     title.textContent = `${cap(m.label)}, every country` + (st.region ? ` in ${REGION_LABEL[st.region]}` : '');
-    src.textContent = m.poolSrc || '';
+    src.textContent = (m.poolSrc || '') + ' ' + provenance([st.metric]);
   }
 
   else if (mode === 'lorenz') {
@@ -3449,7 +3502,7 @@ function drawChart() {
       margin: { t: 12, r: labelable.length <= 4 ? 110 : 16, b: 40, l: 46 },
     }), CFG);
     title.textContent = `${cap(m.label)} over time`;
-    src.textContent = m.lineSrc || '';
+    src.textContent = (m.lineSrc || '') + ' ' + provenance([metric]);
   }
 }
 
