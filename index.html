@@ -271,6 +271,17 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .scene { width: 232px; height: 232px; perspective: 760px; touch-action: none; cursor: grab;
   margin-bottom: 8px; overflow: visible; }
 .scene:active { cursor: grabbing; }
+/* every 15s, a ring pulses on the cube for a few seconds: it can be turned */
+.cube-hint { position: absolute; left: 50%; bottom: 4px; width: 26px; height: 26px; margin-left: -13px;
+  border: 1.5px solid var(--accent); border-radius: 50%; pointer-events: none; opacity: 0;
+  animation: hint-show 15s ease-in-out infinite; }
+.cube-hint::after { content: ''; position: absolute; inset: -7px; border: 1.5px solid var(--accent);
+  border-radius: 50%; animation: hint-ring 15s ease-in-out infinite; }
+@keyframes hint-show { 0%, 62% { opacity: 0; } 68%, 92% { opacity: .6; } 100% { opacity: 0; } }
+@keyframes hint-ring { 0%, 62% { transform: scale(.6); opacity: 0; }
+  68% { transform: scale(.6); opacity: .5; } 92%, 100% { transform: scale(1.5); opacity: 0; } }
+#view-ask:not(.stage-compose) .cube-hint { display: none; }
+@media (prefers-reduced-motion: reduce) { .cube-hint { display: none; } }
 .cube { position: relative; width: 184px; height: 184px; transform-style: preserve-3d;
   transition: transform .72s cubic-bezier(.32,.72,.26,1); }
 .cube.drag { transition: none; }
@@ -361,7 +372,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 #view-ask.stage-chain .ribs { width: 100%; border-radius: 0; box-shadow: none; }
 #view-ask.stage-chain .rib { flex: 1 1 0; min-width: 0; max-width: none; }
 /* a closed fold takes only the room its name needs; the open ones share the rest */
-#view-ask.stage-chain .rib[data-dim]:not(.filled):not(.expanded) { flex: 0 0 34px;
+#view-ask.stage-chain .rib[data-dim]:not(.filled):not(.expanded) { flex: 0 0 42px;
   transition: flex-basis .22s ease, min-width .22s ease; }
 #view-ask.stage-chain .rib[data-dim]:not(.filled):hover { flex: 1 1 0; min-width: 118px; }
 #view-ask.stage-chain .rib-head { min-height: 52px; }
@@ -382,11 +393,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 @keyframes settle-in { from { opacity: 0; } to { opacity: 1; } }
 #view-ask.stage-chain .cell { animation: settle-in .3s ease; }
 .foot-row { display: flex; align-items: center; gap: 10px; }
-.refresh { width: 32px; height: 32px; border: 1px solid var(--ink-3); border-radius: 0;
-  background: var(--surface); color: var(--ink-2); cursor: pointer; font-size: 14px; line-height: 1; padding: 0;
-  clip-path: polygon(0 0, 100% 0, 100% 66%, 66% 100%, 0 100%);
-  transition: background .15s ease, color .15s ease; }
-.refresh:hover { color: var(--ink); border-color: var(--ink-3); }
+.refresh { width: 30px; height: 30px; border: 0; background: none; color: var(--ink-3);
+  cursor: pointer; font-size: 16px; line-height: 1; padding: 0; }
+.refresh:hover { color: var(--ink); }
 .shake { display: block; margin: 0 auto 10px; background: none; border: 0; cursor: pointer;
   font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: .04em; padding: 2px 8px; }
 .shake:hover { color: var(--ink); }
@@ -440,6 +449,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .rib { position: relative; z-index: 1; background: none; border: 0; transition: flex-basis .22s ease; }
 
 .rib-head { display: flex; flex-direction: column; gap: 2px; padding: 17px 14px 21px; min-height: 66px;
+  height: 100%;
   overflow: hidden; align-items: flex-start;
   width: 100%; background: none; border: 0; font: inherit; color: inherit; text-align: left; }
 .rib[data-dim] .rib-head { cursor: pointer; }
@@ -490,7 +500,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* a folded pleat is squeezed flat: a narrow band with its name down the crease.
    opening one stretches it out and the whole bellows gets longer. */
 .rib[data-dim]:not(.filled):not(.expanded) {
-  flex: 0 0 34px; min-width: 34px; max-width: 34px; overflow: hidden; background: none; }
+  flex: 0 0 42px; min-width: 42px; max-width: 42px; overflow: hidden; background: none; }
 .rib[data-dim]:not(.filled):not(.expanded) .rib-head {
   padding: 10px 0; align-items: center; justify-content: center; min-height: 0; }
 .rib[data-dim]:not(.filled):not(.expanded) .dim {
@@ -694,7 +704,7 @@ footer a { color: inherit; }
     <div class="deck" id="deck">
       
       <div class="cubebox">
-        <div class="scene" id="scene">
+        <div class="scene" id="scene"><span class="cube-hint" aria-hidden="true"></span>
           <div class="cube" id="cube">
             <div class="face f-wealth" data-facet="wealth"><span class="lab">wealth</span><div class="q">The wealth held by the richest one percent.</div></div>
             <div class="face f-income" data-facet="income"><span class="lab">income</span><div class="q">How unevenly income is shared out.</div></div>
@@ -2180,8 +2190,7 @@ const FACETS = {
   wealth:      { i: 0, side: true, color: 'var(--wealth)', metric: 'wealth_top1', sub: 'top 1% share' },
   income:      { i: 1, side: true, color: 'var(--income)', metric: 'income_gini', sub: 'income Gini' },
   opportunity: { i: 2, side: true, color: 'var(--opportunity)', metric: null, sub: 'commuting zones' },
-  health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'rich vs poor',
-                 note: 'Health inequality here is how many more years the rich live than the poor. That measure is being wired in next.' },
+  health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'life expectancy' },
 };
 // the two poles of the cube are not faces of inequality: they are what you do to a
 // face. link holds it against another face; extend takes the same face somewhere finer.
@@ -2855,6 +2864,13 @@ function initCube() {
   paintFacet('wealth'); cubeApply(); startIdle();
   window.addEventListener('scroll', syncDeck, { passive: true });
   window.addEventListener('resize', syncDeck);
+  // idle on the home page: the cube wanders the four faces so they all get seen
+  setInterval(() => {
+    const qb = document.getElementById('q');
+    if (stage !== 'compose' || cDragging || (qb && qb.value)) return;
+    const others = ['wealth', 'income', 'opportunity', 'health'].filter(f => f !== curFacet);
+    chooseFacet(randomOf(others));
+  }, 7000);
 }
 
 /* ── opportunity: the commuting-zone layer (Opportunity Insights) ──── */
@@ -3017,7 +3033,7 @@ function updateCell() {
   const agHtml = agKey
     ? `${esc(AGAINST_FAMILY[agKey] || 'other')}<span class="fmeasure">${esc(META[agKey].label)}</span>`
     : null;
-  setSlot('against', agHtml, 'add', agKey ? metricColor(agKey) : null);
+  setSlot('against', agHtml, 'add', agKey ? ACC() : null);   // the face's colour leads, not the measure's
   buildAddRow(last);
   requestAnimationFrame(() => drawRibbon());
   if (reopenAfter) {   // reopen outright: toggling would read as "already open" and shut it
@@ -3197,7 +3213,7 @@ function drawChart() {
       text: pts.map(p => p.name), customdata: pts.map(p => [mx.fmt(p.x), my.fmt(p.y)]) });
     const traces = [{
       type: 'scatter', mode: 'markers', ...mk(bg),
-      marker: { color: metricColor(sc.y), size: 7, opacity: 0.42 },   // coloured by the variable on the y axis
+      marker: { color: ACC(), size: 7, opacity: 0.42 },   // the face you're on owns the chart
       hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
     }];
     if (sc.fit) {   // the robust line, drawn across the x-range
@@ -3211,7 +3227,7 @@ function drawChart() {
     }
     if (named.length) traces.push({
       type: 'scatter', mode: 'markers+text', ...mk(named),
-      marker: { color: named.map(p => focusSet.has(p.iso) ? '#eb6834' : metricColor(sc.y)), size: 11, line: { color: '#fff', width: 1.5 } },
+      marker: { color: named.map(p => focusSet.has(p.iso) ? '#eb6834' : ACC()), size: 11, line: { color: '#fff', width: 1.5 } },
       textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
       hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
     });
@@ -3904,6 +3920,7 @@ function flipTo(name, back) {
 function resetAll() {
   const onUS = !document.getElementById('view-us').hidden;
   chain.length = 0; facetMeasureIdx.wealth = 0; facetMeasureIdx.income = 0;
+  const qb = document.getElementById('q'); if (qb) qb.value = '';
   resetCell(); resetCtx(); render();
   chooseFacet('wealth'); startIdle(); setStage('compose');
   if (onUS) flipTo('ask', true); else window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
