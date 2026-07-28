@@ -269,7 +269,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* ── the cube: the facet selector, centred with the stack beneath ─── */
 .cubebox { display: flex; flex-direction: column; align-items: center; gap: 12px;
   margin: 74px auto 34px; user-select: none; -webkit-user-select: none; overflow: visible; }
-.scene { width: 232px; height: 232px; perspective: 760px; touch-action: none; cursor: grab;
+.scene { position: relative; width: 232px; height: 232px; perspective: 760px; touch-action: none; cursor: grab;
   margin-bottom: 8px; overflow: visible; }
 .scene:active { cursor: grabbing; }
 /* every 15s, a ring pulses on the cube for a few seconds: it can be turned */
@@ -398,7 +398,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .refresh { width: 30px; height: 30px; border: 0; background: none; color: var(--ink-3);
   cursor: pointer; font-size: 16px; line-height: 1; padding: 0; }
 .refresh:hover { color: var(--ink); }
-.shake { display: block; margin: 0 auto 10px; background: none; border: 0; cursor: pointer;
+.shake { align-self: center; margin: 0 0 10px; background: none; border: 0; cursor: pointer;
   font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: .04em; padding: 2px 8px; }
 .shake:hover { color: var(--ink); }
 #view-ask.stage-result .shake { display: none; }
@@ -2522,12 +2522,21 @@ function morphRibbon() {
   foldRAF = requestAnimationFrame(step);
 }
 window.addEventListener('resize', () => requestAnimationFrame(() => drawRibbon()));
+// whatever changes the strip's size -- a fold opening, a font landing, the window --
+// redraws the outline. no call site has to remember.
+function watchLayout() {
+  if (!window.ResizeObserver) return;
+  const ribs = document.getElementById('ribs');
+  if (ribs) new ResizeObserver(() => requestAnimationFrame(() => drawRibbon())).observe(ribs);
+  const deck = document.getElementById('deck');
+  if (deck) new ResizeObserver(() => requestAnimationFrame(syncDeck)).observe(deck);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => drawRibbon());
+}
 function closeDrawer() {
   document.querySelectorAll('.rib.expanded').forEach(r => r.classList.remove('expanded'));
   document.querySelectorAll('.rib-head').forEach(h => h.setAttribute('aria-expanded', 'false'));
   const d = document.getElementById('rib-drawer');
   if (d) { d.hidden = true; d.innerHTML = ''; }
-  requestAnimationFrame(() => drawRibbon());
 }
 function renderDrawer(dim, rib, opts, filter) {
   const groups = dimGroups(dim, filter), cur = dimCurrent(dim);
@@ -2624,7 +2633,6 @@ function toggleRib(dim) {
   rib.classList.add('expanded');
   const head = rib.querySelector('.rib-head');
   if (head) head.setAttribute('aria-expanded', 'true');
-  requestAnimationFrame(() => drawRibbon());
 }
 function wireCell() {
   ['facet', 'place', 'scope', 'time', 'against', 'form'].forEach(dim => {   // every fold opens onto its alternatives
@@ -3021,25 +3029,6 @@ function buildAddRow(last) {
   const el = document.getElementById('add-row');
   if (el) el.innerHTML = '';    // nothing to add: every fold is already in the strip, closed
   return;
-}
-function buildAddRowUnused(last) {
-  const el = document.getElementById('add-row'); if (!el) return;
-  let chips;
-  if (last && last.kind === 'opp') {
-    chips = [['against', '+ hold against']];
-  } else {
-    chips = [];
-    if (!cell.place && !ctx.region && !ctx.pool) chips.push(['place', '+ a place']);
-    if (!cell.span) chips.push(['time', '+ over time']);
-    if (!cell.against) chips.push(['against', '+ another measure']);
-    if (!cell.scope) chips.push(['scope', '+ a set']);
-    if (!cell.form) chips.push(['form', '+ shown as']);
-  }
-  el.innerHTML = chips.map(c => `<button type="button" class="add-chip" data-add="${c[0]}">${c[1]}</button>`).join('');
-  el.querySelectorAll('.add-chip').forEach(b => b.addEventListener('click', () => {
-    if (b.dataset.add === 'time') applyDim('time', 'run');   // over time is a plain on/off, no submenu
-    else toggleRib(b.dataset.add);
-  }));
 }
 
 /* ── chart ─────────────────────────────────────────────────────────── */
@@ -3845,7 +3834,6 @@ function initUS() {
 }
 
 // wealth against income across the world, both indexed so the gap is the point
-let whyDrawn = false;
 function drawWhy() {
   const el = document.getElementById('why-chart');
   if (!el || !window.Plotly) return;
@@ -3872,7 +3860,6 @@ function drawWhy() {
   const src = document.getElementById('why-src');
   if (src) src.textContent = `World median across countries with data, both indexed to ${base} = 100. ` +
     `Wealth: WID, top 1% share. Income: World Bank PIP via OWID.`;
-  whyDrawn = true;
 }
 function setView(name) {
   for (const v of VIEWS) {
@@ -4076,6 +4063,7 @@ function boot() {
   const vfacet = document.getElementById('v-facet');
   if (vfacet) vfacet.addEventListener('click', e => { if (e.target.closest('.submeasure')) cycleMeasure(); });
   wireCell();
+  watchLayout();
   stageFocus = false; setStage('compose'); stageFocus = true; setHelp(false);   // opens quiet, no list
   // theme toggle: follow the OS, or override it and remember
   const themeBtn = document.getElementById('theme');
