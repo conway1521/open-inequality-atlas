@@ -677,7 +677,7 @@ footer a { color: inherit; }
 <header>
   <div class="wrap">
     <button class="wordmark" data-view="ask" id="home">Open Inequality Atlas</button>
-    <button class="deeper" id="deeper" aria-expanded="false">deeper &rsaquo;</button>
+    <button class="deeper" id="deeper" aria-expanded="false">about &rsaquo;</button>
     <div class="top-links">
       <button class="theme-toggle" id="theme" aria-label="Toggle dark mode" title="Light / dark">&#9681;</button>
       <a href="https://conway1521.github.io/applied/" target="_blank" rel="noopener">About</a>
@@ -685,10 +685,10 @@ footer a { color: inherit; }
   </div>
   <nav class="tabs" id="tabs" hidden>
     <div class="wrap">
+      <button class="tab" data-view="why">Why</button>
       <button class="tab" data-view="wealth">Wealth</button>
       <button class="tab" data-view="income">Income</button>
       <button class="tab" data-view="wellbeing">Wellbeing</button>
-      <button class="tab" data-view="us">United States</button>
       <button class="tab" data-view="db">Database</button>
     </div>
   </nav>
@@ -864,71 +864,35 @@ footer a { color: inherit; }
     </div>
   </div>
 
-  <div id="view-us" class="wrap db" hidden>
-    <div class="us-back">
-      <button id="us-back" type="button">&#8592; back to the atlas</button>
-      <span class="tag">the US face &middot; county by county</span>
-    </div>
-    <h1>The United States, up close</h1>
+  <div id="view-why" class="wrap db" hidden>
+    <h1>Why</h1>
     <p class="sub">
-      The same question, one level down. No county has a wealth Gini, so housing
-      stands in for local wealth: home values, and who owns. For mobility, health,
-      and the rich-poor life gap, does a county track its housing wealth or its
-      income inequality? Data from Opportunity Insights, county by county.
+      Wealth and income are treated as one story and they are not. Income inequality
+      in the rich world rose through the 1980s and then flattened. Wealth kept
+      concentrating. The two lines below start together and come apart, and that gap
+      is the reason this atlas separates the four faces instead of reporting one number.
     </p>
-
+    <div class="chart-card">
+      <div class="chart-title" id="why-title">Wealth and income inequality, world median</div>
+      <div id="why-chart" style="width:100%;height:360px"></div>
+      <p class="chart-src" id="why-src"></p>
+    </div>
     <div class="grid3">
       <div class="block">
-        <h2>The local wealth signal</h2>
-        <p>No county has a wealth Gini, so housing stands in for it: homeownership
-        rate and median home value, alongside the county income Gini as the
-        inequality lens.</p>
+        <h2>Different measures</h2>
+        <p>A wealth Gini sits twenty points above the income Gini in the same country.
+        Reporting either one alone answers a different question.</p>
       </div>
       <div class="block">
-        <h2>What it touches</h2>
-        <p>Upward mobility for a child raised poor, economic connectedness across
-        class, cohesion, poverty, single-parent share, and where available life
-        expectancy and financial distress.</p>
+        <h2>Different movement</h2>
+        <p>They do not turn together. A country can hold income inequality flat for
+        a decade while wealth concentrates through it.</p>
       </div>
       <div class="block">
-        <h2>Sources</h2>
-        <p>Opportunity Insights (the Opportunity Atlas and the Social Capital
-        Atlas with Meta) and the county covariates. County and state level, public
-        and privacy-protected.</p>
-        <p><a href="https://opportunityinsights.org/data/" target="_blank" rel="noopener" style="color:var(--accent)">opportunityinsights.org/data</a></p>
+        <h2>Different sources</h2>
+        <p>Wealth comes from WID, income from the World Bank via OWID. Every chart
+        here names which one it drew from.</p>
       </div>
-    </div>
-
-    <div id="us-loaded" hidden>
-      <form class="askbox" id="us-form" style="max-width:640px;margin-top:8px">
-        <input id="us-q" type="text" autocomplete="off" spellcheck="false" placeholder="mobility against home values">
-        <span class="slash">/</span>
-      </form>
-      <div class="chips" id="us-chips"></div>
-      <div class="notice" id="us-notice" hidden></div>
-
-      <div id="us-session" hidden>
-        <div class="session-head" style="margin-top:28px">
-          <span class="label">Your chain</span>
-          <div class="session-actions"><button id="us-clear">clear</button></div>
-        </div>
-        <ol id="us-facts"></ol>
-        <div class="chart-card">
-          <div class="facets" id="us-facets"></div>
-          <div class="chart-title" id="us-chart-title"></div>
-          <div id="us-chart" style="width:100%;height:420px"></div>
-          <p class="chart-src" id="us-chart-src"></p>
-        </div>
-      </div>
-      <p class="meta" id="us-coverage" style="margin-top:20px"></p>
-    </div>
-
-    <div class="data-row" id="us-empty">
-      <h2>Coverage</h2>
-      <p class="meta">The county data is not loaded yet. Once the Opportunity
-      Insights and Social Capital files are processed into
-      <code>us_county.json</code>, the question box opens here and the measures
-      light up.</p>
     </div>
   </div>
 
@@ -2525,6 +2489,11 @@ function drawRibbon(foldAt) {
   for (let i = 1; i < xs.length; i++) d += ` L ${xs[i]} ${top(i)}`;
   for (let i = xs.length - 1; i >= 0; i--) d += ` L ${xs[i]} ${bot(i)}`;
   d += ' Z';
+  // clip each section to the exact fold it is drawn as, so what you click is what you see
+  for (let i = 0; i < panels.length; i++) {
+    panels[i].style.clipPath =
+      `polygon(0 ${top(i)}px, 100% ${top(i + 1)}px, 100% ${bot(i + 1)}px, 0 ${bot(i)}px)`;
+  }
   let edges = '', seams = '';
   for (let i = 0; i < panels.length; i++) {
     const c = getComputedStyle(panels[i]).getPropertyValue('--rc').trim() || 'currentColor';
@@ -3539,7 +3508,7 @@ function showNotice(html) {
 }
 function hideNotice() { document.getElementById('notice').hidden = true; }
 
-const VIEWS = ['ask', 'wealth', 'income', 'wellbeing', 'us', 'db'];
+const VIEWS = ['ask', 'why', 'wealth', 'income', 'wellbeing', 'db'];
 
 /* ── US county tier: the same ask cube, at county resolution ───────── */
 let US_COUNTY = null, US_STATE = null, US_NAMES = null, US_MANIFEST = null;
@@ -3875,6 +3844,36 @@ function initUS() {
   usChips();
 }
 
+// wealth against income across the world, both indexed so the gap is the point
+let whyDrawn = false;
+function drawWhy() {
+  const el = document.getElementById('why-chart');
+  if (!el || !window.Plotly) return;
+  const base = 1995;
+  const mk = key => {
+    const ser = medianSeriesOf(key, null).filter(d => d.year >= base);
+    if (!ser.length) return null;
+    const b = ser[0].v;
+    return { years: ser.map(d => d.year), vals: ser.map(d => d.v / b * 100), first: ser[0], last: ser[ser.length - 1] };
+  };
+  const w = mk('wealth_top1'), i = mk('income_gini');
+  if (!w || !i) return;
+  Plotly.react(el, [
+    { type: 'scatter', mode: 'lines', name: 'wealth concentration', x: w.years, y: w.vals,
+      line: { color: metricColor('wealth_top1'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
+    { type: 'scatter', mode: 'lines', name: 'income Gini', x: i.years, y: i.vals,
+      line: { color: metricColor('income_gini'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
+  ], Object.assign({}, BASE_LAYOUT, {
+    showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
+    margin: { t: 14, r: 16, b: 40, l: 50 },
+    shapes: eraShapes(base, 2025), annotations: eraLabels(base, 2025),
+    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: `indexed to ${base} = 100`, font: { size: 11 } } }),
+  }), CFG);
+  const src = document.getElementById('why-src');
+  if (src) src.textContent = `World median across countries with data, both indexed to ${base} = 100. ` +
+    `Wealth: WID, top 1% share. Income: World Bank PIP via OWID.`;
+  whyDrawn = true;
+}
 function setView(name) {
   for (const v of VIEWS) {
     document.getElementById('view-' + v).hidden = v !== name;
@@ -3883,8 +3882,7 @@ function setView(name) {
     t.classList.toggle('on', t.dataset.view === name));
   if (name === 'ask' && chain.length) requestAnimationFrame(() =>
     Plotly.Plots.resize(document.getElementById('chart')));
-  if (name === 'us' && usChain && usChain.length) requestAnimationFrame(() =>
-    Plotly.Plots.resize(document.getElementById('us-chart')));
+  if (name === 'why') requestAnimationFrame(drawWhy);
 }
 // turn to another face of the cube: the atlas flips left, the new face comes in from the right
 let flipping = false;
@@ -3918,7 +3916,7 @@ function flipTo(name, back) {
 
 // reset takes you all the way back to the home start: empty cell, drifting cube, top of the page
 function resetAll() {
-  const onUS = !document.getElementById('view-us').hidden;
+  const onUS = false;
   chain.length = 0; facetMeasureIdx.wealth = 0; facetMeasureIdx.income = 0;
   const qb = document.getElementById('q'); if (qb) qb.value = '';
   resetCell(); resetCtx(); render();
@@ -4105,7 +4103,7 @@ function boot() {
   const usEnter = document.getElementById('us-enter');
   if (usEnter) usEnter.addEventListener('click', () => flipTo('us'));
   document.getElementById('home').addEventListener('click', () => {
-    const onUS = !document.getElementById('view-us').hidden;
+    const onUS = false;
     if (onUS) flipTo('ask', true); else setView('ask');
     tabsEl.hidden = true; deeperBtn.setAttribute('aria-expanded', 'false');
   });
