@@ -4184,6 +4184,9 @@ function usDrawChart() {
 }
 
 function initUS() {
+  // the United States view was removed; its engine stays for the commuting-zone data
+  // the opportunity face reads, but there is no longer anything on the page to wire.
+  if (!document.getElementById('us-form')) return;
   const loaded = document.getElementById('us-loaded'), empty = document.getElementById('us-empty');
   if (!US_COUNTY || !usAvail().length) { if (loaded) loaded.hidden = true; if (empty) empty.hidden = false; return; }
   loaded.hidden = false; empty.hidden = true;
@@ -4559,11 +4562,14 @@ Promise.all([
   if (usCz && Object.keys(usCz).length) US_CZ = usCz;
 
   buildIndex();
-  boot();
-}).catch(() => {
+  return true;
+}).catch(err => {
+  // only a real load failure says so. a fault in boot must not masquerade as one.
+  console.error('data load failed', err);
   showNotice('Could not load the data files. If this page was opened from disk, serve it over HTTP, ' +
     'or get the release files from <a href="https://github.com/conway1521/wealth_ineq">GitHub</a>.');
-});
+  return false;
+}).then(loaded => { if (loaded) boot(); });
 </script>
 </body>
 </html>
