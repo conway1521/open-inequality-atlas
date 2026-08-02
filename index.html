@@ -1387,6 +1387,9 @@ function parse(raw) {
   // RATIO: the top against the bottom, said as a multiple instead of an index
   if (/\brichest\b.*\bpoorest\b|\btop tenth\b|\bhow many times\b|\bhow much more\b.*\bhold\b|\btimes what\b/.test(r))
     return { kind: 'ratio', isos, iso: isos[0] || null };
+  // TRIPLE: the three measured faces held together, one dot per country
+  if (/\bthree faces\b|\ball three\b|\bfaces together\b|\bfaces sit\b/.test(r))
+    return { kind: 'triple' };
   // BREAK: who defies the current relationship
   if (/\bbreaks? the pattern\b|\bbreaks? the trend\b|\boutliers?\b|\boff the (trend|line|pattern)\b|\bexceptions?\b|\bdefy\w*\b|\bover[- ]?perform\w*\b|\bunder[- ]?perform\w*\b|\bbeat the (trend|pattern)\b|\bpunch\w* above\b/.test(r))
     return { kind: 'break', metrics };
@@ -1615,7 +1618,7 @@ function syncCellFromFact(f) {
   cell.against = (f.mode === 'scatter' && f.scatter && f.scatter.y && !isIneq(f.scatter.y)) ? f.scatter.y
     : (f.mode === 'path' && f.path && f.path.y) ? f.path.y : null;
   cell.form = ['rank', 'delta_rank'].includes(f.kind) ? 'rank'
-    : f.kind === 'reach' ? 'reach' : f.kind === 'ratio' ? 'ratio'
+    : f.kind === 'reach' ? 'reach' : f.kind === 'ratio' ? 'ratio' : f.kind === 'triple' ? 'triple'
     : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
   cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
@@ -1644,6 +1647,9 @@ function runCell() {
     p = { kind: 'tiers', aspect: cell.against, lens: ctx.metric, region: ctx.region }; q = 'by tier';
   } else if (F === 'break' && cell.against && META[cell.against]) {
     p = { kind: 'break', metrics: [ctx.metric, cell.against] }; q = 'who breaks the pattern';
+  } else if (F === 'triple') {
+    p = { kind: 'triple' };
+    q = 'the three faces together';
   } else if (F === 'reach') {
     p = { kind: 'reach', isos: cell.place ? [cell.place] : [], iso: cell.place || null };
     q = 'did the growth reach the typical person';
@@ -1864,6 +1870,31 @@ function buildAnswer(p, q) {
         `${esc(rows[0].geo_name)}, ${rows[1].val.toFixed(1)} times in ${esc(rows[1].geo_name)}. ` +
         `Across ${rows.length} countries the middle of the pack is <strong>${med.val.toFixed(1)} times</strong>.`;
     }
+  }
+
+  else if (p.kind === 'triple') {
+    const X = 'wealth_top1', Y = 'income_gini', Z = 'life_exp';
+    const pts = [];
+    for (const iso in BY_ISO) {
+      const xs = seriesOf(X, iso), ys = seriesOf(Y, iso), zs = seriesOf(Z, iso);
+      if (!xs.length || !ys.length || !zs.length) continue;
+      const ym = new Map(ys.map(d => [d.year, d.v])), zm = new Map(zs.map(d => [d.year, d.v]));
+      let hit = null;
+      for (let i = xs.length - 1; i >= 0; i--) {
+        const yr = xs[i].year;
+        if (ym.has(yr) && zm.has(yr)) { hit = { year: yr, x: xs[i].v, y: ym.get(yr), z: zm.get(yr) }; break; }
+      }
+      if (hit) pts.push({ iso, name: BY_ISO[iso].name, year: hit.year, x: hit.x, y: hit.y, z: hit.z });
+    }
+    if (pts.length < 10) return miss();
+    ctx.metric = X;
+    f.mode = 'triple';
+    f.triple = { pts, x: X, y: Y, z: Z };
+    f.isos = (ctx.lastIso && pts.some(q => q.iso === ctx.lastIso)) ? [ctx.lastIso] : [];
+    const yrs = pts.map(q => q.year);
+    f.text = `Wealth, income and health together, one dot per country, ` +
+      `each at the latest year all three were measured (${Math.min(...yrs)} to ${Math.max(...yrs)}). ` +
+      `<strong>${pts.length} countries</strong> carry all three. Turn it the way you turn the cube.`;
   }
 
   else if (p.kind === 'break') {
@@ -2352,6 +2383,7 @@ const QUESTIONS = [
   { k: '', qs: [
     'did the growth reach the typical person?',
     'how much more do the richest hold than the poorest?',
+    'how do the three faces sit together?',
     'where is wealth most concentrated?',
     'how has inequality changed over time?',
     'does life expectancy track inequality?',
@@ -2566,7 +2598,7 @@ function dimGroups(dim, filter) {
         ['a Lorenz curve', 'A Lorenz curve draws one country\'s wealth, not two measures against each other.', null]);
     } else {
       opts.push(['a ranking', 'rank'], ['the spread', 'spread'],
-        ['top tenth against bottom half', 'ratio']);
+        ['top tenth against bottom half', 'ratio'], ['the three faces at once', 'triple']);
       if (cell.place) opts.push(['growth against the middle', 'reach']);
       else gaps.push(['growth against the middle',
         'This holds one country\'s growth against its own median, so name a place first.', null]);
@@ -2839,9 +2871,8 @@ function faceToFront(name) {
 function runInteraction(name) {
   // you land on the pole and stay there. the face you were reading is untouched.
   document.querySelectorAll('#cube .face').forEach(el => el.classList.toggle('lit', el.dataset.facet === name));
-  showNotice(name === 'link'
-    ? `Link reads ${curFacet} alongside another face. Open <em>against</em> in the strip to choose it.`
-    : `Extend reads ${curFacet} through time and across geography. Open <em>when</em> or <em>place</em> in the strip.`);
+  if (name === 'link') { ask('how do the three faces sit together?'); return; }
+  showNotice(`Extend reads ${curFacet} through time and across geography. Open <em>when</em> or <em>place</em> in the strip.`);
 }
 function chooseFacet(name) {
   if (INTERACTIONS[name]) { runInteraction(name); return; }
@@ -2939,6 +2970,7 @@ function previewQuestion(q) {
   else if (p.kind === 'rank' || p.kind === 'delta_rank') cell.form = 'rank';
   else if (p.kind === 'reach') cell.form = 'reach';
   else if (p.kind === 'ratio') cell.form = 'ratio';
+  else if (p.kind === 'triple') cell.form = 'triple';
   else if (p.kind === 'spread') cell.form = 'spread';
   else if (p.kind === 'lorenz') { cell.form = 'lorenz'; if (p.isos && p.isos[0]) cell.place = p.isos[0]; }
   if (cell.against === facetIneqDefault()) cell.against = null;   // nothing is held against itself
@@ -3170,7 +3202,8 @@ function updateCell() {
   setSlot('scope', ctx.pool ? esc(ctx.pool.label) : ctx.region ? REGION_LABEL[ctx.region] : null, 'all');
   const FORM_LABEL = { rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
     tiers: 'by tier', break: 'who breaks the pattern',
-    reach: 'growth against the middle', ratio: 'top tenth against bottom half' };
+    reach: 'growth against the middle', ratio: 'top tenth against bottom half',
+    triple: 'the three faces at once' };
   setSlot('form', FORM_LABEL[cell.form] || null, 'as is');
   const rf = document.getElementById('rib-facet');
   if (rf) rf.classList.add('filled');   // the face is always set, so its fold is always open
@@ -3481,12 +3514,30 @@ function drawChart() {
     const rc = chain.slice().reverse().find(f => f.mode === 'reach').reach;
     const idx = (arr, k) => arr.map(d => d.v / arr[0].v * 100);
     const lastY = Math.max(rc.gs[rc.gs.length - 1].year, rc.ms[rc.ms.length - 1].year);
+    // put the median on the same years as output so the space between them can be filled
+    const mi = idx(rc.ms), mY = rc.ms.map(d => d.year);
+    const at = y => {
+      if (y <= mY[0]) return mi[0];
+      if (y >= mY[mY.length - 1]) return mi[mi.length - 1];
+      for (let i = 1; i < mY.length; i++) if (mY[i] >= y) {
+        const t = (y - mY[i - 1]) / (mY[i] - mY[i - 1]);
+        return mi[i - 1] + (mi[i] - mi[i - 1]) * t;
+      }
+      return mi[mi.length - 1];
+    };
+    const gYears = rc.gs.map(d => d.year).filter(y => y <= mY[mY.length - 1]);
     Plotly.react(el, [
+      { type: 'scatter', mode: 'lines', name: 'the income in the middle', showlegend: false,
+        x: gYears, y: gYears.map(at), line: { width: 0 }, hoverinfo: 'skip' },
+      { type: 'scatter', mode: 'lines', name: 'the gap', showlegend: false,
+        x: gYears, y: gYears.map(y => idx(rc.gs)[rc.gs.findIndex(d => d.year === y)]),
+        line: { width: 0 }, fill: 'tonexty',
+        fillcolor: 'color-mix(in srgb, #eb6834 16%, transparent)', hoverinfo: 'skip' },
       { type: 'scatter', mode: 'lines', name: 'output per person',
         x: rc.gs.map(d => d.year), y: idx(rc.gs),
         line: { color: metricColor('gdp_pc'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
       { type: 'scatter', mode: 'lines+markers', name: 'the income in the middle',
-        x: rc.ms.map(d => d.year), y: idx(rc.ms),
+        x: rc.ms.map(d => d.year), y: mi,
         line: { color: '#eb6834', width: 2.6, shape: 'spline', smoothing: 0.6 }, marker: { size: 6 } },
     ], Object.assign({}, BASE_LAYOUT, {
       showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
@@ -3503,6 +3554,41 @@ function drawChart() {
   }
 
   else if (mode === 'ratio') {
+    const rt = chain.slice().reverse().find(f => f.mode === 'ratio').ratio;
+    let rows = rt.rows.slice(0, 12);
+    if (rt.highlight && !rows.some(r => r.geo_id === rt.highlight)) {
+      const h = rt.rows.find(r => r.geo_id === rt.highlight);
+      if (h) rows = rows.slice(0, 11).concat([h]);
+    }
+    rows = rows.slice().reverse();
+    // the whole population, split three ways: the picture of the fact, not the fact restated
+    const byIso = {}; for (const L of LATEST) byIso[L.geo_id] = L;
+    const band = (pick, name, colour) => ({
+      type: 'bar', orientation: 'h', name,
+      y: rows.map(r => r.geo_name),
+      x: rows.map(r => { const L = byIso[r.geo_id]; return L ? Math.max(0, pick(L)) * 100 : 0; }),
+      marker: { color: colour },
+      hovertemplate: '%{y} &middot; ' + name + ': %{x:.1f}%<extra></extra>',
+    });
+    Plotly.react(el, [
+      band(L => L.bottom50_wealth_share, 'the poorest half', shade(metricColor('wealth_top1'), -0.55)),
+      band(L => 1 - L.top10_wealth_share - L.bottom50_wealth_share, 'the middle 40%', shade(metricColor('wealth_top1'), -0.15)),
+      band(L => L.top10_wealth_share, 'the richest tenth', shade(metricColor('wealth_top1'), 0.35)),
+    ], Object.assign({}, BASE_LAYOUT, {
+      barmode: 'stack', showlegend: true,
+      legend: { orientation: 'h', y: 1.16, font: { size: 11 } },
+      margin: { t: 24, r: 20, b: 38, l: 150 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: 'share of all household wealth', font: { size: 12 } },
+        ticksuffix: '%', range: [0, 100], autorange: false }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category' }),
+      bargap: 0.34,
+    }), CFG);
+    title.textContent = 'How the wealth of a country is split';
+    src.textContent = 'Each bar is one country\'s household wealth, split into the poorest half, the middle 40% and the richest tenth. ' +
+      'The multiple in the sentence is the last band divided by the first. ' + provenance(['wealth_top1']);
+  }
+
+  else if (mode === 'ratio_unused') {
     const rt = chain.slice().reverse().find(f => f.mode === 'ratio').ratio;
     let rows = rt.rows.slice(0, 12);
     if (rt.highlight && !rows.some(r => r.geo_id === rt.highlight)) {
@@ -3528,6 +3614,36 @@ function drawChart() {
     src.textContent = 'Top 10% share of household net wealth divided by the bottom 50% share, latest year per country. ' +
       'A multiple, not an index: 10x means the top tenth hold ten times what the bottom half hold together. ' +
       provenance(['wealth_top1']);
+  }
+
+  else if (mode === 'triple') {
+    const tp = chain.slice().reverse().find(f => f.mode === 'triple').triple;
+    const mx = META[tp.x], my = META[tp.y], mz = META[tp.z];
+    const foc = new Set(chain[chain.length - 1].isos || []);
+    const sc = (m, v) => m.fmt === pc ? v * 100 : v;
+    const main = tp.pts.filter(q => !foc.has(q.iso)), hit = tp.pts.filter(q => foc.has(q.iso));
+    const mk = (arr, big) => ({
+      type: 'scatter3d', mode: big ? 'markers+text' : 'markers',
+      x: arr.map(q => sc(mx, q.x)), y: arr.map(q => sc(my, q.y)), z: arr.map(q => sc(mz, q.z)),
+      text: arr.map(q => q.name),
+      marker: big ? { size: 7, color: '#eb6834' }
+        : { size: 3.6, opacity: 0.62, color: arr.map(q => sc(mz, q.z)),
+            colorscale: [[0, '#c0607a'], [1, '#2a78d6']], showscale: false },
+      textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
+      hovertemplate: '%{text}<br>' + mx.label + ': %{x}<br>' + my.label + ': %{y}<br>' + mz.label + ': %{z}<extra></extra>',
+    });
+    const ax = t => ({ title: { text: t, font: { size: 11 } }, gridcolor: cssVar('--grid', '#f0f0f0'),
+      zeroline: false, showbackground: false, color: cssVar('--ink-3', '#999999') });
+    Plotly.react(el, hit.length ? [mk(main, false), mk(hit, true)] : [mk(main, false)],
+      Object.assign({}, BASE_LAYOUT, {
+        margin: { t: 4, r: 4, b: 4, l: 4 },
+        scene: { xaxis: ax(mx.label), yaxis: ax(my.label), zaxis: ax(mz.label),
+          camera: { eye: { x: 1.5, y: 1.4, z: 0.9 } }, aspectmode: 'cube' },
+      }), CFG);
+    title.textContent = 'Wealth, income and health, together';
+    src.textContent = 'One dot per country, at the latest year all three were measured. Drag to turn it. ' +
+      'Depth is for the shape of the cloud, not for reading values: the flat charts are where a number is read. ' +
+      provenance([tp.x, tp.y, tp.z]);
   }
 
   else if (mode === 'tiers') {
@@ -3561,17 +3677,28 @@ function drawChart() {
     const jitter = st.pool.map(() => (((Math.sin(st.pool.length) + 1) % 1)));
     const bg = st.pool.filter(r => !focusSet.has(r.geo_id));
     const fg = st.pool.filter(r => focusSet.has(r.geo_id));
-    const yj = (arr, seed) => arr.map((_, i) => ((Math.sin((i + seed) * 12.9898) * 43758.5453) % 1 + 1) % 1 * 0.8 - 0.4);
+    // stack points that share a slice of the axis, so density reads as height
+    const swarm = arr => {
+      const xs = arr.map(r => scale(r.val));
+      const lo = Math.min(...xs), hi = Math.max(...xs), span = (hi - lo) || 1;
+      const bins = new Map();
+      return xs.map(x => {
+        const k = Math.round((x - lo) / span * 46);
+        const n = bins.get(k) || 0; bins.set(k, n + 1);
+        return (n % 2 ? 1 : -1) * Math.ceil(n / 2) * 0.09;
+      });
+    };
+    const yj = arr => swarm(arr);
     const traces = [{
       type: 'scatter', mode: 'markers',
-      x: bg.map(r => scale(r.val)), y: yj(bg, 1),
+      x: bg.map(r => scale(r.val)), y: yj(bg),
       text: bg.map(r => r.geo_name), customdata: bg.map(r => m.fmt(r.val)),
       marker: { color: metricColor(st.key), size: 6, opacity: 0.5 },
       hovertemplate: '%{text}: %{customdata}<extra></extra>',
     }];
     if (fg.length) traces.push({
       type: 'scatter', mode: 'markers+text',
-      x: fg.map(r => scale(r.val)), y: yj(fg, 99),
+      x: fg.map(r => scale(r.val)), y: yj(fg),
       text: fg.map(r => r.geo_name), customdata: fg.map(r => m.fmt(r.val)),
       textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
       marker: { color: '#eb6834', size: 11, line: { color: '#fff', width: 1.5 } },
