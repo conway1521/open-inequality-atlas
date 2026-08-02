@@ -2580,7 +2580,16 @@ function dimGroups(dim, filter) {
         'This layer is US commuting zones only.', null]] });
     } else if (dim === 'place') {
       g.push({ k: 'not in the atlas', gaps: [['a country',
-        'Opportunity is measured across US commuting zones, so the place is fixed.', null]] });
+        'Opportunity is measured across 741 US commuting zones, so the place is fixed.', null]] });
+    } else if (dim === 'scope') {
+      g.push({ k: 'not in the atlas', gaps: [['a region, or a group of countries',
+        'This layer is one country, so there is no set of countries to choose from.', null]] });
+    } else if (dim === 'form') {
+      g.push({ k: 'not in the atlas', gaps: [
+        ['a ranking, a spread, a Lorenz curve',
+          'Those read a measure across countries. This layer has one country and 741 zones.', null],
+        ['the three faces at once',
+          'That needs wealth, income and health for the same place. Opportunity is not measured that way.', null]] });
     } else {
       g.push({ k: 'not in the atlas', gaps: [['over time',
         'The zone data is one snapshot, of children born in the early 1980s.', null]] });
@@ -2997,6 +3006,7 @@ const FORM_DEF = {
 };
 const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'us_shares', 'among'];
 function previewQuestion(q) {
+  hideNotice();   // the last question's complaint is not about this one
   if (curFacet === 'opportunity') { resetCell(); cell.raw = q; updateCell(); return true; }
   let p;
   try { p = parse(q); } catch (e) { p = { kind: 'unknown' }; }
@@ -4470,6 +4480,7 @@ function boot() {
   if (askNew) askNew.addEventListener('click', () => {
     const q = document.getElementById('q');
     if (q) q.value = '';        // a fresh question, not the last one back again
+    hideNotice();
     resetCell(); chain.length = 0; resetCtx();
     setStage('compose');
     if (q) q.focus();
