@@ -2414,12 +2414,9 @@ const QUESTIONS = [
   { k: '', qs: [
     'did the growth reach the typical person?',
     'how much more do the richest hold than the poorest?',
-    'how is a country\'s wealth divided up?',
-    'how unequal is a typical country?',
     'where is wealth most concentrated?',
     'how has inequality changed over time?',
     'does life expectancy track inequality?',
-    'do people live longer in more equal countries?',
     'which countries do better than their wealth suggests?',
     'are wealth and income pulling apart in the US?',
     'how do wealth, income and health sit together?'] },
@@ -2991,7 +2988,11 @@ function setStage(next) {
   else setHelp(false);
   if (next !== 'result') closeDrawer();
   render();
-  if (next === 'chain' && from === 'compose') requestAnimationFrame(morphRibbon);
+  if (next === 'chain' && from === 'compose') {
+    requestAnimationFrame(morphRibbon);
+    // the fold it cannot proceed without opens itself, rather than being found after a refusal
+    if (cellNeedsPlace()) requestAnimationFrame(() => toggleRib('place'));
+  }
   requestAnimationFrame(syncDeck);
 }
 // kinds the cell has no coordinates for: keep the words, run them verbatim on send
@@ -3038,6 +3039,12 @@ function previewQuestion(q) {
   return true;
 }
 // only now is anything computed
+function cellNeedsPlace() {
+  if (curFacet === 'opportunity' || cell.place) return false;
+  if (cell.view === 'reach' || cell.form === 'lorenz') return true;
+  if (cell.span === 'run' && !ctx.region && !ctx.pool) return true;
+  return false;
+}
 function sendCell() {
   // a question left general on purpose has to be finished before it can answer
   if (cell.view === 'reach' && !cell.place) {
