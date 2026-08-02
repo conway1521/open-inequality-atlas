@@ -1300,10 +1300,16 @@ function medianSeriesOf(metric, region) {
     if (!inScope(iso, region)) continue;
     for (const p of s[iso]) (byYear[p.year] = byYear[p.year] || []).push(p.v);
   }
+  // A median over whichever countries happened to report that year measures the sample, not
+  // the world: income coverage swings between 19 and 85 countries. Keep only years reaching
+  // half the peak coverage, and carry the count so a chart can say what stands behind it.
   const min = region ? 5 : 10;
-  const out = Object.keys(byYear).map(Number).sort((a, b) => a - b)
-    .filter(y => byYear[y].length >= min)
-    .map(y => ({ year: y, v: medianOf(byYear[y]) }));
+  const years = Object.keys(byYear).map(Number).sort((a, b) => a - b);
+  const peak = years.reduce((m, y) => Math.max(m, byYear[y].length), 0);
+  const floor = Math.max(min, Math.ceil(peak * 0.5));
+  const kept = years.filter(y => byYear[y].length >= floor);
+  const out = kept.map(y => ({ year: y, v: medianOf(byYear[y]), n: byYear[y].length }));
+  out.peak = peak; out.floor = floor; out.dropped = years.length - kept.length;
   return (medianCache[key] = out);
 }
 
@@ -3456,7 +3462,7 @@ function drawChart() {
     }
     if (named.length) traces.push({
       type: 'scatter', mode: 'markers+text', ...mk(named),
-      marker: { color: named.map(p => focusSet.has(p.iso) ? '#eb6834' : ACC()), size: 11, line: { color: '#fff', width: 1.5 } },
+      marker: { color: named.map(p => focusSet.has(p.iso) ? '#eb6834' : ACC()), size: 11, line: { color: '#fff', width: 1.5 , shape: 'spline', smoothing: 0.6 } },
       textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
       hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
     });
@@ -3536,7 +3542,7 @@ function drawChart() {
         hovertemplate: cap(w.label) + ' %{y:.0f} (base ' + base + ' = 100)<extra></extra>' },
       { type: 'scatter', mode: 'lines', name: 'Income Gini',
         x: iLine.map(d => d.year), y: iLine.map(d => d.v / iBase * 100),
-        line: { color: metricColor('income_gini'), width: 2.4 },
+        line: { color: metricColor('income_gini'), width: 2.4 , shape: 'spline', smoothing: 0.6 },
         hovertemplate: 'Income Gini %{y:.0f} (base ' + base + ' = 100)<extra></extra>' },
     ];
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
@@ -3561,8 +3567,8 @@ function drawChart() {
     const traces = [{
       type: 'scatter', mode: 'lines+markers',
       x: xs, y: ys, text: pts.map(p => p.year),
-      line: { color: '#c9d3e0', width: 1.5 },
-      marker: { size: 8, color: pts.map((_, i) => i), colorscale: [[0, '#cde2fb'], [1, '#0d366b']], line: { color: '#fff', width: 1 } },
+      line: { color: '#c9d3e0', width: 1.5 , shape: 'spline', smoothing: 0.6 },
+      marker: { size: 8, color: pts.map((_, i) => i), colorscale: [[0, '#cde2fb'], [1, '#0d366b']], line: { color: '#fff', width: 1 , shape: 'spline', smoothing: 0.6 } },
       hovertemplate: '%{text}<br>' + mx.label + ': %{x}<br>' + my.label + ': %{y}<extra></extra>',
     }];
     const ann = [[0, 'start'], [pts.length - 1, 'latest']].map(([i]) => ({
@@ -3604,7 +3610,7 @@ function drawChart() {
       { type: 'scatter', mode: 'lines', name: 'output per person',
         x: rc.gs.map(d => d.year), y: idx(rc.gs),
         line: { color: metricColor('gdp_pc'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
-      { type: 'scatter', mode: 'lines+markers', name: 'the income in the middle',
+      { type: 'scatter', mode: rc.ms.length < 12 ? 'lines+markers' : 'lines', name: 'the income in the middle',
         x: rc.ms.map(d => d.year), y: mi,
         line: { color: '#eb6834', width: 2.6, shape: 'spline', smoothing: 0.6 }, marker: { size: 6 } },
     ], Object.assign({}, BASE_LAYOUT, {
@@ -3769,7 +3775,7 @@ function drawChart() {
       x: fg.map(r => scale(r.val)), y: yj(fg),
       text: fg.map(r => r.geo_name), customdata: fg.map(r => m.fmt(r.val)),
       textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
-      marker: { color: '#eb6834', size: 11, line: { color: '#fff', width: 1.5 } },
+      marker: { color: '#eb6834', size: 11, line: { color: '#fff', width: 1.5 , shape: 'spline', smoothing: 0.6 } },
       hovertemplate: '%{text}: %{customdata}<extra></extra>',
     });
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
@@ -3791,7 +3797,7 @@ function drawChart() {
       const py = [0, b50 * 100, (1 - t10) * 100, (1 - t1) * 100, 100];
       return {
         type: 'scatter', mode: 'lines', name: BY_ISO[iso].name,
-        x: px, y: py, line: { color: assignColor(iso), width: 2.2 },
+        x: px, y: py, line: { color: assignColor(iso), width: 2.2 , shape: 'spline', smoothing: 0.6 },
         hovertemplate: BY_ISO[iso].name + ': bottom %{x:.0f}% hold %{y:.1f}%<extra></extra>',
       };
     });
@@ -3826,7 +3832,7 @@ function drawChart() {
       if (!s.length) continue;
       eLo = Math.min(eLo, s[0].year); eHi = Math.max(eHi, s[s.length - 1].year);
       traces.push({
-        type: 'scatter', mode: s.length < 25 ? 'lines+markers' : 'lines', name: BY_ISO[iso].name,
+        type: 'scatter', mode: s.length < 12 ? 'lines+markers' : 'lines', name: BY_ISO[iso].name,
         x: s.map(d => d.year), y: s.map(d => d.v),
         line: { color: isoSet.length === 1 ? metricColor(metric)
           : shadesOf(metricColor(metric), isoSet.length)[isoSet.indexOf(iso)], width: 2.2,
@@ -3863,7 +3869,7 @@ function drawChart() {
       if (at) traces.push({
         type: 'scatter', mode: 'markers', showlegend: false,
         x: [at.year], y: [at.v],
-        marker: { color: assignColor(mk.iso), size: 9, line: { color: '#ffffff', width: 2 } },
+        marker: { color: assignColor(mk.iso), size: 9, line: { color: '#ffffff', width: 2 , shape: 'spline', smoothing: 0.6 } },
         hovertemplate: `${BY_ISO[mk.iso].name}, ${at.year}: ` + m.hover + '<extra></extra>',
       });
     }
@@ -4219,7 +4225,7 @@ function usDrawChart() {
         line: { color: '#98a4b8', width: 1.5, dash: 'dash' } });
     }
     if (named.length) traces.push({ type: 'scatter', mode: 'markers+text', ...mk(named),
-      marker: { color: '#eb6834', size: 10, line: { color: '#fff', width: 1.5 } },
+      marker: { color: '#eb6834', size: 10, line: { color: '#fff', width: 1.5 , shape: 'spline', smoothing: 0.6 } },
       textposition: 'top center', textfont: { size: 10, color: cssVar('--ink', '#1a2744') },
       hovertemplate: '%{text}<br>' + usLabel[sc.x] + ': %{customdata[0]}<br>' + usLabel[sc.y] + ': %{customdata[1]}<extra></extra>' });
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
@@ -4279,20 +4285,20 @@ function drawWhy() {
   // one country, not a world median: the rise is concentrated in a few rich countries and a
   // median across 213 washes it out, while the income sample swings from 43 countries to 19.
   const iso = 'USA';
-  const wc = wealthConc(iso);
+  const wealth = seriesOf('wealth_gini', iso);
   const inc = seriesOf('income_gini', iso);
-  if (!wc || !wc.series.length || inc.length < 3) return;
-  const base = Math.max(wc.series[0].year, inc[0].year);
-  const ws = wc.series.filter(d => d.year >= base), is = inc.filter(d => d.year >= base);
+  if (wealth.length < 3 || inc.length < 3) return;
+  const base = Math.max(wealth[0].year, inc[0].year);
+  const ws = wealth.filter(d => d.year >= base), is = inc.filter(d => d.year >= base);
   if (ws.length < 3 || is.length < 3) return;
   const idx = a => a.map(d => d.v / a[0].v * 100);
   const hi = Math.max(ws[ws.length - 1].year, is[is.length - 1].year);
   Plotly.react(el, [
-    { type: 'scatter', mode: 'lines', name: wc.label,
+    { type: 'scatter', mode: 'lines', name: 'wealth Gini',
       x: ws.map(d => d.year), y: idx(ws),
-      line: { color: metricColor('wealth_top1'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
-    { type: 'scatter', mode: 'lines+markers', name: 'income Gini',
-      x: is.map(d => d.year), y: idx(is), marker: { size: 5 },
+      line: { color: metricColor('wealth_gini'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
+    { type: 'scatter', mode: 'lines', name: 'income Gini',
+      x: is.map(d => d.year), y: idx(is),
       line: { color: metricColor('income_gini'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
   ], Object.assign({}, BASE_LAYOUT, {
     showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
@@ -4303,11 +4309,10 @@ function drawWhy() {
   const t = document.getElementById('why-title');
   if (t) t.textContent = `The United States: wealth and income inequality since ${base}`;
   const src = document.getElementById('why-src');
-  if (src) src.textContent = `Both indexed to ${base} = 100. The United States because it has the ` +
-    `longest run of both measures on a consistent basis. A world median would not show this: the rise sits in ` +
-    `a few rich countries and a median across 213 flattens it, while the income sample swings between 19 and 85 ` +
-    `countries a year. Wealth: Fed Distributional Financial Accounts, top 1% share. Income: World Bank PIP via OWID. ` +
-    provenance(['income_gini']);
+  if (src) src.textContent = `Two Ginis, so the lines are the same kind of statistic, both indexed to ${base} = 100. ` +
+    `The United States because it has the longest consistent run of both. A world median would not show this: ` +
+    `the rise sits in a few rich countries and a median across 213 flattens it. ` +
+    `Wealth: WID. Income: World Bank PIP via OWID. ` + provenance(['wealth_gini', 'income_gini']);
 }
 function setView(name) {
   for (const v of VIEWS) {
