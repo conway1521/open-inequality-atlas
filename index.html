@@ -309,6 +309,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .fchip[aria-pressed="true"] { color: #fff; background: var(--fc); border-color: var(--fc); }
 .fchip.w { --fc: var(--wealth); } .fchip.i { --fc: var(--income); }
 .fchip.o { --fc: var(--opportunity); } .fchip.h { --fc: var(--health); }
+.scope-tag { font-family: var(--mono); font-size: 8.5px; letter-spacing: .06em; margin-left: 5px;
+  padding: 1px 4px; border-radius: 3px; border: 1px solid currentColor; opacity: .75; vertical-align: 1px; }
 .fchip.meta { --fc: var(--ink-2); font-size: 11px; color: var(--ink-3); border-style: dashed; background: transparent; }
 .fchip.meta[aria-pressed="true"] { color: var(--ink); background: var(--bg); border-style: solid; border-color: var(--ink-3); }
 /* the facet reminder in the results header: a small cube face + its name */
@@ -715,7 +717,7 @@ footer a { color: inherit; }
           <div class="cube" id="cube">
             <div class="face f-wealth" data-facet="wealth"><span class="lab">wealth</span><div class="q">The wealth held by the richest one percent.</div></div>
             <div class="face f-income" data-facet="income"><span class="lab">income</span><div class="q">How unevenly income is shared out.</div></div>
-            <div class="face f-opportunity" data-facet="opportunity"><span class="lab">opportunity</span><div class="q">How much your parents' income sets your own.</div></div>
+            <div class="face f-opportunity" data-facet="opportunity"><span class="lab">opportunity &middot; US only</span><div class="q">How much your parents' income sets your own, across 741 US commuting zones</div></div>
             <div class="face f-health" data-facet="health"><span class="lab">health</span><div class="q">How much longer the rich live than the poor.</div></div>
             <div class="face f-link" data-facet="link"><span class="lab">link</span><div class="q">One face read alongside another</div></div>
             <div class="face f-extend" data-facet="extend"><span class="lab">extend</span><div class="q">The same face through time and across geography</div></div>
@@ -726,7 +728,7 @@ footer a { color: inherit; }
         <div class="facet-chips" id="facet-chips">
           <button class="fchip w" data-facet="wealth" aria-pressed="true">wealth</button>
           <button class="fchip i" data-facet="income" aria-pressed="false">income</button>
-          <button class="fchip o" data-facet="opportunity" aria-pressed="false">opportunity</button>
+          <button class="fchip o" data-facet="opportunity" aria-pressed="false">opportunity<span class="scope-tag">US</span></button>
           <button class="fchip h" data-facet="health" aria-pressed="false">health</button>
         </div>
       </div>
@@ -1388,10 +1390,10 @@ function parse(raw) {
   if (/\brichest\b.*\bpoorest\b|\btop tenth\b|\bhow many times\b|\bhow much more\b.*\bhold\b|\btimes what\b/.test(r))
     return { kind: 'ratio', isos, iso: isos[0] || null };
   // TRIPLE: the three measured faces held together, one dot per country
-  if (/\bthree faces\b|\ball three\b|\bfaces together\b|\bfaces sit\b/.test(r))
+  if (/\bthree faces\b|\ball three\b|\bfaces together\b|\bfaces sit\b|\bsit together\b|\bhealth (sit|together)\b/.test(r))
     return { kind: 'triple' };
   // BREAK: who defies the current relationship
-  if (/\bbreaks? the pattern\b|\bbreaks? the trend\b|\boutliers?\b|\boff the (trend|line|pattern)\b|\bexceptions?\b|\bdefy\w*\b|\bover[- ]?perform\w*\b|\bunder[- ]?perform\w*\b|\bbeat the (trend|pattern)\b|\bpunch\w* above\b/.test(r))
+  if (/\bbreaks? the pattern\b|\bbreaks? the trend\b|\boutliers?\b|\boff the (trend|line|pattern)\b|\bexceptions?\b|\bdefy\w*\b|\bover[- ]?perform\w*\b|\bunder[- ]?perform\w*\b|\bbeat the (trend|pattern)\b|\bpunch\w* above\b|\bbetter than\b.*\bsuggests?\b|\bdo better than\b/.test(r))
     return { kind: 'break', metrics };
 
   // AMONG: change the pool. "among rich countries", "all countries" (region is handled above)
@@ -1425,7 +1427,7 @@ function parse(raw) {
 
   // correlate: relate two measures across countries
   const wantsCorr = /\bagainst\b|\bvs\b|\bversus\b|\bcorrelat\w*\b|\brelationship\b|\brelate[sd]?\b|\btrack[s]?\b|\btied to\b|\blinked to\b|\bpredict\w*\b/.test(r) && !isos.length;
-  const wantsTiers = /\btiers?\b|\bbands?\b|\bterciles?\b|\bquartiles?\b|\bgroup(ed|s)?\b|\bhigh (vs|versus|and) low\b|\bunequal (vs|versus|and)\b/.test(r);
+  const wantsTiers = /\btiers?\b|\bbands?\b|\bterciles?\b|\bquartiles?\b|\bgroup(ed|s)?\b|\bhigh (vs|versus|and) low\b|\bunequal (vs|versus|and)\b|\bin more equal\b|\bmore equal countries\b/.test(r);
   if (wantsTiers) {
     const aspect = metrics.find(m => !isIneq(m) && META[m].series) ||
       (META[ctx.metric].series && !isIneq(ctx.metric) ? ctx.metric : null) ||
@@ -1473,9 +1475,9 @@ function parse(raw) {
   if (th)
     return { kind: 'threshold', op: (th[1] === 'above' || th[1] === 'over') ? 'above' : 'below',
              val: parseFloat(th[2]), region, metric };
-  if (/\blorenz\b|\bconcentration curve\b/.test(r) || (/\bdistribution\b|\bshares?\b/.test(r) && isos.length && !metric))
+  if (/\blorenz\b|\bconcentration curve\b|\bdivided up\b|\bsplit up\b|\bcarved up\b/.test(r) || (/\bdistribution\b|\bshares?\b/.test(r) && isos.length && !metric))
     return { kind: 'lorenz', isos: isos.length ? isos : focusIsos() };
-  if (/\bspread\b|\bdistribution\b|\brange\b|\bhow varied\b|\bacross countries\b/.test(r) && isos.length === 0)
+  if (/\bspread\b|\bdistribution\b|\brange\b|\bhow varied\b|\bacross countries\b|\btypical country\b|\bnormal country\b/.test(r) && isos.length === 0)
     return { kind: 'spread', metric, region };
   if (rankDir && isos.length === 0) return { kind: 'rank', dir: rankDir, region, metric, giniWords };
   if (/\bcompared to (whom|what|who)\b|^\s*compared\s*$|\bneighbou?rs\b/.test(r))
@@ -2340,7 +2342,10 @@ function removeFact(id) {
 const FACETS = {
   wealth:      { i: 0, side: true, color: 'var(--wealth)', metric: 'wealth_top1', sub: 'top 1% share' },
   income:      { i: 1, side: true, color: 'var(--income)', metric: 'income_gini', sub: 'income Gini' },
-  opportunity: { i: 2, side: true, color: 'var(--opportunity)', metric: null, sub: 'commuting zones' },
+  opportunity: { i: 2, side: true, color: 'var(--opportunity)', metric: null, sub: '741 US commuting zones',
+                 note: 'Opportunity is not measured the way the other three are. It is 741 United States commuting zones, ' +
+                   'for children born in the early 1980s: one country, one cohort, no run of years. ' +
+                   'It is here because it is the clearest picture of the mechanism that exists anywhere, not because it is global.' },
   health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'life expectancy' },
 };
 // the two poles of the cube are not faces of inequality: they are what you do to a
@@ -2383,18 +2388,18 @@ const QUESTIONS = [
   { k: '', qs: [
     'did the growth reach the typical person?',
     'how much more do the richest hold than the poorest?',
-    'how do the three faces sit together?',
+    'how is a country\'s wealth divided up?',
+    'how unequal is a typical country?',
     'where is wealth most concentrated?',
     'how has inequality changed over time?',
     'does life expectancy track inequality?',
-    'which countries break the pattern?',
-    'how spread out is wealth?',
-    'how does life expectancy differ by inequality tier?',
-    'what is the Lorenz curve?',
-    'are wealth and income pulling apart in the US?'] },
+    'do people live longer in more equal countries?',
+    'which countries do better than their wealth suggests?',
+    'are wealth and income pulling apart in the US?',
+    'how do wealth, income and health sit together?'] },
   { k: '', facet: 'opportunity', qs: [
-    'where do poor children climb highest?',
-    "how does credit differ by parents' income?"] },
+    'if you grow up poor here, what do you earn later?',
+    "does credit depend on your parents' income?"] },
 ];
 let promptIdx = 0;
 function nextPrompt(jump) {
@@ -3089,7 +3094,7 @@ function oppAnswer(q, strict) {
       `${cov.label} is higher. <em>r = ${rr.toFixed(2)}</em>`;
     return f;
   }
-  const mobWords = /\bmobilit\w*|\bclimb\w*|\bmove up\b|\bopportunit\w*|\brank\w*|\bbest\b|\bworst\b|\bhighest\b|\blowest\b|\bwhere\b|\bzones?\b/.test(r);
+  const mobWords = /\bmobilit\w*|\bclimb\w*|\bmove up\b|\bopportunit\w*|\brank\w*|\bbest\b|\bworst\b|\bhighest\b|\blowest\b|\bwhere\b|\bzones?\b|\bgrow up poor\b|\bearn later\b|\bborn poor\b/.test(r);
   if (strict && !mobWords) return null;   // a question that doesn't translate to this facet drops, it doesn't get faked
   if (!strict && !mobWords) {
     showNotice('Opportunity is the US commuting-zone layer. Ask about upward mobility, or credit, mortgages, and delinquency by parents\' income.');
