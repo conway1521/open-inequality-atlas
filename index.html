@@ -889,11 +889,12 @@ footer a { color: inherit; }
   <div id="view-why" class="wrap db" hidden>
     <h1>Why</h1>
     <p class="sub">
-      Wealth and income are treated as one story and they are not. Income inequality
-      in the rich world rose through the 1980s and then flattened. Wealth kept concentrating.
-      The two lines below are the United States, the country with the longest consistent run of
-      both, indexed so they start together. The gap that opens is the reason this atlas keeps
-      the four faces apart instead of reporting one number.
+      Wealth and income are treated as one story and they are not. In the United States the
+      wealth Gini sits around 0.85 while the income Gini sits around 0.41: wealth is roughly twice
+      as concentrated as income, and has been for as long as both have been measured. That gap is
+      the reason this atlas keeps the four faces apart instead of reporting one number.
+      The dotted line is the share held by the top one per cent, drawn because a Gini this high
+      barely moves when the very top pulls further away.
     </p>
     <div class="chart-card">
       <div class="chart-title" id="why-title">Wealth and income inequality</div>
@@ -903,7 +904,7 @@ footer a { color: inherit; }
     <div class="grid3">
       <div class="block">
         <h2>Different measures</h2>
-        <p>A wealth Gini sits twenty points above the income Gini in the same country.
+        <p>A wealth Gini sits forty points above the income Gini in the same country.
         Reporting either one alone answers a different question.</p>
       </div>
       <div class="block">
@@ -4278,41 +4279,48 @@ function initUS() {
   usChips();
 }
 
-// wealth against income across the world, both indexed so the gap is the point
+// wealth against income in one country, in levels, because the gap in levels is the point
 function drawWhy() {
   const el = document.getElementById('why-chart');
   if (!el || !window.Plotly) return;
-  // one country, not a world median: the rise is concentrated in a few rich countries and a
-  // median across 213 washes it out, while the income sample swings from 43 countries to 19.
+  // Levels, not an index. Indexing two Ginis inverts this: a Gini already at 0.85 moves
+  // little in per-cent terms even as the top pulls away, so the top share is shown too.
   const iso = 'USA';
-  const wealth = seriesOf('wealth_gini', iso);
-  const inc = seriesOf('income_gini', iso);
-  if (wealth.length < 3 || inc.length < 3) return;
-  const base = Math.max(wealth[0].year, inc[0].year);
-  const ws = wealth.filter(d => d.year >= base), is = inc.filter(d => d.year >= base);
-  if (ws.length < 3 || is.length < 3) return;
-  const idx = a => a.map(d => d.v / a[0].v * 100);
-  const hi = Math.max(ws[ws.length - 1].year, is[is.length - 1].year);
+  const wg = seriesOf('wealth_gini', iso), ig = seriesOf('income_gini', iso), w1 = seriesOf('wealth_top1', iso);
+  if (wg.length < 3 || ig.length < 3) return;
+  const base = Math.max(wg[0].year, ig[0].year);
+  const W = wg.filter(d => d.year >= base), I = ig.filter(d => d.year >= base), T = w1.filter(d => d.year >= base);
+  const hi = Math.max(W[W.length - 1].year, I[I.length - 1].year);
+  const pct = a => ((a[a.length - 1].v / a[0].v - 1) * 100);
   Plotly.react(el, [
     { type: 'scatter', mode: 'lines', name: 'wealth Gini',
-      x: ws.map(d => d.year), y: idx(ws),
-      line: { color: metricColor('wealth_gini'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
+      x: W.map(d => d.year), y: W.map(d => d.v),
+      line: { color: metricColor('wealth_gini'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+      hovertemplate: 'wealth Gini %{y:.2f}<extra></extra>' },
+    { type: 'scatter', mode: 'lines', name: 'top 1% wealth share',
+      x: T.map(d => d.year), y: T.map(d => d.v),
+      line: { color: metricColor('wealth_top1'), width: 2, dash: 'dot', shape: 'spline', smoothing: 0.6 },
+      hovertemplate: 'top 1% share %{y:.1%}<extra></extra>' },
     { type: 'scatter', mode: 'lines', name: 'income Gini',
-      x: is.map(d => d.year), y: idx(is),
-      line: { color: metricColor('income_gini'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
+      x: I.map(d => d.year), y: I.map(d => d.v),
+      line: { color: metricColor('income_gini'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+      hovertemplate: 'income Gini %{y:.2f}<extra></extra>' },
   ], Object.assign({}, BASE_LAYOUT, {
     showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
     margin: { t: 14, r: 16, b: 40, l: 50 },
     shapes: eraShapes(base, hi), annotations: eraLabels(base, hi),
-    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: `indexed to ${base} = 100`, font: { size: 11 } } }),
+    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { range: [0, 1], autorange: false,
+      title: { text: 'Gini, and share of wealth, on the same 0 to 1 scale', font: { size: 11 } } }),
   }), CFG);
   const t = document.getElementById('why-title');
-  if (t) t.textContent = `The United States: wealth and income inequality since ${base}`;
+  if (t) t.textContent = `The United States, ${base} to ${hi}`;
   const src = document.getElementById('why-src');
-  if (src) src.textContent = `Two Ginis, so the lines are the same kind of statistic, both indexed to ${base} = 100. ` +
-    `The United States because it has the longest consistent run of both. A world median would not show this: ` +
-    `the rise sits in a few rich countries and a median across 213 flattens it. ` +
-    `Wealth: WID. Income: World Bank PIP via OWID. ` + provenance(['wealth_gini', 'income_gini']);
+  if (src) src.textContent = `Levels, not an index: two Ginis on one 0 to 1 scale, so they can be read against ` +
+    `each other directly. Indexing them would mislead. Between ${base} and ${hi} the wealth Gini rose ` +
+    `${pct(W).toFixed(0)}% and the income Gini ${pct(I).toFixed(0)}%, yet the top 1% share of wealth rose ` +
+    `${pct(T).toFixed(0)}%: a Gini already near 0.85 barely moves when the very top pulls away, which is why ` +
+    `the top share is drawn alongside it. Wealth: WID. Income: World Bank PIP via OWID. ` +
+    provenance(['wealth_gini', 'income_gini']);
 }
 function setView(name) {
   for (const v of VIEWS) {
