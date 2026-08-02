@@ -889,33 +889,46 @@ footer a { color: inherit; }
   <div id="view-why" class="wrap db" hidden>
     <h1>Why</h1>
     <p class="sub">
-      Wealth and income are treated as one story and they are not. In the United States the
-      wealth Gini sits around 0.85 while the income Gini sits around 0.41: wealth is roughly twice
-      as concentrated as income, and has been for as long as both have been measured. That gap is
-      the reason this atlas keeps the four faces apart instead of reporting one number.
-      The dotted line is the share held by the top one per cent, drawn because a Gini this high
-      barely moves when the very top pulls further away.
+      Since 1990 the richest one per cent of Americans went from holding 29% of everything owned in
+      the country to holding 35%. Over the same years the bottom half went from 1.7% to 1.0%, and
+      spent eleven of those years below zero: they collectively owed more than they owned. That is
+      the transfer. It is a change in who owns the country, and it happened to wealth, not to pay.
     </p>
     <div class="chart-card">
-      <div class="chart-title" id="why-title">Wealth and income inequality</div>
-      <div id="why-chart" style="width:100%;height:360px"></div>
+      <div class="chart-title" id="why-shares-title">Who owns the United States</div>
+      <div id="why-shares" style="width:100%;height:380px"></div>
+      <p class="chart-src" id="why-shares-src"></p>
+    </div>
+    <p class="sub">
+      Now the same country and the same years through a Gini, which is the number almost every
+      report quotes. It barely moves. A Gini compresses the whole curve into one figure, and at
+      0.83 it has little room left: the top hundredth can take six more points of everything and
+      the Gini shrugs. The bottom half falling through zero is a rounding error inside it. This is
+      why the atlas keeps shares, and why a single inequality number is close to useless for the
+      question people actually mean.
+    </p>
+    <div class="chart-card">
+      <div class="chart-title" id="why-title">The same years, through a Gini</div>
+      <div id="why-chart" style="width:100%;height:340px"></div>
       <p class="chart-src" id="why-src"></p>
     </div>
     <div class="grid3">
       <div class="block">
-        <h2>Different measures</h2>
-        <p>A wealth Gini sits forty points above the income Gini in the same country.
-        Reporting either one alone answers a different question.</p>
+        <h2>Not only America</h2>
+        <p>The bottom half's share of wealth fell in most rich countries over the same
+        years: 13.1% to 4.6% in the United Kingdom, 10.2% to 2.5% in Italy, 8.9% to 4.8%
+        in France. The Netherlands moved the other way.</p>
       </div>
       <div class="block">
-        <h2>Different movement</h2>
-        <p>They do not turn together. A country can hold income inequality flat for
-        a decade while wealth concentrates through it.</p>
+        <h2>Wealth is not pay</h2>
+        <p>US output per person grew 120% since 1974 while the income of the person in
+        the middle grew 59%. Ask <em>did the growth reach the typical person?</em> in the
+        atlas to see it drawn.</p>
       </div>
       <div class="block">
-        <h2>Different sources</h2>
-        <p>Wealth comes from WID, income from the World Bank via OWID. Every chart
-        here names which one it drew from.</p>
+        <h2>What is still missing</h2>
+        <p>The income side is only a Gini here. Top and bottom income shares would make
+        the comparison like for like, and they are the next thing to load.</p>
       </div>
     </div>
   </div>
@@ -1250,15 +1263,24 @@ function fitnessFlag(fit, note) {
   return ` <span class="flag ${cls}">${esc(note)}</span>`;
 }
 function provenance(keys) {
-  const seen = [], out = [];
+  // series that came to exist the same way and run to the same year are named together,
+  // rather than repeating one sentence twice with only the label swapped
+  const seen = [], groups = [];
   for (const k of [].concat(keys)) {
     if (!k || !META[k] || seen.includes(k)) continue;
     seen.push(k);
     const b = SERIES_BASIS[k], v = vintageOf(k);
     if (!b) continue;
-    out.push(`${cap(META[k].label)} is ${BASIS[b]}, running to ${v}.`);
+    const g = groups.find(x => x.b === b && x.v === v);
+    if (g) g.labels.push(META[k].label);
+    else groups.push({ b, v, labels: [META[k].label] });
   }
-  return out.join(' ');
+  return groups.map(g => {
+    const l = g.labels;
+    const names = l.length === 1 ? l[0]
+      : l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
+    return `${cap(names)} ${l.length === 1 ? 'is' : 'are'} ${BASIS[g.b]}, running to ${g.v}.`;
+  }).join(' ');
 }
 const poolCache = {};
 function poolOf(metric) {
@@ -3351,6 +3373,12 @@ function cssVar(name, fallback) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return v || fallback;
 }
+// which way a second line of the same facet should be shaded: toward white on a light
+// page, toward black on a dark one, so the pair stays separable either way
+function isDark() {
+  const a = document.documentElement.getAttribute('data-theme');
+  return a === 'dark' || (!a && matchMedia('(prefers-color-scheme: dark)').matches);
+}
 function syncChartTheme() {
   const grid = cssVar('--grid', '#f0f0f0'), axis = cssVar('--axis', '#eaeaea'), font = cssVar('--ink-2', '#555555');
   BASE_LAYOUT.font.color = font;
@@ -3607,7 +3635,9 @@ function drawChart() {
       { type: 'scatter', mode: 'lines', name: 'the gap', showlegend: false,
         x: gYears, y: gYears.map(y => idx(rc.gs)[rc.gs.findIndex(d => d.year === y)]),
         line: { width: 0 }, fill: 'tonexty',
-        fillcolor: 'color-mix(in srgb, #eb6834 16%, transparent)', hoverinfo: 'skip' },
+        // plain rgba: Plotly writes this into an SVG fill, where color-mix does not
+        // land and it silently falls back to its own default palette instead
+        fillcolor: 'rgba(235,104,52,0.16)', hoverinfo: 'skip' },
       { type: 'scatter', mode: 'lines', name: 'output per person',
         x: rc.gs.map(d => d.year), y: idx(rc.gs),
         line: { color: metricColor('gdp_pc'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
@@ -4279,28 +4309,98 @@ function initUS() {
   usChips();
 }
 
-// wealth against income in one country, in levels, because the gap in levels is the point
-function drawWhy() {
+const WHY_ISO = 'USA';
+// syncChartTheme lives in drawChart, which the Why page never goes through: without
+// this call these two draw with the light grid baked in, blazing white over a dark page
+function drawWhy() { syncChartTheme(); drawWhyShares(); drawWhyGini(); }
+
+// the argument itself: who owns the country, top hundredth against bottom half.
+// a Gini cannot carry this. it is one number for the whole curve and it is nearly
+// deaf at both ends: at 0.83 it is close to its ceiling, and the bottom half moving
+// from 1.7% of everything to below zero is a rounding error inside it.
+function drawWhyShares() {
+  const el = document.getElementById('why-shares');
+  if (!el || !window.Plotly) return;
+  const iso = WHY_ISO;
+  const t1 = seriesOf('wealth_top1', iso), b5 = seriesOf('wealth_bottom50', iso);
+  if (t1.length < 3 || b5.length < 3) return;
+  const lo = Math.max(t1[0].year, b5[0].year);
+  const T = t1.filter(d => d.year >= lo), B = b5.filter(d => d.year >= lo);
+  const hi = Math.min(T[T.length - 1].year, B[B.length - 1].year);
+  const yrs = T.filter(d => d.year <= hi).map(d => d.year);
+  const bAt = {}; B.forEach(d => { bAt[d.year] = d.v; });
+  const tAt = {}; T.forEach(d => { tAt[d.year] = d.v; });
+  const tv = yrs.map(y => tAt[y]), bv = yrs.map(y => bAt[y]);
+  const blue = metricColor('wealth_top1');
+  // both lines are wealth, so both are the wealth blue; the lower one is shaded away
+  // from the page and dashed, which separates them by texture as well as by tone
+  const bot = shade(blue, isDark() ? 0.34 : -0.42);
+  // deep enough below the lowest point that the era labels on the floor clear the line
+  const floor = Math.min(0, Math.min(...bv)) - 0.075, ceil = Math.max(...tv) + 0.04;
+  const first = (a, k) => a[0], last = a => a[a.length - 1];
+  Plotly.react(el, [
+    // the band between the two lines is the wealth that separates them
+    { type: 'scatter', mode: 'lines', x: yrs, y: bv, showlegend: false,
+      line: { width: 0 }, hoverinfo: 'skip' },
+    { type: 'scatter', mode: 'lines', x: yrs, y: tv, showlegend: false,
+      line: { width: 0 }, fill: 'tonexty', fillcolor: 'rgba(42,120,214,0.10)', hoverinfo: 'skip' },
+    { type: 'scatter', mode: 'lines', name: 'top 1%',
+      x: yrs, y: tv,
+      line: { color: blue, width: 2.8, shape: 'spline', smoothing: 0.6 },
+      hovertemplate: 'top 1% hold %{y:.1%} of all wealth<extra></extra>' },
+    { type: 'scatter', mode: 'lines', name: 'bottom 50%',
+      x: yrs, y: bv,
+      line: { color: bot, width: 2.6, dash: 'dash', shape: 'spline', smoothing: 0.6 },
+      hovertemplate: 'bottom 50% hold %{y:.1%} of all wealth<extra></extra>' },
+  ], Object.assign({}, BASE_LAYOUT, {
+    // a filled trace flips Plotly's legend order by default; these read top then bottom
+    showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 }, traceorder: 'normal' },
+    margin: { t: 14, r: 16, b: 40, l: 54 },
+    shapes: eraShapes(lo, hi).concat([{
+      // drawn because the bottom half crosses it: below this line they owe more than they own
+      type: 'line', xref: 'x', yref: 'y', layer: 'below',
+      x0: lo, x1: hi, y0: 0, y1: 0, line: { color: 'rgba(128,132,140,0.55)', width: 1 },
+    }]),
+    annotations: eraLabels(lo, hi),
+    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, {
+      range: [floor, ceil], autorange: false, tickformat: '.0%',
+      title: { text: 'share of all household net wealth', font: { size: 11 } } }),
+  }), CFG);
+  const t = document.getElementById('why-shares-title');
+  if (t) t.textContent = `Who owns the United States, ${lo} to ${hi}`;
+  const pp = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(1);
+  const neg = yrs.filter(y => bAt[y] < 0);
+  const src = document.getElementById('why-shares-src');
+  if (src) src.textContent =
+    `Shares of the same total, so they can be read against each other and against zero. ` +
+    `From ${lo} to ${hi} the top 1% went from ${(first(tv) * 100).toFixed(1)}% to ` +
+    `${(last(tv) * 100).toFixed(1)}% of all household net wealth (${pp(last(tv) - first(tv))} points), ` +
+    `while the bottom 50% went from ${(first(bv) * 100).toFixed(1)}% to ${(last(bv) * 100).toFixed(1)}% ` +
+    `(${pp(last(bv) - first(bv))} points)` +
+    (neg.length ? `, and spent ${neg[0]} to ${neg[neg.length - 1]} below zero: the bottom half of the ` +
+      `country collectively owed more than it owned` : '') + `. ` +
+    `Both lines are the same series family, so the comparison is like for like. ` +
+    provenance(['wealth_top1', 'wealth_bottom50']);
+}
+
+// the second claim: the number everyone quotes did not move while the first chart happened
+function drawWhyGini() {
   const el = document.getElementById('why-chart');
   if (!el || !window.Plotly) return;
-  // Levels, not an index. Indexing two Ginis inverts this: a Gini already at 0.85 moves
-  // little in per-cent terms even as the top pulls away, so the top share is shown too.
-  const iso = 'USA';
-  const wg = seriesOf('wealth_gini', iso), ig = seriesOf('income_gini', iso), w1 = seriesOf('wealth_top1', iso);
+  // Levels, not an index. Indexing two Ginis inverts this: a Gini already at 0.83 moves
+  // little in per-cent terms even as the top pulls away.
+  const iso = WHY_ISO;
+  const wg = seriesOf('wealth_gini', iso), ig = seriesOf('income_gini', iso);
   if (wg.length < 3 || ig.length < 3) return;
   const base = Math.max(wg[0].year, ig[0].year);
-  const W = wg.filter(d => d.year >= base), I = ig.filter(d => d.year >= base), T = w1.filter(d => d.year >= base);
+  const W = wg.filter(d => d.year >= base), I = ig.filter(d => d.year >= base);
   const hi = Math.max(W[W.length - 1].year, I[I.length - 1].year);
-  const pct = a => ((a[a.length - 1].v / a[0].v - 1) * 100);
+  const pt = a => (a[a.length - 1].v - a[0].v);
   Plotly.react(el, [
     { type: 'scatter', mode: 'lines', name: 'wealth Gini',
       x: W.map(d => d.year), y: W.map(d => d.v),
       line: { color: metricColor('wealth_gini'), width: 2.8, shape: 'spline', smoothing: 0.6 },
       hovertemplate: 'wealth Gini %{y:.2f}<extra></extra>' },
-    { type: 'scatter', mode: 'lines', name: 'top 1% wealth share',
-      x: T.map(d => d.year), y: T.map(d => d.v),
-      line: { color: metricColor('wealth_top1'), width: 2, dash: 'dot', shape: 'spline', smoothing: 0.6 },
-      hovertemplate: 'top 1% share %{y:.1%}<extra></extra>' },
     { type: 'scatter', mode: 'lines', name: 'income Gini',
       x: I.map(d => d.year), y: I.map(d => d.v),
       line: { color: metricColor('income_gini'), width: 2.8, shape: 'spline', smoothing: 0.6 },
@@ -4310,16 +4410,19 @@ function drawWhy() {
     margin: { t: 14, r: 16, b: 40, l: 50 },
     shapes: eraShapes(base, hi), annotations: eraLabels(base, hi),
     yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { range: [0, 1], autorange: false,
-      title: { text: 'Gini, and share of wealth, on the same 0 to 1 scale', font: { size: 11 } } }),
+      title: { text: 'Gini, both on the same 0 to 1 scale', font: { size: 11 } } }),
   }), CFG);
   const t = document.getElementById('why-title');
-  if (t) t.textContent = `The United States, ${base} to ${hi}`;
+  if (t) t.textContent = `The same country, the same years, through a Gini`;
   const src = document.getElementById('why-src');
-  if (src) src.textContent = `Levels, not an index: two Ginis on one 0 to 1 scale, so they can be read against ` +
-    `each other directly. Indexing them would mislead. Between ${base} and ${hi} the wealth Gini rose ` +
-    `${pct(W).toFixed(0)}% and the income Gini ${pct(I).toFixed(0)}%, yet the top 1% share of wealth rose ` +
-    `${pct(T).toFixed(0)}%: a Gini already near 0.85 barely moves when the very top pulls away, which is why ` +
-    `the top share is drawn alongside it. Wealth: WID. Income: World Bank PIP via OWID. ` +
+  if (src) src.textContent = `Levels, not an index: two Ginis on one 0 to 1 scale, so they can be read ` +
+    `against each other directly. Indexing them would mislead, because a Gini already near 0.83 has little ` +
+    `room left to move. Between ${base} and ${hi} the wealth Gini moved ${pt(W) >= 0 ? '+' : ''}` +
+    `${pt(W).toFixed(2)} and the income Gini ${pt(I) >= 0 ? '+' : ''}${pt(I).toFixed(2)}, over the same ` +
+    `years in which the top 1% took nearly six points more of everything. ` +
+    `The two sides are not like for like: wealth here is a share-based distribution from WID, income a ` +
+    `survey Gini from World Bank PIP. The atlas does not yet hold income top shares, which is what a ` +
+    `true like-for-like comparison would need. ` +
     provenance(['wealth_gini', 'income_gini']);
 }
 function setView(name) {
@@ -4537,6 +4640,7 @@ function boot() {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     try { localStorage.setItem('oia-theme', dark ? 'dark' : 'light'); } catch (e) {}
     if (chain.length) drawChart();
+    if (!document.getElementById('view-why').hidden) drawWhy();
   });
   // back to the top (and the cube) once you've scrolled into the visuals
   const toTop = document.getElementById('totop');
