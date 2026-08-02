@@ -504,6 +504,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .q-item[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--ink); }
 .rib[data-dim]:not(.filled) .rib-x { display: none; }
 .rib.expanded .dim { color: var(--accent); }
+/* a reading that brings its own measures leaves some folds out of play */
+.rib.unused { opacity: .34; }
+.rib.unused .val { text-decoration: line-through; text-decoration-thickness: 1px; }
 /* a pleat exists only once its variable is set; the face is always there */
 .rib[data-dim] { display: block; }
 /* a folded pleat is squeezed flat: a narrow band with its name down the crease.
@@ -1616,9 +1619,9 @@ function poolNote() { return ctx.pool ? ` <em>among ${ctx.pool.label}</em>` : ''
 // both write to it, and runCell rebuilds the answer keeping every other coordinate.
 // time is three-state: unset, one moment (a chosen year), or a run of years
 const cell = { place: null, scope: null, span: null, year: null, since: null, against: null,
-  form: null, raw: null, asked: null };
+  form: null, view: null, raw: null, asked: null };
 function resetCell() { cell.place = null; cell.scope = null; cell.span = null; cell.year = null;
-  cell.since = null; cell.against = null; cell.form = null; cell.raw = null; cell.asked = null; }
+  cell.since = null; cell.against = null; cell.form = null; cell.view = null; cell.raw = null; cell.asked = null; }
 // the years that metric actually carries for that country
 function seriesYears(iso, metric) {
   if (!iso) return [];
@@ -1630,9 +1633,10 @@ function syncCellFromFact(f) {
   cell.against = (f.mode === 'scatter' && f.scatter && f.scatter.y && !isIneq(f.scatter.y)) ? f.scatter.y
     : (f.mode === 'path' && f.path && f.path.y) ? f.path.y : null;
   cell.form = ['rank', 'delta_rank'].includes(f.kind) ? 'rank'
-    : f.kind === 'reach' ? 'reach' : f.kind === 'ratio' ? 'ratio' : f.kind === 'triple' ? 'triple'
+
     : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
+  cell.view = ['reach', 'ratio', 'triple'].includes(f.kind) ? f.kind : null;
   cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
     : ctx.region ? ('r:' + ctx.region) : null;
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
@@ -1649,6 +1653,15 @@ function runCell() {
   ctx.metric = facetIneqDefault();
   ctx.lastIso = cell.place; ctx.lastAspect = cell.against;
   let p, q;
+  if (cell.view === 'triple') { runParse({ kind: 'triple' }, 'the three faces together'); return; }
+  if (cell.view === 'reach') {
+    runParse({ kind: 'reach', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
+      'did the growth reach the typical person'); return;
+  }
+  if (cell.view === 'ratio') {
+    runParse({ kind: 'ratio', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
+      'the richest tenth against the poorest half'); return;
+  }
   const F = cell.form;
   if (F === 'lorenz' && cell.place) {
     p = { kind: 'lorenz', isos: [cell.place] };
@@ -1659,15 +1672,6 @@ function runCell() {
     p = { kind: 'tiers', aspect: cell.against, lens: ctx.metric, region: ctx.region }; q = 'by tier';
   } else if (F === 'break' && cell.against && META[cell.against]) {
     p = { kind: 'break', metrics: [ctx.metric, cell.against] }; q = 'who breaks the pattern';
-  } else if (F === 'triple') {
-    p = { kind: 'triple' };
-    q = 'the three faces together';
-  } else if (F === 'reach') {
-    p = { kind: 'reach', isos: cell.place ? [cell.place] : [], iso: cell.place || null };
-    q = 'did the growth reach the typical person';
-  } else if (F === 'ratio') {
-    p = { kind: 'ratio', isos: cell.place ? [cell.place] : [], iso: cell.place || null };
-    q = 'the richest tenth against the poorest half';
   } else if (F === 'rank') {
     p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true };
     q = 'the ranking';
@@ -1701,6 +1705,13 @@ function runCell() {
   chain.push(f); ctx.lastQuery = q; render();
 }
 // set one coordinate from the accordion and rebuild
+function runParse(p, q) {
+  const prev = chain.slice();
+  chain.length = 0;
+  const f = buildAnswer(p, q);
+  if (!f) { chain.push(...prev); render(); return; }
+  chain.push(f); ctx.lastQuery = q; render();
+}
 function applyDim(dim, val) {
   if (dim === 'place') {
     // a region is a place too: it sets the geography and drops the single country
@@ -1717,8 +1728,13 @@ function applyDim(dim, val) {
     cell.against = val || null;
     if (!cell.against && ['tiers', 'break'].includes(cell.form)) cell.form = null;
     if (cell.against && ['rank', 'spread', 'lorenz'].includes(cell.form)) cell.form = null;
+    if (cell.against && cell.view) cell.view = null;   // a view brings its own measures
   }
-  else if (dim === 'form') cell.form = val || null;
+  else if (dim === 'form') {
+    // one fold, two kinds of thing: a view replaces the reading, a form only redraws it
+    if (VIEW_DEF[val]) { cell.view = val; cell.form = null; }
+    else { cell.form = val || null; cell.view = null; }
+  }
   else if (dim === 'scope') {
     cell.scope = val || null;
     if (!val) { setRegion(null); ctx.pool = null; computePool(); }
@@ -2538,7 +2554,7 @@ function placePool() {
 function dimCurrent(dim) {
   if (dim === 'place') return cell.place || '';
   if (dim === 'scope') return cell.scope || '';
-  if (dim === 'form') return cell.form || '';
+  if (dim === 'form') return cell.view || cell.form || '';
   if (dim === 'time') return cell.span === 'run' ? 'run' + (cell.since ? ':' + cell.since : '')
     : cell.span === 'moment' ? 'moment' + (cell.year ? ':' + cell.year : '') : '';
   if (dim === 'facet') return facetMeasure(curFacet) || '';
@@ -2612,10 +2628,8 @@ function dimGroups(dim, filter) {
         ['the spread', 'The spread reads one measure. Drop what it is held against.', null],
         ['a Lorenz curve', 'A Lorenz curve draws one country\'s wealth, not two measures against each other.', null]);
     } else {
-      opts.push(['a ranking', 'rank'], ['the spread', 'spread'],
-        ['top tenth against bottom half', 'ratio'], ['the three faces at once', 'triple']);
-      if (cell.place) opts.push(['growth against the middle', 'reach']);
-      else gaps.push(['growth against the middle',
+      opts.push(['a ranking', 'rank'], ['the spread', 'spread']);
+      if (!cell.place) gaps.push(['growth against the middle',
         'This holds one country\'s growth against its own median, so name a place first.', null]);
       if (cell.place && curFacet === 'wealth') opts.push(['a Lorenz curve', 'lorenz']);
       else gaps.push(['a Lorenz curve', cell.place
@@ -2624,7 +2638,10 @@ function dimGroups(dim, filter) {
       gaps.push(['by tier', 'Tiers need a second measure to split by.', null],
         ['who breaks the pattern', 'Outliers are read off a relationship, so add a measure first.', null]);
     }
-    g.push({ k: 'shown as', opts });
+    g.push({ k: 'drawn as', opts });
+    g.push({ k: 'a reading of its own', opts: Object.keys(VIEW_DEF)
+      .filter(v => v !== 'reach' || cell.place)
+      .map(v => [VIEW_DEF[v].label, v]) });
     g.push({ k: 'not in the atlas', gaps });
     return g;
   }
@@ -2751,19 +2768,26 @@ function closeDrawer() {
 }
 function renderDrawer(dim, rib, opts, filter) {
   const groups = dimGroups(dim, filter), cur = dimCurrent(dim);
+  // groups only earn a heading when there is more than one and they are named
+  const named = groups.filter(g => g.k && (g.opts || g.rows || []).length);
+  const heads = named.length > 1;
   const pills = [], gaps = [];
   for (const grp of groups) {
+    if (heads && grp.k && (grp.opts || grp.rows || []).length) pills.push(['\u0001' + grp.k, '']);
     for (const o of grp.opts || []) pills.push(o);
     for (const r of grp.rows || []) pills.push([r[0], r[1]]);
     for (const gp of grp.gaps || []) gaps.push(gp);
     if (grp.go) pills.push(['read this face', '\u0000go']);
   }
-  const capped = filter ? pills.slice(0, 18) : pills.slice(0, 8);
+  const capped = filter ? pills.slice(0, 20) : pills.slice(0, heads ? 14 : 8);
   let html = '';
   if (dim === 'place' && curFacet !== 'opportunity')
     html += `<input type="text" class="opt-find" id="opt-q" autocomplete="off" spellcheck="false" placeholder="find a country" value="${esc(filter || '')}">`;
   html += '<div class="opt-wrap">' + capped.map(o =>
-    `<button type="button" class="opt${o[1] === cur ? ' on' : ''}" data-val="${esc(o[1])}">${esc(o[0])}</button>`).join('') + '</div>';
+    (o[0][0] === '\u0001'
+      ? `<span class="opt-group-k">${esc(o[0].slice(1))}</span>`
+      : `<button type="button" class="opt${o[1] === cur ? ' on' : ''}" data-val="${esc(o[1])}">${esc(o[0])}</button>`)
+  ).join('') + '</div>';
   if (gaps.length) html += '<p class="opt-miss">not in the atlas: ' + gaps.map((gp, i) =>
     `<button type="button" class="opt-gap" data-g="${i}">${esc(gp[0])}</button>`).join(', ') + '</p>';
   html += '<p class="opt-note" hidden></p>';
@@ -2962,6 +2986,15 @@ function setStage(next) {
   requestAnimationFrame(syncDeck);
 }
 // kinds the cell has no coordinates for: keep the words, run them verbatim on send
+const VIEW_DEF = {
+  reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'] },
+  ratio:  { label: 'top tenth against bottom half', uses: ['place'], ignores: ['facet', 'against', 'when'] },
+  triple: { label: 'the three faces at once', uses: [], ignores: ['facet', 'place', 'against', 'among', 'when'] },
+};
+const FORM_DEF = {
+  rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
+  tiers: 'by tier', break: 'who breaks the pattern',
+};
 const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'us_shares', 'among'];
 function previewQuestion(q) {
   if (curFacet === 'opportunity') { resetCell(); cell.raw = q; updateCell(); return true; }
@@ -2983,9 +3016,9 @@ function previewQuestion(q) {
   else if (p.kind === 'break') { cell.form = 'break';
     cell.against = (p.metrics || []).find(m => META[m] && !isIneq(m)) || null; }
   else if (p.kind === 'rank' || p.kind === 'delta_rank') cell.form = 'rank';
-  else if (p.kind === 'reach') cell.form = 'reach';
-  else if (p.kind === 'ratio') cell.form = 'ratio';
-  else if (p.kind === 'triple') cell.form = 'triple';
+  else if (p.kind === 'reach') cell.view = 'reach';
+  else if (p.kind === 'ratio') cell.view = 'ratio';
+  else if (p.kind === 'triple') cell.view = 'triple';
   else if (p.kind === 'spread') cell.form = 'spread';
   else if (p.kind === 'lorenz') { cell.form = 'lorenz'; if (p.isos && p.isos[0]) cell.place = p.isos[0]; }
   if (cell.against === facetIneqDefault()) cell.against = null;   // nothing is held against itself
@@ -2997,7 +3030,7 @@ function previewQuestion(q) {
 // only now is anything computed
 function sendCell() {
   // a question left general on purpose has to be finished before it can answer
-  if (cell.form === 'reach' && !cell.place) {
+  if (cell.view === 'reach' && !cell.place) {
     showNotice('This holds one country\'s growth against its own median income. Add a place first.'); return;
   }
   if (cell.form === 'lorenz' && !cell.place) {
@@ -3215,11 +3248,13 @@ function updateCell() {
   const place = cell.place && BY_ISO[cell.place] ? esc(BY_ISO[cell.place].name) : (last ? 'all countries' : null);
   setSlot('place', place, 'add');
   setSlot('scope', ctx.pool ? esc(ctx.pool.label) : ctx.region ? REGION_LABEL[ctx.region] : null, 'all');
-  const FORM_LABEL = { rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
-    tiers: 'by tier', break: 'who breaks the pattern',
-    reach: 'growth against the middle', ratio: 'top tenth against bottom half',
-    triple: 'the three faces at once' };
-  setSlot('form', FORM_LABEL[cell.form] || null, 'as is');
+  setSlot('form', cell.view ? VIEW_DEF[cell.view].label : (FORM_DEF[cell.form] || null), 'as is');
+  // a view supplies its own measures, so the folds it ignores are shown as not in play
+  const ign = cell.view ? VIEW_DEF[cell.view].ignores : [];
+  ['facet', 'place', 'scope', 'time', 'against'].forEach(d => {
+    const rib = document.getElementById('rib-' + (d === 'scope' ? 'scope' : d === 'time' ? 'time' : d));
+    if (rib) rib.classList.toggle('unused', ign.includes(d === 'time' ? 'when' : d === 'scope' ? 'among' : d));
+  });
   const rf = document.getElementById('rib-facet');
   if (rf) rf.classList.add('filled');   // the face is always set, so its fold is always open
   setSlot('time', cell.span === 'run' ? (cell.since ? 'since ' + cell.since : 'over the years')
