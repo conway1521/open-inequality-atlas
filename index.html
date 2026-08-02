@@ -139,6 +139,12 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   .ask { padding: 32px 0 12px; }
 }
 .ask h1 .turn { color: var(--accent); transition: color .4s ease; }
+/* the argument the atlas is built on, said once, where a first visitor will read it */
+.claim { max-width: 540px; margin: 14px auto 0; color: var(--ink-2);
+  font-size: 15.5px; line-height: 1.55; text-wrap: pretty; }
+.claim-link { background: none; border: 0; padding: 0 0 1px; cursor: pointer; font: inherit;
+  color: var(--accent); border-bottom: 1px solid currentColor; margin-left: 4px; }
+.claim-link:hover { color: var(--ink); }
 
 /* ask view */
 .ask { padding: 64px 0 0; text-align: center; }
@@ -324,7 +330,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
    replaced by a badge: the deck it sits in pins to the top and condenses, the
    bellows rides with it, and the answer and its graph flow underneath. */
 #view-ask.engaged .ask { padding: 0; }
-#view-ask.engaged .ask h1, #view-ask.engaged .ask .sub { display: none; }
+#view-ask.engaged .ask h1, #view-ask.engaged .ask .sub, #view-ask.engaged .claim { display: none; }
 /* the way back to the cube room; only present once you're working */
 
 
@@ -355,6 +361,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* three beats. write it, see it as a chain, send it.
    the cube is large for the first two and rises out of the way for the third. */
 #view-ask.stage-compose .cell, #view-ask.stage-compose #session { display: none; }
+#view-ask:not(.stage-compose) .claim { display: none; }
 #view-ask.stage-chain .askbox, #view-ask.stage-chain .helpbtn,
 #view-ask.stage-chain .help, #view-ask.stage-chain #session { display: none; }
 #view-ask.stage-result .askbox, #view-ask.stage-result .helpbtn, #view-ask.stage-result .help { display: none; }
@@ -708,6 +715,9 @@ footer a { color: inherit; }
   <div id="view-ask" class="wrap stage-compose">
     <section class="ask">
       <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality</h1>
+      <p class="claim">Wealth and income are treated as one story. They came apart decades ago,
+        and which one you measure decides what you conclude.
+        <button type="button" class="claim-link" id="claim-why">see it</button></p>
     </section>
 
     <div class="deck" id="deck">
@@ -4430,6 +4440,8 @@ function boot() {
     if (q) q.focus();
   });
   document.querySelectorAll('.sendbtn').forEach(el => el.addEventListener('click', sendCell));
+  const cw = document.getElementById('claim-why');
+  if (cw) cw.addEventListener('click', () => { setView('why'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   const sh = document.getElementById('shake');
   if (sh) sh.addEventListener('click', shakeCube);
   document.getElementById('clear').addEventListener('click', resetAll);
