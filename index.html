@@ -538,6 +538,10 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--ink) 40%, transparent); }
 .bellow-drawer[hidden] { display: none; }
 .opt-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+/* a group heading breaks the row and sits above its pills, rather than reading as one */
+.opt-group-k { flex: 0 0 100%; font-family: var(--mono); font-size: 10px; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--ink-3); margin: 2px 0 1px; }
+.opt-wrap .opt-group-k:first-child { margin-top: 0; }
 .bellow-drawer .opt { font-size: 11.5px; padding: 3px 10px; border-radius: 100px;
   border: 1px solid var(--border); background: var(--bg); color: var(--ink-2); cursor: pointer; }
 .bellow-drawer .opt:hover { color: var(--ink); border-color: var(--ink-3); }
@@ -560,6 +564,21 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .opt-find input { width: 100%; font: 400 12px 'Inter', system-ui, sans-serif; color: var(--ink);
   background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; outline: none; }
 .opt-find input:focus { border-color: var(--accent); }
+/* the country list is long on purpose: all of it, scrolled, not a sample of eight */
+.opt-scroll { max-height: 172px; overflow-y: auto; padding-right: 4px; }
+.opt-x { margin-left: 5px; opacity: .7; font-size: 12px; }
+.opt.picked:hover .opt-x { opacity: 1; }
+/* naming two years outright, for when a pill is not the span you want */
+.opt-range { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.opt-range .opt-group-k { flex: 0 0 100%; margin-bottom: 3px; }
+.opt-yr { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink-2); }
+.opt-yr input { width: 66px; font: 400 12px var(--mono), monospace; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 3px 6px; outline: none; text-align: center; }
+.opt-yr input:focus { border-color: var(--pick, var(--accent)); }
+.opt-yr input::-webkit-outer-spin-button,
+.opt-yr input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.opt-yr-note { font-size: 10.5px; color: var(--ink-3); }
 @media (max-width: 620px) {
   .ribs { flex-wrap: wrap; }
   .rib, .rib.facet { flex: 1 1 46%; }
@@ -1691,10 +1710,35 @@ function poolNote() { return ctx.pool ? ` <em>among ${ctx.pool.label}</em>` : ''
 // the one editable cell: its coordinates are what's on screen. chat and the accordion
 // both write to it, and runCell rebuilds the answer keeping every other coordinate.
 // time is three-state: unset, one moment (a chosen year), or a run of years
-const cell = { place: null, scope: null, span: null, year: null, since: null, against: null,
-  form: null, view: null, raw: null, asked: null };
-function resetCell() { cell.place = null; cell.scope = null; cell.span = null; cell.year = null;
-  cell.since = null; cell.against = null; cell.form = null; cell.view = null; cell.raw = null; cell.asked = null; }
+const MAX_PLACES = 6;
+const cell = { places: [], scope: null, span: null, year: null, since: null, until: null,
+  against: null, form: null, view: null, raw: null, asked: null };
+// one place is the ordinary case and most readings can only take one, so `place` is
+// kept as the first of `places`. writing it collapses the selection to that one country.
+Object.defineProperty(cell, 'place', {
+  enumerable: true,
+  get() { return this.places[0] || null; },
+  set(v) { this.places = v ? [v] : []; },
+});
+function resetCell() { cell.places = []; cell.scope = null; cell.span = null; cell.year = null;
+  cell.since = null; cell.until = null; cell.against = null; cell.form = null; cell.view = null;
+  cell.raw = null; cell.asked = null; }
+// the outer years the current reading could possibly run between: one country's own
+// span if a place is set, otherwise the widest span the measure carries anywhere
+function spanBounds(metric) {
+  const key = metric || facetIneqDefault();
+  if (cell.place) {
+    const ys = seriesYears(cell.place, key);
+    if (ys.length) return { lo: ys[0], hi: ys[ys.length - 1] };
+  }
+  const ser = SERIES[key] || {};
+  let lo = Infinity, hi = -Infinity;
+  for (const i in ser) {
+    const a = ser[i];
+    if (a && a.length) { lo = Math.min(lo, a[0].year); hi = Math.max(hi, a[a.length - 1].year); }
+  }
+  return isFinite(lo) ? { lo, hi } : null;
+}
 // the years that metric actually carries for that country
 function seriesYears(iso, metric) {
   if (!iso) return [];
@@ -1715,7 +1759,7 @@ function syncCellFromFact(f) {
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
     : f.kind === 'point' ? 'moment' : null;
   cell.year = (f.kind === 'point' && f.marker) ? f.marker.year : null;
-  cell.since = null;
+  cell.since = null; cell.until = null;
   const focus = (f.scatter && f.scatter.focus) || [];
   cell.place = (SINGLE_PLACE.includes(f.kind) && f.isos && f.isos.length) ? f.isos[f.isos.length - 1]
     : (focus.length === 1 ? focus[0] : null);
@@ -1755,8 +1799,20 @@ function runCell() {
   } else if (cell.place && cell.span === 'moment' && cell.year) {   // one country, one year
     p = { kind: 'point', iso: cell.place, year: cell.year, metric: ctx.metric };
     q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} in ${cell.year}`;
+  } else if (cell.places.length > 1) {
+    // more than one country only draws as lines through time or as a bar of the set;
+    // anything else would quietly read the first one and drop the rest
+    if (cell.span === 'run' || !cell.span) {
+      p = { kind: 'time', isos: cell.places.slice(), year: cell.since, until: cell.until,
+        region: null, metric: ctx.metric };
+      q = `${cell.places.length} countries over time`;
+    } else {
+      p = { kind: 'rank', dir: 'high', region: null, metric: ctx.metric, only: cell.places.slice(),
+        year: cell.year };
+      q = `${cell.places.length} countries compared`;
+    }
   } else if (cell.place && cell.span === 'run') {   // a run of years wins when a place is set
-    p = { kind: 'time', isos: [cell.place], year: cell.since, region: null, metric: ctx.metric };
+    p = { kind: 'time', isos: [cell.place], year: cell.since, until: cell.until, region: null, metric: ctx.metric };
     q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} over time`;
   } else if (cell.against && META[cell.against]) {
     p = { kind: 'correlate', x: ctx.metric, y: cell.against, region: ctx.region };
@@ -1765,7 +1821,7 @@ function runCell() {
     p = { kind: 'profile', iso: cell.place };
     q = BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place;
   } else if (cell.span === 'run') {
-    p = { kind: 'time', isos: [], year: cell.since, region: ctx.region, metric: ctx.metric };
+    p = { kind: 'time', isos: [], year: cell.since, until: cell.until, region: ctx.region, metric: ctx.metric };
     q = 'over time';
   } else {
     p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true };
@@ -1787,13 +1843,21 @@ function runParse(p, q) {
 }
 function applyDim(dim, val) {
   if (dim === 'place') {
-    // a region is a place too: it sets the geography and drops the single country
-    cell.place = val || null;
+    if (val && val[0] === '+') {          // toggle one country in or out of the comparison
+      const iso = val.slice(1), at = cell.places.indexOf(iso);
+      if (at >= 0) cell.places.splice(at, 1);
+      else if (cell.places.length < MAX_PLACES) cell.places.push(iso);
+      else showNotice(`Six countries is as many as one reading can carry. Drop one first.`);
+    } else cell.place = val || null;      // naming one outright clears the rest
   } else if (dim === 'time') {
     const bits = String(val || '').split(':');
     cell.span = bits[0] === 'run' ? 'run' : bits[0] === 'moment' ? 'moment' : null;
     cell.since = cell.span === 'run' && bits[1] ? +bits[1] : null;
+    cell.until = cell.span === 'run' && bits[2] ? +bits[2] : null;
     cell.year = cell.span === 'moment' && bits[1] ? +bits[1] : null;
+    if (cell.since && cell.until && cell.until < cell.since) {   // dragged past itself: swap, don't refuse
+      const t = cell.since; cell.since = cell.until; cell.until = t;
+    }
     if (cell.span === 'moment' && !cell.year) {   // no year named: read the latest one there is
       const ys = seriesYears(cell.place); cell.year = ys.length ? ys[ys.length - 1] : null;
     }
@@ -1974,7 +2038,9 @@ function buildAnswer(p, q) {
   }
 
   else if (p.kind === 'triple') {
-    const X = 'wealth_top1', Y = 'income_gini', Z = 'life_exp';
+    // the same top hundredth in wealth and in income, against how long people live:
+    // three faces of the cube, and the two economic ones now read the same way
+    const X = 'wealth_top1', Y = SERIES.income_top1 ? 'income_top1' : 'income_gini', Z = 'life_exp';
     const pts = [];
     for (const iso in BY_ISO) {
       const xs = seriesOf(X, iso), ys = seriesOf(Y, iso), zs = seriesOf(Z, iso);
@@ -1991,11 +2057,23 @@ function buildAnswer(p, q) {
     ctx.metric = X;
     f.mode = 'triple';
     f.triple = { pts, x: X, y: Y, z: Z };
-    f.isos = (ctx.lastIso && pts.some(q => q.iso === ctx.lastIso)) ? [ctx.lastIso] : [];
+    const want = (p.isos && p.isos.length ? p.isos : (ctx.lastIso ? [ctx.lastIso] : []))
+      .filter(i => pts.some(q => q.iso === i));
+    f.isos = want;
     const yrs = pts.map(q => q.year);
-    f.text = `Wealth, income and health together, one dot per country, ` +
-      `each at the latest year all three were measured (${Math.min(...yrs)} to ${Math.max(...yrs)}). ` +
-      `<strong>${pts.length} countries</strong> carry all three. Turn it the way you turn the cube.`;
+    const mx = META[X], my = META[Y], mz = META[Z];
+    let t = `Every country is one point, placed by three numbers at once: ` +
+      `${mx.label} across, ${my.label} deep, ${mz.label} up. ` +
+      `<strong>${pts.length} countries</strong> carry all three, each at the latest year all three ` +
+      `were measured (${Math.min(...yrs)} to ${Math.max(...yrs)}).`;
+    if (want.length) {
+      const hits = want.map(i => pts.find(q => q.iso === i));
+      t += ' ' + hits.map(h => `<strong>${esc(h.name)}</strong> sits at ${mx.fmt(h.x)} wealth, ` +
+        `${my.fmt(h.y)} income, ${mz.fmt(h.z)} (${h.year})`).join('; ') + '.';
+    } else {
+      t += ' Name a country to have it marked and its three readings dropped to the walls.';
+    }
+    f.text = t;
   }
 
   else if (p.kind === 'break') {
@@ -2173,16 +2251,27 @@ function buildAnswer(p, q) {
     const key = resolveMetric(p);
     ctx.metric = key;
     const m = META[key];
-    const pool = rankedPool(key, p.dir, p.region);
+    let pool = rankedPool(key, p.dir, p.region);
+    if (p.only && p.only.length) {
+      const want = p.only;
+      pool = pool.filter(r => want.includes(r.geo_id));
+      const missing = want.filter(i => !pool.some(r => r.geo_id === i));
+      if (missing.length) f.missNote = missing.map(i => BY_ISO[i] ? BY_ISO[i].name : i);
+    }
     if (!pool.length) return miss();
-    const top = pool.slice(0, 10);
-    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    const top = p.only && p.only.length ? pool : pool.slice(0, 10);
+    const where = p.only && p.only.length ? '' : p.region ? ` in ${REGION_LABEL[p.region]}` : '';
     const three = top.slice(0, 3).map(r => `${esc(r.geo_name)} <strong>${m.fmt(r.val)}</strong>`).join(', ');
     ctx.lastRankDir = p.dir; ctx.lastIso = top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
     f.isos = [top[0].geo_id];
     f.mode = 'bars';
     f.bar = { key, dir: p.dir, rows: top, highlight: null, note: where };
-    f.text = `${p.dir === 'high' ? 'Highest' : 'Lowest'} ${m.label}${where}, latest year: ${three}.`;
+    f.isos = p.only && p.only.length ? top.map(r => r.geo_id) : f.isos;
+    f.text = (p.only && p.only.length
+      ? `${cap(m.label)}, latest year, ${top.length} countries: ${three}.`
+      : `${p.dir === 'high' ? 'Highest' : 'Lowest'} ${m.label}${where}, latest year: ${three}.`) +
+      (f.missNote ? ` <em>${esc(f.missNote.join(', '))} ${f.missNote.length === 1 ? 'has' : 'have'} ` +
+        `no ${esc(m.label)} on record, so ${f.missNote.length === 1 ? 'it is' : 'they are'} not drawn.</em>` : '');
   }
 
   else if (p.kind === 'delta_rank') {
@@ -2279,29 +2368,48 @@ function buildAnswer(p, q) {
     const m = META[key];
     const isos = p.isos.length ? p.isos : focusIsos().length ? focusIsos() : (ctx.lastIso ? [ctx.lastIso] : []);
     const reg = p.region || (!isos.length ? ctx.lastRegion : null);
+    // a chosen window clips the series itself, so the sentence reports the window
+    // that was asked for rather than the whole run with the axis cropped over it
+    const clip = a => a.filter(d => (!p.year || d.year >= p.year) && (!p.until || d.year <= p.until));
     if (!isos.length && reg) {
-      const series = medianSeriesOf(key, reg);
-      if (!series.length) return miss();
-      const from = p.year ? (series.find(d => d.year >= p.year) || series[0]) : series[0];
+      const whole = medianSeriesOf(key, reg);
+      const series = clip(whole);
+      if (series.length < 2) return miss();
+      const from = series[0];
       const to = series[series.length - 1];
       const d = to.v - from.v;
-      f.regionKey = reg; f.fromYear = p.year || null; f.metricUsed = key; ctx.lastRegion = reg;
+      f.regionKey = reg; f.fromYear = p.year || null; f.toYear = p.until || null; f.metricUsed = key; ctx.lastRegion = reg;
       f.text = `${REGION_LABEL[reg]} median ${m.label} over time: <strong>${m.fmt(from.v)}</strong> in ${from.year} to ` +
         `<strong>${m.fmt(to.v)}</strong> in ${to.year}, ${d >= 0 ? '+' : ''}<strong>${m.fmtD(Math.abs(d))}</strong>.`;
       return f;
     }
     if (!isos.length) { showNotice('Ask about a country first, then "over time".'); return null; }
     f.isos = isos.slice(0, 8); ctx.lastIso = f.isos[f.isos.length - 1];
-    f.fromYear = p.year || null; f.metricUsed = key;
+    f.fromYear = p.year || null; f.toYear = p.until || null; f.metricUsed = key;
+    const short = [];
     const bits = f.isos.slice(0, 3).map(iso => {
-      const s = seriesOf(key, iso); if (!s.length) return null;
-      const from = p.year ? (s.find(d => d.year >= p.year) || s[0]) : s[0];
-      const to = s[s.length - 1];
+      const whole = seriesOf(key, iso); if (!whole.length) return null;
+      const s = clip(whole);
+      if (s.length < 2) { short.push(BY_ISO[iso].name); return null; }
+      const from = s[0], to = s[s.length - 1];
       const d = to.v - from.v;
-      return `${esc(BY_ISO[iso].name)} ${d >= 0 ? '+' : '-'}<strong>${m.fmtD(Math.abs(d))}</strong> since ${from.year}`;
+      return `${esc(BY_ISO[iso].name)} ${d >= 0 ? '+' : '-'}<strong>${m.fmtD(Math.abs(d))}</strong> ` +
+        `from ${from.year} to ${to.year}`;
     }).filter(Boolean);
-    if (!bits.length) return miss();
-    f.text = `${cap(m.label)} over time: ${bits.join(', ')}.`;
+    if (!bits.length) {
+      showNotice(p.year || p.until
+        ? 'No country here carries two points inside those years. Widen the range.'
+        : 'That measure has no run of years for this place.');
+      return null;
+    }
+    // three are spelled out; any others are drawn, and the sentence says so rather
+    // than leaving a reader to count lines against names
+    const extra = f.isos.length - Math.min(3, f.isos.length);
+    f.text = `${cap(m.label)} over time: ${bits.join(', ')}.` +
+      (extra > 0 ? ` <em>${extra} more ${extra === 1 ? 'country is' : 'countries are'} drawn.</em>` : '') +
+      (short.length ? ` <em>${esc(short.join(', '))} ${short.length === 1 ? 'has' : 'have'} ` +
+        `fewer than two points inside those years, so ${short.length === 1 ? 'it is' : 'they are'} ` +
+        `not summarised.</em>` : '');
   }
 
   else if (p.kind === 'point') {
@@ -2584,23 +2692,6 @@ const AGAINST_FAMILY = {
   co2_pc: 'environment',
 };
 // the next measures you'd reach for, and the nearest thing the atlas actually holds
-const AGAINST_GAPS = [
-  ['infant mortality', 'life_exp'],
-  ['years lived in good health', 'life_exp'],
-  ['years of schooling', null],
-  ['university completion', null],
-  ['union membership', 'income_gini'],
-  ['the top rate of tax', 'income_gini'],
-  ['house prices to income', 'median_income'],
-  ['home ownership', 'wealth_bottom50'],
-];
-// what each face still can't answer, said plainly
-const FACET_GAPS = {
-  wealth: [['the top 10% share', 'Held for the United States only, on the US side.', null]],
-  income: [['the top 1% income share', 'The atlas holds the Gini for income, not its shares.', null],
-    ['wages against profits', 'Not in the atlas.', null]],
-  health: [['the rich-poor life gap', 'Life expectancy is held for the country as a whole, not split by income.', 'life_exp']],
-};
 // how much ground a measure actually covers, straight from the series
 function coverageOf(k) {
   const ser = SERIES[k]; if (!ser) return '';
@@ -2627,7 +2718,8 @@ function dimCurrent(dim) {
   if (dim === 'place') return cell.place || '';
   if (dim === 'scope') return cell.scope || '';
   if (dim === 'form') return cell.view || cell.form || '';
-  if (dim === 'time') return cell.span === 'run' ? 'run' + (cell.since ? ':' + cell.since : '')
+  if (dim === 'time') return cell.span === 'run'
+    ? 'run' + (cell.since ? ':' + cell.since : '') + (cell.until ? ':' + cell.until : '')
     : cell.span === 'moment' ? 'moment' + (cell.year ? ':' + cell.year : '') : '';
   if (dim === 'facet') return facetMeasure(curFacet) || '';
   if (dim === 'against') return cell.against || '';
@@ -2640,7 +2732,6 @@ function dimGroups(dim, filter) {
       g.push({ k: 'measure', rows: [['upward mobility', 'upward mobility', '741 US commuting zones']] });
       g.push({ k: 'not in the atlas', gaps: [['mobility outside the US',
         'This layer is US commuting zones only.', null]] });
-      g.push({ go: 1 });
       return g;
     }
     if (dim === 'against') {
@@ -2670,87 +2761,69 @@ function dimGroups(dim, filter) {
   }
   if (dim === 'place') {
     const pool = placePool(), cur = cell.place || '';
+    const picked = cell.places.slice();
+    // whatever is already chosen, shown together and removable, so a comparison of
+    // four or five countries is something you can see and edit rather than infer
+    if (picked.length) g.push({ k: picked.length > 1 ? `comparing ${picked.length}` : 'chosen',
+      opts: picked.map(i => [BY_ISO[i] ? BY_ISO[i].name : i, '+' + i]), chosen: 1 });
     const f = norm(filter || '');
     if (f) {
-      const hit = pool.filter(p => norm(p[0]).includes(f)).slice(0, 30);
-      return [{ k: hit.length ? 'countries' : 'nothing by that name', opts: hit }];
+      const hit = pool.filter(p => norm(p[0]).includes(f) && !picked.includes(p[1])).slice(0, 30);
+      g.push({ k: hit.length ? 'countries' : 'nothing by that name', opts: hit.map(p => [p[0], '+' + p[1]]) });
+      return g;
     }
     const reg = cur ? regionOf(cur) : null;
     if (reg) {
-      const near = pool.filter(p => p[1] !== cur && regionOf(p[1]) === reg).slice(0, 9);
-      if (near.length) g.push({ k: 'nearby', opts: near });
+      const near = pool.filter(p => !picked.includes(p[1]) && regionOf(p[1]) === reg).slice(0, 9);
+      if (near.length) g.push({ k: 'nearby', opts: near.map(p => [p[0], '+' + p[1]]) });
     }
     // every country the measure covers, in full, so the fold is browsable not a sample
     g.push({ k: reg ? `all ${pool.length} countries` : `every country (${pool.length})`,
-      opts: pool.filter(p => p[1] !== cur) });
-    g.push({ k: '', opts: [['all countries', '']] });
-    g.push({ k: 'not in the atlas', gaps: [
-      ['regions within a country', 'The series are country-level.', null],
-      ['cities', 'The series are country-level.', null]] });
+      opts: pool.filter(p => !picked.includes(p[1])).map(p => [p[0], '+' + p[1]]) });
+    if (picked.length) g.push({ k: '', opts: [['all countries', '']] });
     return g;
   }
   if (dim === 'scope') {
     g.push({ k: 'the set', opts: [['the whole world', ''],
       ['richer countries', 'pool:rich'], ['poorer countries', 'pool:poor']] });
     g.push({ k: 'a region', opts: REGION_KEYS.map(k => [REGION_LABEL[k], 'r:' + k]) });
-    g.push({ k: 'not in the atlas', gaps: [
-      ['World Bank income groups', 'The pools here are terciles of GDP per person.', null],
-      ['the OECD, the EU, the G20', 'The atlas has no membership lists.', null]] });
     return g;
   }
   if (dim === 'form') {
     // only the shapes this cell can actually take. the rest are said to be unavailable.
+    // only the shapes this cell can take. a shape it cannot take is left out here and
+    // refused with its reason at send time, so the reason arrives when you reach for it
     const held = cell.against && META[cell.against];
     const opts = [['the plain reading', '']];
-    const gaps = [];
     if (held) {
       opts.push(['by tier', 'tiers'], ['who breaks the pattern', 'break']);
-      gaps.push(['a ranking', 'A ranking reads one measure. Drop what it is held against.', null],
-        ['the spread', 'The spread reads one measure. Drop what it is held against.', null],
-        ['a Lorenz curve', 'A Lorenz curve draws one country\'s wealth, not two measures against each other.', null]);
     } else {
       opts.push(['a ranking', 'rank'], ['the spread', 'spread']);
-      if (!cell.place) gaps.push(['growth against the middle',
-        'This holds one country\'s growth against its own median, so name a place first.', null]);
       if (cell.place && curFacet === 'wealth') opts.push(['a Lorenz curve', 'lorenz']);
-      else gaps.push(['a Lorenz curve', cell.place
-        ? 'A Lorenz curve splits wealth across a population, so it needs the wealth face.'
-        : 'A Lorenz curve is drawn for one country, so name a place first.', null]);
-      gaps.push(['by tier', 'Tiers need a second measure to split by.', null],
-        ['who breaks the pattern', 'Outliers are read off a relationship, so add a measure first.', null]);
     }
     g.push({ k: 'drawn as', opts });
     g.push({ k: 'a reading of its own', opts: Object.keys(VIEW_DEF)
       .filter(v => v !== 'reach' || cell.place)
       .map(v => [VIEW_DEF[v].label, v]) });
-    g.push({ k: 'not in the atlas', gaps });
     return g;
   }
   if (dim === 'time') {
-    g.push({ k: 'a span', opts: [['a single moment', 'moment'], ['over the years', 'run'],
-      ['since 1990', 'run:1990'], ['since 2000', 'run:2000'], ['since 2010', 'run:2010']] });
-    if (cell.span === 'moment') {   // one moment: which one
-      const ys = seriesYears(cell.place);
-      if (ys.length) {
-        const pick = [];
-        for (let i = ys.length - 1; i >= 0 && pick.length < 12; i -= 4) pick.push(ys[i]);
-        g.push({ k: 'which year', opts: pick.map(y => ['' + y, 'moment:' + y]) });
-      } else {
-        g.push({ k: 'which year', gaps: [['a year',
-          'Years come from one country\'s series, so name a place first.', null]] });
-      }
+    const b = spanBounds();
+    const since = ['run:1990', 'run:2000', 'run:2010'].filter(v => !b || +v.split(':')[1] <= b.hi);
+    g.push({ k: 'a span', opts: [['a single moment', 'moment'], ['over the years', 'run']]
+      .concat(since.map(v => ['since ' + v.split(':')[1], v])) });
+    // the pills are shortcuts, not the whole vocabulary: any two years can be named
+    if (b) {
+      g.push(cell.span === 'moment'
+        ? { k: 'or a year of your own', year: { lo: b.lo, hi: b.hi, at: cell.year } }
+        : { k: 'or a range of your own', range: { lo: b.lo, hi: b.hi,
+            from: cell.since, to: cell.until } });
     }
-    g.push({ k: 'not in the atlas', gaps: [
-      ['decade by decade', 'The series are annual points, not decade averages.', null],
-      ['what happens next', 'The atlas reports what was measured; it does not forecast.', null]] });
     return g;
   }
   if (dim === 'facet') {
     const list = FACET_MEASURES[curFacet] || [];
     if (list.length) g.push({ k: 'measure', rows: list.map(m => [m[1], m[0], coverageOf(m[0])]) });
-    const gaps = FACET_GAPS[curFacet] || [];
-    if (gaps.length) g.push({ k: 'not in the atlas', gaps });
-    g.push({ go: 1 });
     return g;
   }
   if (dim === 'against') {
@@ -2770,13 +2843,12 @@ function dimGroups(dim, filter) {
     const curFam = cell.against && AGAINST_FAMILY[cell.against];
     fams.sort((a, b) => (b.k === curFam ? 1 : 0) - (a.k === curFam ? 1 : 0));
     g.push(...fams);
-    g.push({ k: 'not in the atlas', gaps: AGAINST_GAPS.map(x => [x[0], '', x[1]]) });
     g.push({ k: '', opts: [['nothing', '']] });
     return g;
   }
   return g;
 }
-let keepOpen = null, reopenAfter = null;
+let keepOpen = null, reopenAfter = null, lastYearField = null;
 // the ribbon: one path across every section, pinching at every other seam so the
 // strip reads as a folded band, the way the cube's net would hinge open
 function drawRibbon(foldAt) {
@@ -2854,22 +2926,38 @@ function renderDrawer(dim, rib, opts, filter) {
   const named = groups.filter(g => g.k && (g.opts || g.rows || []).length);
   const heads = named.length > 1;
   const pills = [], gaps = [];
+  let range = null, yearPick = null, rangeK = '';
   for (const grp of groups) {
+    if (grp.range) { range = grp.range; rangeK = grp.k || ''; continue; }
+    if (grp.year) { yearPick = grp.year; rangeK = grp.k || ''; continue; }
     if (heads && grp.k && (grp.opts || grp.rows || []).length) pills.push(['\u0001' + grp.k, '']);
-    for (const o of grp.opts || []) pills.push(o);
+    for (const o of grp.opts || []) pills.push(grp.chosen ? [o[0], o[1], 'chosen'] : o);
     for (const r of grp.rows || []) pills.push([r[0], r[1]]);
     for (const gp of grp.gaps || []) gaps.push(gp);
-    if (grp.go) pills.push(['read this face', '\u0000go']);
   }
-  const capped = filter ? pills.slice(0, 20) : pills.slice(0, heads ? 14 : 8);
+  const capped = dim === 'place' ? pills
+    : filter ? pills.slice(0, 20) : pills.slice(0, heads ? 14 : 8);
   let html = '';
   if (dim === 'place' && curFacet !== 'opportunity')
     html += `<input type="text" class="opt-find" id="opt-q" autocomplete="off" spellcheck="false" placeholder="find a country" value="${esc(filter || '')}">`;
-  html += '<div class="opt-wrap">' + capped.map(o =>
+  html += `<div class="opt-wrap${dim === 'place' ? ' opt-scroll' : ''}">` + capped.map(o =>
     (o[0][0] === '\u0001'
       ? `<span class="opt-group-k">${esc(o[0].slice(1))}</span>`
-      : `<button type="button" class="opt${o[1] === cur ? ' on' : ''}" data-val="${esc(o[1])}">${esc(o[0])}</button>`)
+      : `<button type="button" class="opt${o[2] === 'chosen' ? ' on picked' : o[1] === cur ? ' on' : ''}" ` +
+        `data-val="${esc(o[1])}">${esc(o[0])}${o[2] === 'chosen' ? '<span class="opt-x">\u00d7</span>' : ''}</button>`)
   ).join('') + '</div>';
+  // typing a year is the precise way in; the pills above are only the common cases
+  const yrIn = (id, val, lo, hi, lab) =>
+    `<label class="opt-yr"><span>${esc(lab)}</span>` +
+    `<input type="number" id="${id}" inputmode="numeric" step="1" min="${lo}" max="${hi}" ` +
+    `placeholder="${lo === hi ? lo : (id === 'yr-to' ? hi : lo)}" value="${val == null ? '' : val}"></label>`;
+  if (range) html += `<div class="opt-range"><span class="opt-group-k">${esc(rangeK)}</span>` +
+    yrIn('yr-from', range.from, range.lo, range.hi, 'from') +
+    yrIn('yr-to', range.to, range.lo, range.hi, 'to') +
+    `<span class="opt-yr-note">${range.lo} to ${range.hi} on record</span></div>`;
+  if (yearPick) html += `<div class="opt-range"><span class="opt-group-k">${esc(rangeK)}</span>` +
+    yrIn('yr-at', yearPick.at, yearPick.lo, yearPick.hi, 'year') +
+    `<span class="opt-yr-note">${yearPick.lo} to ${yearPick.hi} on record</span></div>`;
   if (gaps.length) html += '<p class="opt-miss">not in the atlas: ' + gaps.map((gp, i) =>
     `<button type="button" class="opt-gap" data-g="${i}">${esc(gp[0])}</button>`).join(', ') + '</p>';
   html += '<p class="opt-note" hidden></p>';
@@ -2880,7 +2968,6 @@ function renderDrawer(dim, rib, opts, filter) {
 
   opts.querySelectorAll('.opt').forEach(btn => btn.addEventListener('click', () => {
     const v = btn.dataset.val;
-    if (v === '\u0000go') { closeDrawer(); runPrompt((PROMPT_SETS[curFacet] || PROMPT_SETS.default)[0]); return; }
     if (curFacet === 'opportunity' && dim !== 'facet') { closeDrawer(); ask(v); return; }
     if (dim === 'place' && v) { keepOpen = dim; applyDim(dim, v); keepOpen = null; return; }
     closeDrawer();
@@ -2896,6 +2983,24 @@ function renderDrawer(dim, rib, opts, filter) {
     const nb = note.querySelector('.opt-near');
     if (nb) nb.addEventListener('click', () => { closeDrawer(); applyDim(dim, nb.dataset.val); });
   }));
+  const num = el => { const v = parseInt(el.value, 10); return isFinite(v) ? v : null; };
+  const commitYears = () => {
+    if (yearPick) {
+      const at = num(opts.querySelector('#yr-at'));
+      keepOpen = dim; applyDim('time', 'moment' + (at ? ':' + at : '')); keepOpen = null;
+      return;
+    }
+    const a = num(opts.querySelector('#yr-from')), b = num(opts.querySelector('#yr-to'));
+    keepOpen = dim;
+    applyDim('time', 'run' + (a || b ? ':' + (a || '') : '') + (b ? ':' + b : ''));
+    keepOpen = null;
+  };
+  opts.querySelectorAll('.opt-yr input').forEach(inp => {
+    inp.addEventListener('change', commitYears);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commitYears(); } });
+    // a fold that reopens under the cursor should put you back where you were typing
+    inp.addEventListener('focus', () => { lastYearField = inp.id; });
+  });
   const find = opts.querySelector('#opt-q');
   if (find) find.addEventListener('input', () => {
     const v = find.value;
@@ -3075,7 +3180,7 @@ function setStage(next) {
 const VIEW_DEF = {
   reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'] },
   ratio:  { label: 'top tenth against bottom half', uses: ['place'], ignores: ['facet', 'against', 'when'] },
-  triple: { label: 'the three faces at once', uses: [], ignores: ['facet', 'place', 'against', 'among', 'when'] },
+  triple: { label: 'the three faces at once', uses: ['place'], ignores: ['facet', 'against', 'among', 'when'] },
 };
 const FORM_DEF = {
   rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
@@ -3096,7 +3201,7 @@ function previewQuestion(q) {
   if (iso) cell.place = iso;
   if (p.region) cell.scope = 'r:' + p.region;
   if (p.pool) cell.scope = 'pool:' + (p.pool.dir === 'high' ? 'rich' : 'poor');
-  if (p.kind === 'time') { cell.span = 'run'; cell.since = p.year || null; }
+  if (p.kind === 'time') { cell.span = 'run'; cell.since = p.year || null; cell.until = p.until || null; }
   else if (p.kind === 'point') { cell.span = 'moment'; cell.year = p.year || null; }
   else if (p.kind === 'correlate') cell.against = p.y || null;
   else if (p.kind === 'tiers') { cell.form = 'tiers'; cell.against = p.aspect || null; }
@@ -3131,6 +3236,18 @@ function sendCell() {
   }
   if (cell.span === 'run' && !cell.place && !ctx.region && !ctx.pool) {
     showNotice('Over the years needs somewhere to follow. Add a place, or a region.'); return;
+  }
+  // several countries chosen, but this reading draws one: say which one it would keep
+  // rather than quietly answering about the first and dropping the rest
+  const oneOnly = cell.view === 'reach' ? VIEW_DEF.reach.label
+    : cell.view === 'ratio' ? VIEW_DEF.ratio.label
+    : cell.form === 'lorenz' ? 'a Lorenz curve'
+    : (cell.against && cell.span === 'run') ? 'a path across two measures'
+    : (cell.span === 'moment' && cell.year) ? null : null;
+  if (cell.places.length > 1 && oneOnly) {
+    showNotice(`${cap(oneOnly)} is drawn for one country, and ${cell.places.length} are chosen. ` +
+      `Drop the others, or pick a reading that takes them all.`);
+    return;
   }
   if (cell.raw) { const q = cell.raw; ask(q); return; }
   runCell();
@@ -3338,7 +3455,11 @@ function updateCell() {
     setSlot('against', o.covLabel || o.label || null, 'another measure to hold it to', '#c98a2b');
     return;
   }
-  const place = cell.place && BY_ISO[cell.place] ? esc(BY_ISO[cell.place].name) : (last ? 'all countries' : null);
+  const named = cell.places.filter(i => BY_ISO[i]).map(i => esc(BY_ISO[i].name));
+  const place = named.length === 0 ? (last ? 'all countries' : null)
+    : named.length === 1 ? named[0]
+    : named.length === 2 ? named.join(' and ')
+    : `${named.length} countries`;
   setSlot('place', place, 'add');
   setSlot('scope', ctx.pool ? esc(ctx.pool.label) : ctx.region ? REGION_LABEL[ctx.region] : null, 'all');
   setSlot('form', cell.view ? VIEW_DEF[cell.view].label : (FORM_DEF[cell.form] || null), 'as is');
@@ -3350,8 +3471,12 @@ function updateCell() {
   });
   const rf = document.getElementById('rib-facet');
   if (rf) rf.classList.add('filled');   // the face is always set, so its fold is always open
-  setSlot('time', cell.span === 'run' ? (cell.since ? 'since ' + cell.since : 'over the years')
-    : cell.span === 'moment' ? (cell.year ? 'in ' + cell.year : 'a single moment') : null, 'add');
+  const spanLabel = cell.span === 'run'
+    ? (cell.since && cell.until ? cell.since + ' to ' + cell.until
+      : cell.since ? 'since ' + cell.since
+      : cell.until ? 'up to ' + cell.until : 'over the years')
+    : cell.span === 'moment' ? (cell.year ? 'in ' + cell.year : 'a single moment') : null;
+  setSlot('time', spanLabel, 'add');
   const agKey = cell.against && META[cell.against] ? cell.against : null;
   const agHtml = agKey
     ? `${esc(AGAINST_FAMILY[agKey] || 'other')}<span class="fmeasure">${esc(META[agKey].label)}</span>`
@@ -3367,6 +3492,12 @@ function updateCell() {
       drawer.hidden = false;
       rib.classList.add('expanded');
       const h = rib.querySelector('.rib-head'); if (h) h.setAttribute('aria-expanded', 'true');
+      // typing a year rebuilds the fold under the cursor; put the caret back where it was
+      if (lastYearField) {
+        const back = drawer.querySelector('#' + lastYearField);
+        lastYearField = null;
+        if (back) { back.focus(); back.select(); }
+      }
     }
   }
 }
@@ -3772,28 +3903,66 @@ function drawChart() {
     const mx = META[tp.x], my = META[tp.y], mz = META[tp.z];
     const foc = new Set(chain[chain.length - 1].isos || []);
     const sc = (m, v) => m.fmt === pc ? v * 100 : v;
+    const X = tp.pts.map(q => sc(mx, q.x)), Y = tp.pts.map(q => sc(my, q.y)), Z = tp.pts.map(q => sc(mz, q.z));
+    const pad = (a, k) => { const lo = Math.min(...a), hi = Math.max(...a), g = (hi - lo) * k;
+      return [lo - g, hi + g]; };
+    const rx = pad(X, 0.06), ry = pad(Y, 0.06), rz = pad(Z, 0.06);
     const main = tp.pts.filter(q => !foc.has(q.iso)), hit = tp.pts.filter(q => foc.has(q.iso));
-    const mk = (arr, big) => ({
-      type: 'scatter3d', mode: big ? 'markers+text' : 'markers',
-      x: arr.map(q => sc(mx, q.x)), y: arr.map(q => sc(my, q.y)), z: arr.map(q => sc(mz, q.z)),
-      text: arr.map(q => q.name),
-      marker: big ? { size: 7, color: '#eb6834' }
-        : { size: 3.6, opacity: 0.62, color: arr.map(q => sc(mz, q.z)),
-            colorscale: [[0, '#c0607a'], [1, '#2a78d6']], showscale: false },
-      textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
-      hovertemplate: '%{text}<br>' + mx.label + ': %{x}<br>' + my.label + ': %{y}<br>' + mz.label + ': %{z}<extra></extra>',
-    });
-    const ax = t => ({ title: { text: t, font: { size: 11 } }, gridcolor: cssVar('--grid', '#f0f0f0'),
-      zeroline: false, showbackground: false, color: cssVar('--ink-3', '#999999') });
-    Plotly.react(el, hit.length ? [mk(main, false), mk(hit, true)] : [mk(main, false)],
-      Object.assign({}, BASE_LAYOUT, {
-        margin: { t: 4, r: 4, b: 4, l: 4 },
-        scene: { xaxis: ax(mx.label), yaxis: ax(my.label), zaxis: ax(mz.label),
-          camera: { eye: { x: 1.5, y: 1.4, z: 0.9 } }, aspectmode: 'cube' },
-      }), CFG);
-    title.textContent = 'Wealth, income and health, together';
-    src.textContent = 'One dot per country, at the latest year all three were measured. Drag to turn it. ' +
-      'Depth is for the shape of the cloud, not for reading values: the flat charts are where a number is read. ' +
+    const traces = [{
+      // the cloud is one quiet colour: colouring it by an axis only repeats that axis
+      type: 'scatter3d', mode: 'markers', name: 'every country', showlegend: false,
+      x: main.map(q => sc(mx, q.x)), y: main.map(q => sc(my, q.y)), z: main.map(q => sc(mz, q.z)),
+      text: main.map(q => q.name + ', ' + q.year),
+      marker: { size: 3.8, opacity: 0.58, color: cssVar('--ink-3', '#999999') },
+      hovertemplate: '%{text}<br>' + mx.label + ': %{x}<br>' + my.label + ': %{y}<br>' +
+        mz.label + ': %{z}<extra></extra>',
+    }];
+    // a marked country gets three dropped lines, one to each wall, so its position on
+    // every axis can actually be read off. depth alone is not readable and never was.
+    for (const h of hit) {
+      const hx = sc(mx, h.x), hy = sc(my, h.y), hz = sc(mz, h.z);
+      traces.push({
+        type: 'scatter3d', mode: 'lines', showlegend: false, hoverinfo: 'skip',
+        // three separate segments, broken by nulls: one to each wall, not one polyline
+        x: [hx, rx[0], null, hx, hx, null, hx, hx],
+        y: [hy, hy, null, hy, ry[1], null, hy, hy],
+        z: [hz, hz, null, hz, hz, null, hz, rz[0]],
+        line: { color: '#eb6834', width: 2, dash: 'dot' },
+        connectgaps: false,
+      });
+      traces.push({
+        type: 'scatter3d', mode: 'markers+text', showlegend: false,
+        x: [hx], y: [hy], z: [hz], text: [h.name],
+        marker: { size: 8, color: '#eb6834' },
+        textposition: 'top center',
+        textfont: { size: 12, color: cssVar('--ink', '#1a2744') },
+        hovertemplate: h.name + ' (' + h.year + ')<br>' + mx.label + ': %{x}<br>' +
+          my.label + ': %{y}<br>' + mz.label + ': %{z}<extra></extra>',
+      });
+    }
+    // short titles: a 3D axis label runs along the edge and a long one falls off the card
+    const SHORT = { wealth_top1: 'wealth %', income_top1: 'income %',
+      income_gini: 'income Gini', life_exp: 'life expectancy' };
+    const shortOf = k => SHORT[k] || META[k].label;
+    const ax = (t, r) => ({ title: { text: t, font: { size: 10.5 } }, range: r,
+      gridcolor: cssVar('--grid', '#f0f0f0'), zeroline: false, showbackground: false,
+      color: cssVar('--ink-3', '#999999'), tickfont: { size: 9.5 } });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 10, r: 10, b: 10, l: 10 },
+      scene: { xaxis: ax(shortOf(tp.x), rx), yaxis: ax(shortOf(tp.y), ry), zaxis: ax(shortOf(tp.z), rz),
+        // stretching the box pushes the axis titles past the edge of the card and they
+        // get cut; a cube, sat back far enough to fit whole, keeps every label readable
+        camera: { eye: { x: 1.85, y: 1.7, z: 0.8 } }, aspectmode: 'cube' },
+    }), CFG);
+    title.textContent = `${cap(mx.label)}, ${my.label} and ${mz.label}, at once`;
+    src.textContent =
+      `One point per country, placed by all three at the latest year all three were measured. ` +
+      (hit.length
+        ? `The marked country's dotted lines run to each wall: that is where it sits on each axis. `
+        : `Name a country and it is marked, with a dotted line dropped to each wall so its reading on ` +
+          `every axis can be read off. `) +
+      `Drag to turn it. A cloud in three dimensions shows which countries sit together and which sit ` +
+      `alone; it is not the place to read an exact number, and the flat charts are. ` +
       provenance([tp.x, tp.y, tp.z]);
   }
 
@@ -3902,6 +4071,7 @@ function drawChart() {
     lineFacts.forEach(f => f.isos.forEach(i => { if (!isoSet.includes(i)) isoSet.push(i); }));
     const wantWorld = chain.some(f => f.world);
     const fromYear = chain.slice().reverse().map(f => f.fromYear).find(Boolean) || null;
+    const toYear = chain.slice().reverse().map(f => f.toYear).find(Boolean) || null;
     let eLo = Infinity, eHi = -Infinity;
     const traces = [];
     for (const iso of isoSet) {
@@ -3962,7 +4132,8 @@ function drawChart() {
       hovermode: 'x unified',
       annotations: annotations.concat(eraLabels(eLo, eHi)),
       shapes: eraShapes(eLo, eHi),
-      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, fromYear ? { range: [fromYear, 2025], autorange: false } : {}),
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, (fromYear || toYear)
+        ? { range: [fromYear || eLo, toYear || Math.max(eHi, 2025)], autorange: false } : {}),
       // a share reads as a share on the axis too, matching the sentence above it
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, m.fmt === pc ? { tickformat: '.0%' } : {}),
       margin: { t: 12, r: labelable.length <= 4 ? 110 : 16, b: 40, l: 46 },
