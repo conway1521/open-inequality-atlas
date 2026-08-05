@@ -900,16 +900,28 @@ footer a { color: inherit; }
       <p class="chart-src" id="why-shares-src"></p>
     </div>
     <p class="sub">
+      Owning and earning are different things, and the gap between them is the argument. Take the
+      same top one per cent, measured the same way by the same source, once in what it owns and
+      once in what it earns. In 1990 it took 14.7% of American income and held 29.0% of American
+      wealth. By 2021 it took 19.0% of income and held 36.3% of wealth. Both rose. Wealth started
+      higher and rose faster, by 7.2 points against 4.3.
+    </p>
+    <div class="chart-card">
+      <div class="chart-title" id="why-same-title">The same top 1%</div>
+      <div id="why-same" style="width:100%;height:340px"></div>
+      <p class="chart-src" id="why-same-src"></p>
+    </div>
+    <p class="sub">
       Now the same country and the same years through a Gini, which is the number almost every
       report quotes. It barely moves. A Gini compresses the whole curve into one figure, and at
-      0.83 it has little room left: the top hundredth can take six more points of everything and
+      0.83 it has little room left: the top hundredth can take seven more points of everything and
       the Gini shrugs. The bottom half falling through zero is a rounding error inside it. This is
       why the atlas keeps shares, and why a single inequality number is close to useless for the
       question people actually mean.
     </p>
     <div class="chart-card">
       <div class="chart-title" id="why-title">The same years, through a Gini</div>
-      <div id="why-chart" style="width:100%;height:340px"></div>
+      <div id="why-chart" style="width:100%;height:300px"></div>
       <p class="chart-src" id="why-src"></p>
     </div>
     <div class="grid3">
@@ -920,15 +932,16 @@ footer a { color: inherit; }
         in France. The Netherlands moved the other way.</p>
       </div>
       <div class="block">
-        <h2>Wealth is not pay</h2>
-        <p>US output per person grew 120% since 1974 while the income of the person in
-        the middle grew 59%. Ask <em>did the growth reach the typical person?</em> in the
-        atlas to see it drawn.</p>
+        <h2>The middle, squeezed</h2>
+        <p>The American middle 40%, everyone between the median and the top tenth, took
+        44.4% of national income in 1990 and 40.6% in 2021. Ask the income face for
+        <em>the middle 40%</em> to follow it anywhere else.</p>
       </div>
       <div class="block">
-        <h2>What is still missing</h2>
-        <p>The income side is only a Gini here. Top and bottom income shares would make
-        the comparison like for like, and they are the next thing to load.</p>
+        <h2>Owning is not earning</h2>
+        <p>The bottom half of America earns 13.8% of national income and owns 0.8% of
+        national wealth. Those are the same people, counted the same way, in the same
+        year.</p>
       </div>
     </div>
   </div>
@@ -1196,6 +1209,33 @@ const META = {
     lineSrc: 'Source: WID. Share of household net wealth held by the bottom 50%.',
     poolSrc: 'Source: WID, bottom 50% wealth share, latest year per country.',
   },
+  // WID pretax national income, equal-split adults: the same unit convention as the
+  // WID wealth shares above, which is what makes an income share and a wealth share
+  // comparable here. Not comparable to the PIP income Gini, which is post-tax survey.
+  income_top1: {
+    label: 'top 1% income share', topic: 'income', series: true, concFam: true, file: 'data/income_top1.json',
+    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    lineSrc: 'Source: WID. Share of pretax national income taken by the top 1%, per adult, split equally within the couple.',
+    poolSrc: 'Source: WID, top 1% pretax income share, latest year per country.',
+  },
+  income_top10: {
+    label: 'top 10% income share', topic: 'income', series: true, concFam: true, file: 'data/income_top10.json',
+    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    lineSrc: 'Source: WID. Share of pretax national income taken by the top 10%, per adult, split equally within the couple.',
+    poolSrc: 'Source: WID, top 10% pretax income share, latest year per country.',
+  },
+  income_middle40: {
+    label: 'middle 40% income share', topic: 'income', series: true, file: 'data/income_middle40.json',
+    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    lineSrc: 'Source: WID. Share of pretax national income taken by the middle 40%, the people between the median and the top tenth.',
+    poolSrc: 'Source: WID, middle 40% pretax income share, latest year per country.',
+  },
+  income_bottom50: {
+    label: 'bottom 50% income share', topic: 'income', series: true, file: 'data/income_bottom50.json',
+    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    lineSrc: 'Source: WID. Share of pretax national income taken by the bottom 50%, per adult, split equally within the couple.',
+    poolSrc: 'Source: WID, bottom 50% pretax income share, latest year per country.',
+  },
   life_satisfaction: {
     label: 'life satisfaction', topic: 'wellbeing', series: true, file: 'data/life_satisfaction.json',
     fmt: v => v == null ? 'n/a' : v.toFixed(2), fmtD: v => v == null ? 'n/a' : v.toFixed(2), hover: '%{y:.2f}',
@@ -1224,12 +1264,14 @@ const BASIS = {
   survey:    'measured in household surveys, one point per survey year',
   modelled:  'modelled, with annual values imputed for most countries from the smaller set that has tax records',
   estimated: 'an estimated annual series, interpolated between benchmark years',
+  dina:      'built from tax records, surveys and national accounts together, in a snapshot taken from WID in September 2022',
 };
 const SERIES_BASIS = {
   wealth_gini: 'modelled', wealth_top1: 'modelled', wealth_bottom50: 'modelled',
   income_gini: 'survey', poverty_rate: 'survey', median_income: 'survey',
   life_exp: 'estimated', co2_pc: 'estimated', gdp_pc: 'estimated',
   life_satisfaction: 'survey',
+  income_top1: 'dina', income_top10: 'dina', income_middle40: 'dina', income_bottom50: 'dina',
 };
 // the last year the series actually carries, read from the data rather than assumed
 const vintageCache = {};
@@ -1390,12 +1432,13 @@ function detectMetric(r) {
   const m = detectMetrics(r);
   return m.length ? m[0] : null;
 }
-const INEQ_METRICS = ['wealth_gini', 'wealth_top1', 'income_gini'];
+const INEQ_METRICS = ['wealth_gini', 'wealth_top1', 'income_gini', 'income_top1', 'income_top10'];
 function isIneq(key) { return INEQ_METRICS.includes(key); }
 // each facet offers a few measures; the accordion lets you click between them
 const FACET_MEASURES = {
   wealth: [['wealth_top1', 'top 1% share'], ['wealth_gini', 'wealth Gini'], ['wealth_bottom50', 'bottom 50% share']],
-  income: [['income_gini', 'income Gini'], ['median_income', 'median income'], ['poverty_rate', 'poverty rate']],
+  income: [['income_top1', 'top 1% share'], ['income_middle40', 'the middle 40%'], ['income_gini', 'income Gini'],
+           ['median_income', 'median income'], ['poverty_rate', 'poverty rate']],
   health: [['life_exp', 'life expectancy'], ['life_satisfaction', 'life satisfaction']],
 };
 const facetMeasureIdx = { wealth: 0, income: 0, health: 0 };
@@ -2484,6 +2527,7 @@ const ACC = () => FACET_HEX[curFacet] || '#2a78d6';   // the UI accent follows t
 const METRIC_HEX = {
   wealth_top1: '#2a78d6', wealth_gini: '#2a78d6', wealth_bottom50: '#2a78d6',
   income_gini: '#2f9e8f', median_income: '#2f9e8f', gdp_pc: '#2f9e8f', poverty_rate: '#2f9e8f',
+  income_top1: '#2f9e8f', income_top10: '#2f9e8f', income_middle40: '#2f9e8f', income_bottom50: '#2f9e8f',
   life_exp: '#c0607a', life_satisfaction: '#c0607a', co2_pc: '#c98a2b',
 };
 const metricColor = key => METRIC_HEX[key] || '#7a7f88';
@@ -2535,6 +2579,7 @@ function paintFacet(name) {
 const AGAINST_FAMILY = {
   life_exp: 'health', life_satisfaction: 'health',
   income_gini: 'income', median_income: 'income', gdp_pc: 'income', poverty_rate: 'income',
+  income_top1: 'income', income_top10: 'income', income_middle40: 'income', income_bottom50: 'income',
   wealth_top1: 'wealth', wealth_gini: 'wealth', wealth_bottom50: 'wealth',
   co2_pc: 'environment',
 };
@@ -2711,7 +2756,8 @@ function dimGroups(dim, filter) {
   if (dim === 'against') {
     const own = new Set((FACET_MEASURES[curFacet] || []).map(m => m[0]));
     own.add(facetIneqDefault());
-    const order = ['income_gini', 'wealth_top1', 'wealth_gini', 'wealth_bottom50',
+    const order = ['income_gini', 'income_top1', 'income_top10', 'income_middle40', 'income_bottom50',
+      'wealth_top1', 'wealth_gini', 'wealth_bottom50',
       'life_exp', 'life_satisfaction', 'poverty_rate', 'median_income', 'gdp_pc', 'co2_pc'];
     const fams = [];
     for (const k of order) {
@@ -4312,7 +4358,54 @@ function initUS() {
 const WHY_ISO = 'USA';
 // syncChartTheme lives in drawChart, which the Why page never goes through: without
 // this call these two draw with the light grid baked in, blazing white over a dark page
-function drawWhy() { syncChartTheme(); drawWhyShares(); drawWhyGini(); }
+function drawWhy() { syncChartTheme(); drawWhyShares(); drawWhySame(); drawWhyGini(); }
+
+// the like-for-like comparison, and the reason the income shares were loaded at all:
+// the same top hundredth, measured the same way by the same source, once in what it
+// owns and once in what it earns. wealth is both the higher share and the faster one.
+function drawWhySame() {
+  const el = document.getElementById('why-same');
+  if (!el || !window.Plotly) return;
+  const iso = WHY_ISO;
+  const w = seriesOf('wealth_top1', iso), i = seriesOf('income_top1', iso);
+  if (w.length < 3 || i.length < 3) return;
+  const lo = Math.max(w[0].year, i[0].year, 1913);
+  const W = w.filter(d => d.year >= lo), I = i.filter(d => d.year >= lo);
+  const hi = Math.max(W[W.length - 1].year, I[I.length - 1].year);
+  // the two series stop in different years, so the change either one is credited with
+  // has to be measured over the span they share, not over each one's own full run
+  const both = Math.min(W[W.length - 1].year, I[I.length - 1].year);
+  const at = (a, y) => { const m = a.filter(d => d.year <= y); return m.length ? m[m.length - 1].v : a[0].v; };
+  const pt = a => at(a, both) - a[0].v;
+  Plotly.react(el, [
+    { type: 'scatter', mode: 'lines', name: 'of all wealth',
+      x: W.map(d => d.year), y: W.map(d => d.v),
+      line: { color: metricColor('wealth_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+      hovertemplate: 'the top 1% own %{y:.1%} of all wealth<extra></extra>' },
+    { type: 'scatter', mode: 'lines', name: 'of all income',
+      x: I.map(d => d.year), y: I.map(d => d.v),
+      line: { color: metricColor('income_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+      hovertemplate: 'the top 1% take %{y:.1%} of all income<extra></extra>' },
+  ], Object.assign({}, BASE_LAYOUT, {
+    showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
+    margin: { t: 14, r: 16, b: 40, l: 54 },
+    shapes: eraShapes(lo, hi), annotations: eraLabels(lo, hi),
+    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, {
+      range: [0, Math.max(...W.map(d => d.v)) + 0.05], autorange: false, tickformat: '.0%',
+      title: { text: 'share taken by the top 1%', font: { size: 11 } } }),
+  }), CFG);
+  const t = document.getElementById('why-same-title');
+  if (t) t.textContent = `The same top 1%, ${lo} to ${hi}`;
+  const src = document.getElementById('why-same-src');
+  if (src) src.textContent =
+    `Both lines are WID, pretax national income and household net wealth, both per adult with income and ` +
+    `wealth split equally within the couple. That is what makes them comparable: same source, same unit, ` +
+    `same definition of the top 1%. Over ${lo} to ${both}, the years both series cover, wealth is the higher ` +
+    `share and the faster one: it rose ${(pt(W) * 100).toFixed(1)} points against ` +
+    `${(pt(I) * 100).toFixed(1)} for income. The wealth line runs on to ${W[W.length - 1].year}; ` +
+    `the income line stops at ${I[I.length - 1].year}, so the last stretch of blue has nothing to be read against. ` +
+    provenance(['wealth_top1', 'income_top1']);
+}
 
 // the argument itself: who owns the country, top hundredth against bottom half.
 // a Gini cannot carry this. it is one number for the whole curve and it is nearly
@@ -4727,12 +4820,17 @@ Promise.all([
   opt('data/life_satisfaction.json'),
   opt('data/wealth_top1.json'),
   opt('data/wealth_bottom50.json'),
+  opt('data/income_top1.json'),
+  opt('data/income_top10.json'),
+  opt('data/income_middle40.json'),
+  opt('data/income_bottom50.json'),
   opt('data/us_county.json'),
   opt('data/us_state.json'),
   opt('data/us_names.json'),
   opt('data/us_manifest.json'),
   opt('data/us_cz.json'),
-]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50, usCounty, usState, usNames, usManifest, usCz]) => {
+]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50,
+  itop1, itop10, imid40, ibot50, usCounty, usState, usNames, usManifest, usCz]) => {
   LATEST = latest; US = us;
   // spine is the union of every country any module knows, named from geo_names
   const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
@@ -4755,6 +4853,10 @@ Promise.all([
   if (sat && Object.keys(sat).length) SERIES.life_satisfaction = toSeries(sat);
   if (wtop1 && Object.keys(wtop1).length) SERIES.wealth_top1 = toSeries(wtop1);
   if (wbot50 && Object.keys(wbot50).length) SERIES.wealth_bottom50 = toSeries(wbot50);
+  if (itop1 && Object.keys(itop1).length) SERIES.income_top1 = toSeries(itop1);
+  if (itop10 && Object.keys(itop10).length) SERIES.income_top10 = toSeries(itop10);
+  if (imid40 && Object.keys(imid40).length) SERIES.income_middle40 = toSeries(imid40);
+  if (ibot50 && Object.keys(ibot50).length) SERIES.income_bottom50 = toSeries(ibot50);
   if (usCounty && Object.keys(usCounty).length) { US_COUNTY = usCounty; US_STATE = usState; US_NAMES = usNames; US_MANIFEST = usManifest; }
   if (usCz && Object.keys(usCz).length) US_CZ = usCz;
 
