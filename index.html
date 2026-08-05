@@ -275,12 +275,22 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* ── the cube: the facet selector, centred with the stack beneath ─── */
 .cubebox { display: flex; flex-direction: column; align-items: center; gap: 12px;
   margin: 74px auto 34px; user-select: none; -webkit-user-select: none; overflow: visible; }
+/* the cube is smaller than the scene, so it has to be centred in it rather than
+   left to sit in the top corner where a block element lands by default */
 .scene { position: relative; width: 232px; height: 232px; perspective: 760px; touch-action: none; cursor: grab;
-  margin-bottom: 8px; overflow: visible; }
+  margin-bottom: 8px; overflow: visible;
+  display: flex; align-items: center; justify-content: center; }
 .scene:active { cursor: grabbing; }
-/* every 15s, a ring pulses on the cube for a few seconds: it can be turned */
-.cube-hint { position: relative; align-self: center; width: 9px; height: 9px; margin: 0 0 12px;
+/* every 15s, a ring pulses on the cube for a few seconds: it can be turned.
+   it sits at the centre of the face, pushed in front of it so the face cannot
+   paint over it: the front face stands at translateZ(92px). */
+/* dead centre of the cube. the face turns underneath it, so no fixed offset can
+   track the gap in the text; a ring of the surface colour lifts it off whatever
+   it happens to be sitting over instead. */
+.cube-hint { position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: 0;
+  transform: translate(-50%, -50%) translateZ(108px);
   border-radius: 50%; background: var(--accent); pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 4px var(--surface), 0 0 10px 6px var(--surface);
   animation: hint-show 12s ease-in-out 3s infinite; }
 .cube-hint::after { content: ''; position: absolute; inset: -9px; border: 1.5px solid var(--accent);
   border-radius: 50%; animation: hint-ring 12s ease-in-out 3s infinite; }
@@ -754,8 +764,8 @@ footer a { color: inherit; }
             <div class="face f-link" data-facet="link"><span class="lab">link</span><div class="q">One face read alongside another</div></div>
             <div class="face f-extend" data-facet="extend"><span class="lab">extend</span><div class="q">The same face through time and across geography</div></div>
           </div>
+          <span class="cube-hint" aria-hidden="true"></span>
         </div>
-        <span class="cube-hint" aria-hidden="true"></span>
         <button type="button" class="shake" id="shake" aria-label="Shake for a question">shake</button>
         <div class="facet-chips" id="facet-chips">
           <button class="fchip w" data-facet="wealth" aria-pressed="true">wealth</button>
@@ -1363,9 +1373,34 @@ function poolOf(metric) {
   }
   return (poolCache[metric] = pool);
 }
-function rankedPool(metric, dir, region) {
-  return poolOf(metric).filter(r => inScope(r.geo_id, region)).slice()
+// how far from the year you asked for a reading may sit before it stops counting
+const POOL_YEAR_TOL = 3;
+// the pool as it stood in a given year: each country's nearest reading to that year,
+// with how far off it was kept on the row so the answer can say
+function poolAt(metric, year) {
+  if (!year || (META[metric] && META[metric].snap)) return poolOf(metric);
+  const out = [];
+  const ser = SERIES[metric] || {};
+  for (const iso in ser) {
+    const pts = ser[iso];
+    if (!pts.length || !BY_ISO[iso]) continue;
+    let best = null;
+    for (const d of pts) if (!best || Math.abs(d.year - year) < Math.abs(best.year - year)) best = d;
+    if (!best || Math.abs(best.year - year) > POOL_YEAR_TOL) continue;
+    out.push({ geo_id: iso, geo_name: BY_ISO[iso].name, val: best.v, year: best.year,
+      gap: Math.abs(best.year - year) });
+  }
+  return out;
+}
+function rankedPool(metric, dir, region, year) {
+  return poolAt(metric, year).filter(r => inScope(r.geo_id, region)).slice()
     .sort((a, b) => dir === 'low' ? a.val - b.val : b.val - a.val);
+}
+// 1st, 2nd, 3rd, 11th: a rank reads as a position, not as a bare number
+function ordinal(n) {
+  const t = n % 100, u = n % 10;
+  const suf = (t >= 11 && t <= 13) ? 'th' : u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th';
+  return n + suf;
 }
 function rankOf(iso, metric) {
   const pool = rankedPool(metric, 'high', null);
@@ -1612,6 +1647,14 @@ function resolveMetric(p) {
   if (p.giniWords && !META[key].giniFam) key = facetIneqDefault();   // "most unequal" follows the facet you're on
   return key;
 }
+function valAt(metric, iso, year) {
+  if (!year || META[metric].snap) return latestValOf(metric, iso);
+  const s = seriesOf(metric, iso);
+  let best = null;
+  for (const d of s) if (!best || Math.abs(d.year - year) < Math.abs(best.year - year)) best = d;
+  if (!best || Math.abs(best.year - year) > POOL_YEAR_TOL) return null;
+  return { val: best.v, year: best.year };
+}
 function latestValOf(metric, iso) {
   if (META[metric].snap) {
     const r = BY_ISO[iso] && BY_ISO[iso].latest;
@@ -1624,8 +1667,11 @@ function latestValOf(metric, iso) {
 /* ── cross-metric helpers ──────────────────────────────────────────── */
 // pair each country on the latest year BOTH measures actually carry. a country with no
 // shared year is dropped rather than matched across a gap and counted as evidence.
-function pairedPoints(xMetric, yMetric, region) {
-  const out = [], dropped = [];
+// with no year, each country is paired at the latest year both were measured. with a
+// year, at the shared year nearest to it, and a country whose nearest shared year is
+// further off than the tolerance is left out rather than stretched to reach.
+function pairedPoints(xMetric, yMetric, region, year) {
+  const out = [], dropped = [], far = [];
   const xSer = META[xMetric] && META[xMetric].series, ySer = META[yMetric] && META[yMetric].series;
   for (const iso in BY_ISO) {
     if (!inScope(iso, region)) continue;
@@ -1634,8 +1680,16 @@ function pairedPoints(xMetric, yMetric, region) {
       if (xs.length && ys.length) {
         const yv = new Map(ys.map(d => [d.year, d.v]));
         let hit = null;
-        for (let i = xs.length - 1; i >= 0; i--) {
-          if (yv.has(xs[i].year)) { hit = { year: xs[i].year, x: xs[i].v, y: yv.get(xs[i].year) }; break; }
+        if (year) {
+          for (const d of xs) if (yv.has(d.year)) {
+            if (!hit || Math.abs(d.year - year) < Math.abs(hit.year - year))
+              hit = { year: d.year, x: d.v, y: yv.get(d.year) };
+          }
+          if (hit && Math.abs(hit.year - year) > POOL_YEAR_TOL) { far.push(iso); hit = null; }
+        } else {
+          for (let i = xs.length - 1; i >= 0; i--) {
+            if (yv.has(xs[i].year)) { hit = { year: xs[i].year, x: xs[i].v, y: yv.get(xs[i].year) }; break; }
+          }
         }
         if (hit) {
           out.push({ iso, name: BY_ISO[iso].name, x: hit.x, y: hit.y,
@@ -1652,6 +1706,8 @@ function pairedPoints(xMetric, yMetric, region) {
       xy: yv2.year, xYear: xv.year, yYear: yv2.year, gap: Math.abs(xv.year - yv2.year) });
   }
   out.dropped = dropped.length;
+  out.far = far.length;
+  out.atYear = year || null;
   return out;
 }
 // the wealth-concentration series for a country: the US gets the DFA top-1% share (the sharper gauge), others the WID wealth Gini
@@ -1696,8 +1752,8 @@ function corrClause(r, xlabel) {
   if (a < 0.6) return `runs ${lo} where ${xlabel} is higher`;
   return `runs much ${lo} where ${xlabel} is higher`;
 }
-function terciles(lensMetric, region) {
-  const pool = rankedPool(lensMetric, 'high', region).map(r => r.val);
+function terciles(lensMetric, region, year) {
+  const pool = rankedPool(lensMetric, 'high', region, year).map(r => r.val);
   const n = pool.length;
   return { hi: pool[Math.floor(n / 3)], lo: pool[Math.floor(2 * n / 3)] };
 }
@@ -1784,14 +1840,28 @@ function runCell() {
     p = { kind: 'lorenz', isos: [cell.place] };
     q = `Lorenz curve for ${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place}`;
   } else if (F === 'spread') {
-    p = { kind: 'spread', metric: ctx.metric, region: ctx.region }; q = 'the spread';
+    p = { kind: 'spread', metric: ctx.metric, region: ctx.region,
+      year: cell.span === 'moment' ? cell.year : null,
+      focus: cell.places.slice() };
+    q = 'the spread';
   } else if (F === 'tiers' && cell.against && META[cell.against]) {
-    p = { kind: 'tiers', aspect: cell.against, lens: ctx.metric, region: ctx.region }; q = 'by tier';
+    p = { kind: 'tiers', aspect: cell.against, lens: ctx.metric, region: ctx.region,
+      year: cell.span === 'moment' ? cell.year : null }; q = 'by tier';
   } else if (F === 'break' && cell.against && META[cell.against]) {
-    p = { kind: 'break', metrics: [ctx.metric, cell.against] }; q = 'who breaks the pattern';
+    p = { kind: 'break', metrics: [ctx.metric, cell.against],
+      year: cell.span === 'moment' ? cell.year : null }; q = 'who breaks the pattern';
   } else if (F === 'rank') {
-    p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true };
-    q = 'the ranking';
+    // a ranking still answers to the rest of the cell: the country is marked and its
+    // place said, a chosen year ranks at that year, and a run of years ranks the moves
+    if (cell.span === 'run') {
+      p = { kind: 'delta_rank', dir: 'up', region: ctx.region, metric: ctx.metric,
+        year: cell.since, until: cell.until, highlight: cell.place };
+      q = 'the biggest moves';
+    } else {
+      p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true,
+        year: cell.span === 'moment' ? cell.year : null, highlight: cell.place };
+      q = 'the ranking';
+    }
   } else if (cell.place && cell.against && META[cell.against] && cell.span === 'run') {
     // a scatter that gains time becomes a trajectory: one country's path across the two
     p = { kind: 'path', iso: cell.place, x: ctx.metric, y: cell.against };
@@ -1815,7 +1885,8 @@ function runCell() {
     p = { kind: 'time', isos: [cell.place], year: cell.since, until: cell.until, region: null, metric: ctx.metric };
     q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} over time`;
   } else if (cell.against && META[cell.against]) {
-    p = { kind: 'correlate', x: ctx.metric, y: cell.against, region: ctx.region };
+    p = { kind: 'correlate', x: ctx.metric, y: cell.against, region: ctx.region,
+      year: cell.span === 'moment' ? cell.year : null };
     q = `${META[cell.against].label} and inequality`;
   } else if (cell.place) {
     p = { kind: 'profile', iso: cell.place };
@@ -1824,7 +1895,8 @@ function runCell() {
     p = { kind: 'time', isos: [], year: cell.since, until: cell.until, region: ctx.region, metric: ctx.metric };
     q = 'over time';
   } else {
-    p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true };
+    p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true,
+      highlight: cell.place };
     q = 'most concentrated';
   }
   const prev = chain.slice();
@@ -1953,9 +2025,12 @@ function buildAnswer(p, q) {
 
   else if (p.kind === 'correlate') {
     const mx = META[p.x], my = META[p.y];
-    const pts = pairedPoints(p.x, p.y, p.region);
+    const pts = pairedPoints(p.x, p.y, p.region, p.year);
     const r = pearson(pts);
-    if (!pts.length || r == null) return miss();
+    if (!pts.length || r == null) {
+      if (p.year) { showNotice(`Too few countries carry both measures within ${POOL_YEAR_TOL} years of ${p.year}.`); return null; }
+      return miss();
+    }
     ctx.metric = p.x; if (!isIneq(p.y)) ctx.lastAspect = p.y;
     const focus = [...new Set([ctx.lastIso, ...focusIsos()].filter(Boolean))].filter(i => pts.some(pt => pt.iso === i));
     if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
@@ -1972,8 +2047,13 @@ function buildAnswer(p, q) {
         `A correlation across that gap is arithmetic, not evidence.` +
         fitnessFlag(fit, 'no matching years');
     } else {
-      t = `Across ${pts.length} countries${where}, ${my.label} ${corrClause(r, mx.label)} ` +
-        `(r = ${r.toFixed(2)}).` +
+      const yrsP = pts.map(x => x.xy).filter(Boolean);
+      t = `Across ${pts.length} countries${where}${poolNote()}${p.year ? ' around ' + p.year : ''}, ` +
+        `${my.label} ${corrClause(r, mx.label)} (r = ${r.toFixed(2)}).` +
+        (p.year && yrsP.length ? ` <em>Each country at the year nearest ${p.year} that carries both ` +
+          `(${Math.min(...yrsP)} to ${Math.max(...yrsP)}).</em>` : '') +
+        (pts.far ? ` <em>${pts.far} more countries carry both but never within ${POOL_YEAR_TOL} years of ` +
+          `${p.year}, so they are left out.</em>` : '') +
         (pts.dropped ? ` <em>${pts.dropped} more countries carry both measures but never in the same year, so they are left out.</em>` : '') +
         fitnessFlag(fit, fit.n < 25 ? `only ${fit.n} countries` : `years ${fit.med} apart`);
     }
@@ -2086,7 +2166,7 @@ function buildAnswer(p, q) {
     if (aspNamed) y = aspNamed;
     if (!y) y = SERIES.life_exp ? 'life_exp' : 'income_gini';   // a sensible relationship to break by default
     const mx = META[x], my = META[y];
-    const pts = pairedPoints(x, y, null);
+    const pts = pairedPoints(x, y, null, p.year);
     const fit = theilSen(pts);
     if (!fit || pts.length < 8) return miss();
     for (const pt of pts) pt.resid = pt.y - (fit.slope * pt.x + fit.intercept);
@@ -2159,12 +2239,18 @@ function buildAnswer(p, q) {
 
   else if (p.kind === 'tiers') {
     const my = META[p.aspect], ml = META[p.lens];
-    const { hi, lo } = terciles(p.lens, p.region);
+    const { hi, lo } = terciles(p.lens, p.region, p.year);
+    if (hi == null || lo == null) {
+      showNotice(`Too few countries carry ${ml.label} within ${POOL_YEAR_TOL} years of ${p.year} to cut into thirds.`);
+      return null;
+    }
     const groups = { high: [], mid: [], low: [] };
+    const yrsUsed = [];
     for (const iso in BY_ISO) {
       if (!inScope(iso, p.region)) continue;
-      const lv = latestValOf(p.lens, iso), av = latestValOf(p.aspect, iso);
+      const lv = valAt(p.lens, iso, p.year), av = valAt(p.aspect, iso, p.year);
       if (!lv || !av) continue;
+      yrsUsed.push(lv.year, av.year);
       const g = lv.val >= hi ? 'high' : lv.val <= lo ? 'low' : 'mid';
       groups[g].push(av.val);
     }
@@ -2180,9 +2266,13 @@ function buildAnswer(p, q) {
       { label: `Least unequal third`, val: mlo, n: groups.low.length },
     ] };
     const dir = mh > mlo ? 'higher' : 'lower';
-    f.text = `Grouping countries by ${ml.label}: the most unequal third average ` +
-      `<strong>${my.fmt(mh)}</strong> on ${my.label}, the least unequal third <strong>${my.fmt(mlo)}</strong> ` +
-      `(${dir} where inequality is greater).`;
+    const n = groups.high.length + groups.mid.length + groups.low.length;
+    f.text = `Grouping countries by ${ml.label}${poolNote()}${p.year ? ' in ' + p.year : ''}: ` +
+      `the most unequal third average <strong>${my.fmt(mh)}</strong> on ${my.label}, the least unequal ` +
+      `third <strong>${my.fmt(mlo)}</strong> (${dir} where inequality is greater). ` +
+      `<em>${n} countries carry both` +
+      (p.year && yrsUsed.length ? `, each at its nearest reading within ${POOL_YEAR_TOL} years ` +
+        `(${Math.min(...yrsUsed)} to ${Math.max(...yrsUsed)})` : '') + `.</em>`;
   }
 
   else if (p.kind === 'lorenz') {
@@ -2199,17 +2289,25 @@ function buildAnswer(p, q) {
     const key = p.metric && META[p.metric].series ? p.metric : (META[ctx.metric].series ? ctx.metric : 'wealth_gini');
     ctx.metric = key;
     const m = META[key];
-    const pool = rankedPool(key, 'high', p.region);
-    if (pool.length < 3) return miss();
+    const pool = rankedPool(key, 'high', p.region, p.year);
+    if (pool.length < 3) {
+      if (p.year) { showNotice(`Too few countries carry ${m.label} within ${POOL_YEAR_TOL} years of ${p.year} to show a spread.`); return null; }
+      return miss();
+    }
     const med = medianOf(pool.map(r => r.val));
-    const foc = focusIsos().filter(i => pool.some(r => r.geo_id === i));
+    const want = (p.focus && p.focus.length ? p.focus : focusIsos());
+    const foc = want.filter(i => pool.some(r => r.geo_id === i));
     if (foc.length) { f.isos = foc; ctx.lastIso = foc[foc.length - 1]; }
     f.mode = 'strip';
-    f.strip = { key, pool, region: p.region, focus: foc };
+    f.strip = { key, pool, region: p.region, focus: foc, atYear: p.year || null };
     const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
-    f.text = `${cap(m.label)}${where} ranges from <strong>${m.fmt(pool[pool.length - 1].val)}</strong> ` +
+    const yrs = pool.map(r => r.year).filter(Boolean);
+    f.text = `${cap(m.label)}${where}${poolNote()}${p.year ? ' in ' + p.year : ''} ranges from ` +
+      `<strong>${m.fmt(pool[pool.length - 1].val)}</strong> ` +
       `(${esc(pool[pool.length - 1].geo_name)}) to <strong>${m.fmt(pool[0].val)}</strong> ` +
-      `(${esc(pool[0].geo_name)}), median <strong>${m.fmt(med)}</strong>.`;
+      `(${esc(pool[0].geo_name)}), median <strong>${m.fmt(med)}</strong>, across ${pool.length} countries.` +
+      (p.year && yrs.length ? ` <em>Each at its nearest reading within ${POOL_YEAR_TOL} years ` +
+        `(${Math.min(...yrs)} to ${Math.max(...yrs)}).</em>` : '');
   }
 
   else if (p.kind === 'profile') {
@@ -2251,25 +2349,46 @@ function buildAnswer(p, q) {
     const key = resolveMetric(p);
     ctx.metric = key;
     const m = META[key];
-    let pool = rankedPool(key, p.dir, p.region);
+    let pool = rankedPool(key, p.dir, p.region, p.year);
     if (p.only && p.only.length) {
       const want = p.only;
       pool = pool.filter(r => want.includes(r.geo_id));
       const missing = want.filter(i => !pool.some(r => r.geo_id === i));
       if (missing.length) f.missNote = missing.map(i => BY_ISO[i] ? BY_ISO[i].name : i);
     }
-    if (!pool.length) return miss();
-    const top = p.only && p.only.length ? pool : pool.slice(0, 10);
+    if (!pool.length) {
+      if (p.year) { showNotice(`No country carries ${META[key].label} within ${POOL_YEAR_TOL} years of ${p.year}.`); return null; }
+      return miss();
+    }
+    let top = p.only && p.only.length ? pool : pool.slice(0, 10);
+    // a chosen country is not dropped for ranking low: it is kept, and its place said
+    const hl = p.highlight && pool.some(r => r.geo_id === p.highlight) ? p.highlight : null;
+    let hlRank = null;
+    if (hl) {
+      hlRank = pool.findIndex(r => r.geo_id === hl) + 1;
+      if (!top.some(r => r.geo_id === hl)) top = top.concat([pool[hlRank - 1]]);
+    }
     const where = p.only && p.only.length ? '' : p.region ? ` in ${REGION_LABEL[p.region]}` : '';
     const three = top.slice(0, 3).map(r => `${esc(r.geo_name)} <strong>${m.fmt(r.val)}</strong>`).join(', ');
-    ctx.lastRankDir = p.dir; ctx.lastIso = top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
-    f.isos = [top[0].geo_id];
+    ctx.lastRankDir = p.dir; ctx.lastIso = hl || top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
     f.mode = 'bars';
-    f.bar = { key, dir: p.dir, rows: top, highlight: null, note: where };
-    f.isos = p.only && p.only.length ? top.map(r => r.geo_id) : f.isos;
+    // years actually used, which is only the same as the year asked for when the
+    // series happens to carry it; a survey measure lands where the surveys landed
+    const yrs = top.map(r => r.year).filter(Boolean);
+    const when = p.year
+      ? ` <em>Ranked at ${p.year}: each country at its nearest reading within ${POOL_YEAR_TOL} years` +
+        (yrs.length ? ` (${Math.min(...yrs)} to ${Math.max(...yrs)})` : '') +
+        `, ${pool.length} of them carry one.</em>`
+      : '';
+    f.bar = { key, dir: p.dir, rows: top, highlight: hl, note: where, atYear: p.year || null };
+    f.isos = p.only && p.only.length ? top.map(r => r.geo_id) : [hl || top[0].geo_id];
     f.text = (p.only && p.only.length
-      ? `${cap(m.label)}, latest year, ${top.length} countries: ${three}.`
-      : `${p.dir === 'high' ? 'Highest' : 'Lowest'} ${m.label}${where}, latest year: ${three}.`) +
+      ? `${cap(m.label)}, ${top.length} countries: ${three}.`
+      : `${p.dir === 'high' ? 'Highest' : 'Lowest'} ${m.label}${where}${poolNote()}: ${three}.`) +
+      (hl ? ` <strong>${esc(BY_ISO[hl].name)}</strong> is <strong>${ordinal(hlRank)}</strong> of ` +
+        `${pool.length}${p.region || ctx.pool ? ' here' : ''}, at ` +
+        `<strong>${m.fmt(pool[hlRank - 1].val)}</strong>.` : '') +
+      when +
       (f.missNote ? ` <em>${esc(f.missNote.join(', '))} ${f.missNote.length === 1 ? 'has' : 'have'} ` +
         `no ${esc(m.label)} on record, so ${f.missNote.length === 1 ? 'it is' : 'they are'} not drawn.</em>` : '');
   }
@@ -2282,27 +2401,51 @@ function buildAnswer(p, q) {
     const s = SERIES[key] || {};
     for (const iso in s) {
       if (!inScope(iso, p.region) || !BY_ISO[iso]) continue;
-      const pts = s[iso];
-      if (!pts.length) continue;
-      const from = pts.find(d => d.year >= p.year) || pts[0];
+      const pts = s[iso].filter(d => (!p.year || d.year >= p.year) && (!p.until || d.year <= p.until));
+      if (pts.length < 2) continue;
+      const from = pts[0];
       const to = pts[pts.length - 1];
       if (to.year - from.year < 10) continue;
-      pool.push({ geo_id: iso, geo_name: BY_ISO[iso].name, val: to.v - from.v });
+      pool.push({ geo_id: iso, geo_name: BY_ISO[iso].name, val: to.v - from.v,
+        from: from.year, to: to.year });
     }
-    if (!pool.length) return miss();
+    if (!pool.length) {
+      showNotice(p.year || p.until
+        ? 'No country carries a run of ten years or more inside those years. Widen the range.'
+        : 'That measure has no run of years to rank moves over.');
+      return null;
+    }
     pool.sort((a, b) => p.dir === 'up' ? b.val - a.val : a.val - b.val);
-    const top = pool.slice(0, 10);
+    let top = pool.slice(0, 10);
+    const dhl = p.highlight && pool.some(x => x.geo_id === p.highlight) ? p.highlight : null;
+    let dRank = null;
+    if (dhl) {
+      dRank = pool.findIndex(x => x.geo_id === dhl) + 1;
+      if (!top.some(x => x.geo_id === dhl)) top = top.concat([pool[dRank - 1]]);
+    }
     const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
     const rose = pool.filter(x => x.val > 0).length, fell = pool.filter(x => x.val < 0).length;
     const three = top.slice(0, 3).map(x =>
-      `${esc(x.geo_name)} ${x.val >= 0 ? '+' : ''}<strong>${m.fmtD(Math.abs(x.val))}</strong>`.replace('+<strong>', '+<strong>')).join(', ');
-    ctx.lastIso = top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
-    f.isos = [top[0].geo_id];
+      `${esc(x.geo_name)} ${x.val >= 0 ? '+' : ''}<strong>${m.fmtD(Math.abs(x.val))}</strong>`).join(', ');
+    ctx.lastIso = dhl || top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
+    f.isos = [dhl || top[0].geo_id];
     f.mode = 'bars';
-    f.bar = { key: 'delta', metric: key, dir: p.dir, rows: top, highlight: null,
-              note: `${where}, ${m.label} since ${p.year}` };
-    f.text = `Biggest ${p.dir === 'up' ? 'rises' : 'falls'} in ${m.label}${where} since ${p.year}: ${three}. ` +
-      `Overall ${rose} rose and ${fell} fell.`;
+    // the window each country was actually measured over, which is not the window
+    // that was asked for whenever its series starts late or stops early
+    const lo = Math.min(...top.map(x => x.from)), hi = Math.max(...top.map(x => x.to));
+    const span = (p.year || p.until)
+      ? `${p.year || 'the start'} to ${p.until || 'the latest year'}`
+      : 'the whole run';
+    f.bar = { key: 'delta', metric: key, dir: p.dir, rows: top, highlight: dhl,
+              note: `${where}, ${m.label}, ${span}` };
+    f.text = `Biggest ${p.dir === 'up' ? 'rises' : 'falls'} in ${m.label}${where}${poolNote()}, ` +
+      `${span}: ${three}.` +
+      (dhl ? ` <strong>${esc(BY_ISO[dhl].name)}</strong> is <strong>${ordinal(dRank)}</strong> of ` +
+        `${pool.length}, at ${pool[dRank - 1].val >= 0 ? '+' : '-'}` +
+        `<strong>${m.fmtD(Math.abs(pool[dRank - 1].val))}</strong>.` : '') +
+      ` Overall ${rose} rose and ${fell} fell.` +
+      ` <em>Each country is measured over its own years inside that window (${lo} to ${hi}), and only ` +
+      `those with ten years or more are ranked: ${pool.length} of them.</em>`;
   }
 
   else if (p.kind === 'threshold') {
@@ -3609,8 +3752,13 @@ function drawChart() {
       title.textContent = `${bar.dir === 'up' ? 'Biggest rises' : 'Biggest falls'}${bar.note || ''}`;
       src.textContent = (META[bar.metric].poolSrc || '') + ' Change from the first year at or after the start year to the latest.';
     } else {
-      title.textContent = `${cap(m.label)}${bar.note || ''}, latest year` + (hl ? `, around ${hl.name}` : '');
-      src.textContent = (m.poolSrc || 'Source: WID, latest available year per country.') + ' ' + provenance([bar.key === 'delta' ? bar.metric : bar.key]);
+      const at = bar.atYear ? `, ${bar.atYear}` : ', latest year';
+      title.textContent = `${cap(m.label)}${bar.note || ''}${at}` + (hl ? `, around ${hl.name}` : '');
+      src.textContent = (bar.atYear
+        ? `Source: WID. Each country at its nearest reading within ${POOL_YEAR_TOL} years of ${bar.atYear}; ` +
+          `a country with nothing that close is not ranked.`
+        : (m.poolSrc || 'Source: WID, latest available year per country.')) +
+        ' ' + provenance([bar.key === 'delta' ? bar.metric : bar.key]);
     }
   }
 
