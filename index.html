@@ -1837,8 +1837,9 @@ function runCell() {
   }
   const F = cell.form;
   if (F === 'lorenz' && cell.place) {
-    p = { kind: 'lorenz', isos: [cell.place] };
-    q = `Lorenz curve for ${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place}`;
+    p = { kind: 'lorenz', isos: cell.places.slice(0, 5) };
+    q = cell.places.length > 1 ? `Lorenz curves for ${cell.places.length} countries`
+      : `Lorenz curve for ${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place}`;
   } else if (F === 'spread') {
     p = { kind: 'spread', metric: ctx.metric, region: ctx.region,
       year: cell.span === 'moment' ? cell.year : null,
@@ -1853,14 +1854,15 @@ function runCell() {
   } else if (F === 'rank') {
     // a ranking still answers to the rest of the cell: the country is marked and its
     // place said, a chosen year ranks at that year, and a run of years ranks the moves
+    const many = cell.places.length > 1 ? cell.places.slice() : null;
     if (cell.span === 'run') {
       p = { kind: 'delta_rank', dir: 'up', region: ctx.region, metric: ctx.metric,
-        year: cell.since, until: cell.until, highlight: cell.place };
-      q = 'the biggest moves';
+        year: cell.since, until: cell.until, highlight: cell.place, only: many };
+      q = many ? `${many.length} countries, the moves` : 'the biggest moves';
     } else {
       p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true,
-        year: cell.span === 'moment' ? cell.year : null, highlight: cell.place };
-      q = 'the ranking';
+        year: cell.span === 'moment' ? cell.year : null, highlight: cell.place, only: many };
+      q = many ? `${many.length} countries compared` : 'the ranking';
     }
   } else if (cell.place && cell.against && META[cell.against] && cell.span === 'run') {
     // a scatter that gains time becomes a trajectory: one country's path across the two
@@ -2280,9 +2282,15 @@ function buildAnswer(p, q) {
     if (!isos.length) { showNotice('Name a country to draw its wealth Lorenz curve.'); return null; }
     f.mode = 'lorenz'; f.isos = isos; ctx.lastIso = isos[isos.length - 1];
     f.lorenz = { isos };
-    const c = BY_ISO[isos[0]].latest;
-    f.text = `<strong>${esc(BY_ISO[isos[0]].name)}</strong> wealth Lorenz: the bottom half hold ` +
-      `<strong>${pc(c.bottom50_wealth_share)}</strong>, the top 10% hold <strong>${pc(c.top10_wealth_share)}</strong>.`;
+    const bits = isos.map(i => {
+      const c = BY_ISO[i].latest;
+      return `<strong>${esc(BY_ISO[i].name)}</strong> ${pc(c.bottom50_wealth_share)} and ` +
+        `${pc(c.top10_wealth_share)}`;
+    });
+    f.text = `The share held by the bottom half, and by the top tenth: ${bits.join('; ')}.` +
+      (p.isos && p.isos.length > isos.length
+        ? ` <em>${p.isos.length - isos.length} of the countries chosen carry no wealth split, so ` +
+          `${p.isos.length - isos.length === 1 ? 'it is' : 'they are'} not drawn.</em>` : '');
   }
 
   else if (p.kind === 'spread') {
@@ -2385,9 +2393,10 @@ function buildAnswer(p, q) {
     f.text = (p.only && p.only.length
       ? `${cap(m.label)}, ${top.length} countries: ${three}.`
       : `${p.dir === 'high' ? 'Highest' : 'Lowest'} ${m.label}${where}${poolNote()}: ${three}.`) +
-      (hl ? ` <strong>${esc(BY_ISO[hl].name)}</strong> is <strong>${ordinal(hlRank)}</strong> of ` +
-        `${pool.length}${p.region || ctx.pool ? ' here' : ''}, at ` +
-        `<strong>${m.fmt(pool[hlRank - 1].val)}</strong>.` : '') +
+      (hl && !(p.only && p.only.length)
+        ? ` <strong>${esc(BY_ISO[hl].name)}</strong> is <strong>${ordinal(hlRank)}</strong> of ` +
+          `${pool.length}${p.region || ctx.pool ? ' here' : ''}, at ` +
+          `<strong>${m.fmt(pool[hlRank - 1].val)}</strong>.` : '') +
       when +
       (f.missNote ? ` <em>${esc(f.missNote.join(', '))} ${f.missNote.length === 1 ? 'has' : 'have'} ` +
         `no ${esc(m.label)} on record, so ${f.missNote.length === 1 ? 'it is' : 'they are'} not drawn.</em>` : '');
@@ -2409,22 +2418,28 @@ function buildAnswer(p, q) {
       pool.push({ geo_id: iso, geo_name: BY_ISO[iso].name, val: to.v - from.v,
         from: from.year, to: to.year });
     }
-    if (!pool.length) {
+    let dPool = pool;
+    if (p.only && p.only.length) {
+      dPool = pool.filter(x => p.only.includes(x.geo_id));
+      const gone = p.only.filter(i => !dPool.some(x => x.geo_id === i));
+      if (gone.length) f.missNote = gone.map(i => BY_ISO[i] ? BY_ISO[i].name : i);
+    }
+    if (!dPool.length) {
       showNotice(p.year || p.until
         ? 'No country carries a run of ten years or more inside those years. Widen the range.'
         : 'That measure has no run of years to rank moves over.');
       return null;
     }
-    pool.sort((a, b) => p.dir === 'up' ? b.val - a.val : a.val - b.val);
-    let top = pool.slice(0, 10);
-    const dhl = p.highlight && pool.some(x => x.geo_id === p.highlight) ? p.highlight : null;
+    dPool.sort((a, b) => p.dir === 'up' ? b.val - a.val : a.val - b.val);
+    let top = p.only && p.only.length ? dPool : dPool.slice(0, 10);
+    const dhl = p.highlight && dPool.some(x => x.geo_id === p.highlight) ? p.highlight : null;
     let dRank = null;
     if (dhl) {
-      dRank = pool.findIndex(x => x.geo_id === dhl) + 1;
-      if (!top.some(x => x.geo_id === dhl)) top = top.concat([pool[dRank - 1]]);
+      dRank = dPool.findIndex(x => x.geo_id === dhl) + 1;
+      if (!top.some(x => x.geo_id === dhl)) top = top.concat([dPool[dRank - 1]]);
     }
     const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
-    const rose = pool.filter(x => x.val > 0).length, fell = pool.filter(x => x.val < 0).length;
+    const rose = dPool.filter(x => x.val > 0).length, fell = dPool.filter(x => x.val < 0).length;
     const three = top.slice(0, 3).map(x =>
       `${esc(x.geo_name)} ${x.val >= 0 ? '+' : ''}<strong>${m.fmtD(Math.abs(x.val))}</strong>`).join(', ');
     ctx.lastIso = dhl || top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
@@ -2438,14 +2453,19 @@ function buildAnswer(p, q) {
       : 'the whole run';
     f.bar = { key: 'delta', metric: key, dir: p.dir, rows: top, highlight: dhl,
               note: `${where}, ${m.label}, ${span}` };
-    f.text = `Biggest ${p.dir === 'up' ? 'rises' : 'falls'} in ${m.label}${where}${poolNote()}, ` +
-      `${span}: ${three}.` +
-      (dhl ? ` <strong>${esc(BY_ISO[dhl].name)}</strong> is <strong>${ordinal(dRank)}</strong> of ` +
-        `${pool.length}, at ${pool[dRank - 1].val >= 0 ? '+' : '-'}` +
-        `<strong>${m.fmtD(Math.abs(pool[dRank - 1].val))}</strong>.` : '') +
-      ` Overall ${rose} rose and ${fell} fell.` +
+    const chosen = p.only && p.only.length;
+    f.isos = chosen ? top.map(x => x.geo_id) : f.isos;
+    f.text = (chosen
+      ? `${cap(m.label)}, the move over ${span}, ${top.length} countries: ${three}.`
+      : `Biggest ${p.dir === 'up' ? 'rises' : 'falls'} in ${m.label}${where}${poolNote()}, ${span}: ${three}.`) +
+      (dhl && !chosen ? ` <strong>${esc(BY_ISO[dhl].name)}</strong> is <strong>${ordinal(dRank)}</strong> of ` +
+        `${dPool.length}, at ${dPool[dRank - 1].val >= 0 ? '+' : '-'}` +
+        `<strong>${m.fmtD(Math.abs(dPool[dRank - 1].val))}</strong>.` : '') +
+      (chosen ? '' : ` Overall ${rose} rose and ${fell} fell.`) +
       ` <em>Each country is measured over its own years inside that window (${lo} to ${hi}), and only ` +
-      `those with ten years or more are ranked: ${pool.length} of them.</em>`;
+      `those with ten years or more are ${chosen ? 'shown' : 'ranked'}: ${dPool.length} of them.</em>` +
+      (f.missNote ? ` <em>${esc(f.missNote.join(', '))} ${f.missNote.length === 1 ? 'has' : 'have'} ` +
+        `no run that long inside those years, so ${f.missNote.length === 1 ? 'it is' : 'they are'} not drawn.</em>` : '');
   }
 
   else if (p.kind === 'threshold') {
@@ -2765,6 +2785,7 @@ function cyclePrompt(dir) {
 }
 // a written question is read into the chain first; nothing runs until you send it
 function runPrompt(text) {
+  if (!DATA_READY) { showNotice('The figures are still loading. The cube turns meanwhile; ask again in a moment.'); return; }
   const q = text.replace(/^\w+:\s*/, '').trim();
   const el = document.getElementById('q');
   if (el) el.value = q;
@@ -2782,6 +2803,11 @@ const METRIC_HEX = {
   life_exp: '#c0607a', life_satisfaction: '#c0607a', co2_pc: '#c98a2b',
 };
 const metricColor = key => METRIC_HEX[key] || '#7a7f88';
+// the mark for "this is the one you asked about". an orange that belongs to no face
+// was doing this before; now it is the measure's own colour at full strength, and it
+// stands out by being outlined and darker than the ramp around it, not by being other.
+function hlFill(key) { return shade(metricColor(key || ctx.metric), 0.22); }
+function hlEdge() { return cssVar('--ink', '#0a0a0a'); }
 const cubeEl = () => document.getElementById('cube');
 let curFacet = 'wealth', cRotX = 0, cRotY = 0;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -3370,6 +3396,7 @@ function cellNeedsPlace() {
   return false;
 }
 function sendCell() {
+  if (!DATA_READY) { showNotice('The figures are still loading. Ask again in a moment.'); return; }
   // a question left general on purpose has to be finished before it can answer
   if (cell.view === 'reach' && !cell.place) {
     showNotice('This holds one country\'s growth against its own median income. Add a place first.'); return;
@@ -3384,9 +3411,12 @@ function sendCell() {
   // rather than quietly answering about the first and dropping the rest
   const oneOnly = cell.view === 'reach' ? VIEW_DEF.reach.label
     : cell.view === 'ratio' ? VIEW_DEF.ratio.label
-    : cell.form === 'lorenz' ? 'a Lorenz curve'
     : (cell.against && cell.span === 'run') ? 'a path across two measures'
-    : (cell.span === 'moment' && cell.year) ? null : null;
+    : null;
+  if (cell.places.length > 5 && cell.form === 'lorenz') {
+    showNotice(`A Lorenz curve draws five countries at most, and ${cell.places.length} are chosen.`);
+    return;
+  }
   if (cell.places.length > 1 && oneOnly) {
     showNotice(`${cap(oneOnly)} is drawn for one country, and ${cell.places.length} are chosen. ` +
       `Drop the others, or pick a reading that takes them all.`);
@@ -3730,10 +3760,16 @@ function drawChart() {
       type: 'bar', orientation: 'h',
       y: rows.map(r => r.geo_name),
       x: vals,
-      marker: { color: (() => {
-        const ramp = shadesOf(metricColor(isDelta ? bar.metric : bar.key), rows.length);
-        return rows.map((r, i) => r.geo_id === bar.highlight ? '#eb6834' : ramp[i]);
-      })() },
+      marker: (() => {
+        const mk = isDelta ? bar.metric : bar.key;
+        const ramp = shadesOf(metricColor(mk), rows.length);
+        const on = r => r.geo_id === bar.highlight;
+        return {
+          color: rows.map((r, i) => on(r) ? hlFill(mk) : ramp[i]),
+          line: { color: rows.map(r => on(r) ? hlEdge() : 'rgba(0,0,0,0)'),
+                  width: rows.map(r => on(r) ? 2 : 0) },
+        };
+      })(),
       text: labels,
       textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
       hovertemplate: '%{y}: %{text}<extra></extra>',
@@ -3816,7 +3852,9 @@ function drawChart() {
     }
     if (named.length) traces.push({
       type: 'scatter', mode: 'markers+text', ...mk(named),
-      marker: { color: named.map(p => focusSet.has(p.iso) ? '#eb6834' : ACC()), size: 11, line: { color: '#fff', width: 1.5 , shape: 'spline', smoothing: 0.6 } },
+      marker: { color: named.map(p => focusSet.has(p.iso) ? hlFill() : ACC()), size: 11,
+        line: { color: named.map(p => focusSet.has(p.iso) ? hlEdge() : '#fff'),
+                width: named.map(p => focusSet.has(p.iso) ? 2 : 1.5) } },
       textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
       hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
     });
@@ -3856,7 +3894,8 @@ function drawChart() {
       const mk = (a, hl) => ({ type: 'scatter', mode: hl ? 'markers+text' : 'markers', xaxis, yaxis: 'y',
         x: a.map(p => sx(p.x)), y: a.map(p => scy(p.y)), text: a.map(p => hl ? p.name : ''),
         customdata: a.map(p => p.name), textposition: 'top center', textfont: { size: 10, color: cssVar('--ink', '#1a2744') },
-        marker: { color: hl ? '#eb6834' : color, size: hl ? 10 : 6, opacity: hl ? 1 : 0.55, line: hl ? { color: '#fff', width: 1.5 } : {} },
+        marker: { color: hl ? hlFill() : color, size: hl ? 10 : 6, opacity: hl ? 1 : 0.55,
+          line: hl ? { color: hlEdge(), width: 2 } : {} },
         hovertemplate: '%{customdata}<br>%{x:.2f} · ' + my.label + ' %{y}<extra></extra>', showlegend: false });
       return fg.length ? [mk(bg, false), mk(fg, true)] : [mk(bg, false)];
     };
@@ -3962,13 +4001,15 @@ function drawChart() {
         line: { width: 0 }, fill: 'tonexty',
         // plain rgba: Plotly writes this into an SVG fill, where color-mix does not
         // land and it silently falls back to its own default palette instead
-        fillcolor: 'rgba(235,104,52,0.16)', hoverinfo: 'skip' },
+        fillcolor: 'rgba(47,158,143,0.15)', hoverinfo: 'skip' },
       { type: 'scatter', mode: 'lines', name: 'output per person',
         x: rc.gs.map(d => d.year), y: idx(rc.gs),
         line: { color: metricColor('gdp_pc'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
       { type: 'scatter', mode: rc.ms.length < 12 ? 'lines+markers' : 'lines', name: 'the income in the middle',
         x: rc.ms.map(d => d.year), y: mi,
-        line: { color: '#eb6834', width: 2.6, shape: 'spline', smoothing: 0.6 }, marker: { size: 6 } },
+        // both sides are income, so both wear the income colour, a step apart
+        line: { color: shade(metricColor('median_income'), 0.42), width: 2.6, shape: 'spline', smoothing: 0.6 },
+        marker: { size: 6 } },
     ], Object.assign({}, BASE_LAYOUT, {
       showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
       margin: { t: 14, r: 16, b: 40, l: 52 },
@@ -4030,7 +4071,9 @@ function drawChart() {
     Plotly.react(el, [{
       type: 'bar', orientation: 'h',
       y: rows.map(r => r.geo_name), x: rows.map(r => r.val),
-      marker: { color: rows.map((r, i) => r.geo_id === rt.highlight ? '#eb6834' : ramp[i]) },
+      marker: { color: rows.map((r, i) => r.geo_id === rt.highlight ? hlFill(rt.key) : ramp[i]),
+        line: { color: rows.map(r => r.geo_id === rt.highlight ? hlEdge() : 'rgba(0,0,0,0)'),
+                width: rows.map(r => r.geo_id === rt.highlight ? 2 : 0) } },
       text: rows.map(r => r.val.toFixed(1) + 'x'),
       textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
       hovertemplate: '%{y}: %{text} the bottom half<extra></extra>',
@@ -4075,13 +4118,13 @@ function drawChart() {
         x: [hx, rx[0], null, hx, hx, null, hx, hx],
         y: [hy, hy, null, hy, ry[1], null, hy, hy],
         z: [hz, hz, null, hz, hz, null, hz, rz[0]],
-        line: { color: '#eb6834', width: 2, dash: 'dot' },
+        line: { color: hlFill(tp.x), width: 2, dash: 'dot' },
         connectgaps: false,
       });
       traces.push({
         type: 'scatter3d', mode: 'markers+text', showlegend: false,
         x: [hx], y: [hy], z: [hz], text: [h.name],
-        marker: { size: 8, color: '#eb6834' },
+        marker: { size: 8, color: hlFill(tp.x), line: { color: hlEdge(), width: 1.5 } },
         textposition: 'top center',
         textfont: { size: 12, color: cssVar('--ink', '#1a2744') },
         hovertemplate: h.name + ' (' + h.year + ')<br>' + mx.label + ': %{x}<br>' +
@@ -4123,13 +4166,18 @@ function drawChart() {
     Plotly.react(el, [{
       type: 'bar', orientation: 'h',
       y: rows.map(r => r.label), x: vals,
-      marker: { color: ['#1baf7a', '#c9d3e0', '#eb6834'] },
+      // three ordered groups, so three steps of the face's own colour
+      marker: { color: shadesOf(metricColor(t.lens), 3) },
       text: rows.map(r => my.fmt(r.val) + '  ·  ' + r.n),
       textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
       hovertemplate: '%{y}: %{text} countries<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, {
-      margin: { t: 8, r: 90, b: 36, l: 150 },
-      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, isPct ? { ticksuffix: '%' } : {}),
+      margin: { t: 8, r: 112, b: 36, l: 150 },
+      // the value and the count are written outside the bar, so the axis has to leave
+      // room for them or the label is cut off at the edge of the card
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis,
+        { range: [0, Math.max(...vals) * 1.2], autorange: false },
+        isPct ? { ticksuffix: '%' } : {}),
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category' }),
       bargap: 0.4,
     }), CFG);
@@ -4169,7 +4217,7 @@ function drawChart() {
       x: fg.map(r => scale(r.val)), y: yj(fg),
       text: fg.map(r => r.geo_name), customdata: fg.map(r => m.fmt(r.val)),
       textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
-      marker: { color: '#eb6834', size: 11, line: { color: '#fff', width: 1.5 , shape: 'spline', smoothing: 0.6 } },
+      marker: { color: hlFill(), size: 11, line: { color: hlEdge(), width: 2 } },
       hovertemplate: '%{text}: %{customdata}<extra></extra>',
     });
     Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
@@ -4184,14 +4232,16 @@ function drawChart() {
 
   else if (mode === 'lorenz') {
     const lz = chain.slice().reverse().find(f => f.mode === 'lorenz').lorenz;
-    const traces = lz.isos.map(iso => {
+    // several curves of the same measure, so several steps of that measure's colour
+    const lzRamp = shadesOf(metricColor('wealth_gini'), Math.max(2, lz.isos.length));
+    const traces = lz.isos.map((iso, li) => {
       const c = BY_ISO[iso].latest;
       const b50 = c.bottom50_wealth_share, t10 = c.top10_wealth_share, t1 = c.top1_wealth_share;
       const px = [0, 50, 90, 99, 100];
       const py = [0, b50 * 100, (1 - t10) * 100, (1 - t1) * 100, 100];
       return {
         type: 'scatter', mode: 'lines', name: BY_ISO[iso].name,
-        x: px, y: py, line: { color: assignColor(iso), width: 2.2 , shape: 'spline', smoothing: 0.6 },
+        x: px, y: py, line: { color: lzRamp[li], width: 2.2, shape: 'spline', smoothing: 0.6 },
         hovertemplate: BY_ISO[iso].name + ': bottom %{x:.0f}% hold %{y:.1f}%<extra></extra>',
       };
     });
@@ -4960,7 +5010,49 @@ function fillCoverage() {
   cov('life_satisfaction', 'cov-sat');
 }
 
+// the chrome needs no data: the cube, the theme, the tabs. wiring it behind the
+// fetch left the cube dead for as long as 2.3MB of json took to arrive, which on a
+// slow line is half a minute of a thing that looks draggable and is not.
+let DATA_READY = false;
+function bootShell() {
+  initCube();
+  const sh = document.getElementById('shake');
+  if (sh) sh.addEventListener('click', shakeCube);
+  // theme toggle: follow the OS, or override it and remember
+  const themeBtn = document.getElementById('theme');
+  if (themeBtn) themeBtn.addEventListener('click', () => {
+    const dark = !(document.documentElement.getAttribute('data-theme') === 'dark' ||
+      (!document.documentElement.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches));
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    try { localStorage.setItem('oia-theme', dark ? 'dark' : 'light'); } catch (e) {}
+    if (chain.length) drawChart();
+    if (!document.getElementById('view-why').hidden) drawWhy();
+  });
+  // back to the top (and the cube) once you've scrolled into the visuals
+  const toTop = document.getElementById('totop');
+  if (toTop) {
+    toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }));
+    window.addEventListener('scroll', () => toTop.classList.toggle('show', window.scrollY > 320));
+  }
+  const tabsEl = document.getElementById('tabs'), deeperBtn = document.getElementById('deeper');
+  if (deeperBtn) deeperBtn.addEventListener('click', () => {
+    const open = tabsEl.hidden;
+    tabsEl.hidden = !open;
+    deeperBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  const homeBtn = document.getElementById('home');
+  if (homeBtn) homeBtn.addEventListener('click', () => {
+    setView('ask');
+    tabsEl.hidden = true; deeperBtn.setAttribute('aria-expanded', 'false');
+  });
+  document.querySelectorAll('.tabs .tab').forEach(t =>
+    t.addEventListener('click', () => setView(t.dataset.view)));
+  // the prompt reel turns while the numbers are still on the wire
+  setInterval(() => nextPrompt(false), 3800);
+  stageFocus = false; setStage('compose'); stageFocus = true; setHelp(false);
+}
 function boot() {
+  DATA_READY = true;
   updateChips();
   document.querySelectorAll('.try').forEach(v => {
     v.innerHTML = v.dataset.qs.split(';')
@@ -5033,48 +5125,15 @@ function boot() {
   document.querySelectorAll('.sendbtn').forEach(el => el.addEventListener('click', sendCell));
   const cw = document.getElementById('claim-why');
   if (cw) cw.addEventListener('click', () => { setView('why'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
-  const sh = document.getElementById('shake');
-  if (sh) sh.addEventListener('click', shakeCube);
   document.getElementById('clear').addEventListener('click', resetAll);
-  // the prompt cycles through the premade questions on its own; arrows step it by hand
-  setInterval(() => nextPrompt(false), 3800);
   // click the measure inside the facet row to swap it
   const vfacet = document.getElementById('v-facet');
   if (vfacet) vfacet.addEventListener('click', e => { if (e.target.closest('.submeasure')) cycleMeasure(); });
   wireCell();
   watchLayout();
-  stageFocus = false; setStage('compose'); stageFocus = true; setHelp(false);   // opens quiet, no list
-  // theme toggle: follow the OS, or override it and remember
-  const themeBtn = document.getElementById('theme');
-  if (themeBtn) themeBtn.addEventListener('click', () => {
-    const dark = !(document.documentElement.getAttribute('data-theme') === 'dark' ||
-      (!document.documentElement.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches));
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    try { localStorage.setItem('oia-theme', dark ? 'dark' : 'light'); } catch (e) {}
-    if (chain.length) drawChart();
-    if (!document.getElementById('view-why').hidden) drawWhy();
-  });
-  // back to the top (and the cube) once you've scrolled into the visuals
-  const toTop = document.getElementById('totop');
-  if (toTop) {
-    toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }));
-    window.addEventListener('scroll', () => toTop.classList.toggle('show', window.scrollY > 320));
-  }
-  // the cube, and the folded-away deeper views
-  initCube();
-  const tabsEl = document.getElementById('tabs'), deeperBtn = document.getElementById('deeper');
-  deeperBtn.addEventListener('click', () => {
-    const open = tabsEl.hidden;
-    tabsEl.hidden = !open;
-    deeperBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-  });
+  updateCell();
   const usEnter = document.getElementById('us-enter');
   if (usEnter) usEnter.addEventListener('click', () => flipTo('us'));
-  document.getElementById('home').addEventListener('click', () => {
-    const onUS = false;
-    if (onUS) flipTo('ask', true); else setView('ask');
-    tabsEl.hidden = true; deeperBtn.setAttribute('aria-expanded', 'false');
-  });
   document.getElementById('share').addEventListener('click', () => {
     const url = location.origin + location.pathname +
       (chain.length ? '#' + chain.map(f => encodeURIComponent(f.query)).join('|') : '');
@@ -5083,8 +5142,6 @@ function boot() {
     const old = b.textContent; b.textContent = 'copied';
     setTimeout(() => { b.textContent = old; }, 1200);
   });
-  document.querySelectorAll('.tabs .tab').forEach(t =>
-    t.addEventListener('click', () => setView(t.dataset.view)));
   document.querySelectorAll('.goto-db').forEach(a =>
     a.addEventListener('click', e => { e.preventDefault(); setView('db'); }));
   document.getElementById('tfilter').addEventListener('input', renderTable);
@@ -5123,6 +5180,9 @@ function toSeries(dict) {
   for (const iso in dict) out[iso] = dict[iso].map(([year, v]) => ({ year, v }));
   return out;
 }
+
+// the cube, the theme and the tabs come alive on the first frame; the numbers follow
+bootShell();
 
 const opt = url => loadJson(url).catch(() => ({}));   // modules that may not exist yet load empty
 Promise.all([
