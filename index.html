@@ -646,6 +646,11 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .db { padding: 48px 0 72px; }
 .db h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
 .db .sub { color: var(--ink-2); max-width: 620px; margin-bottom: 28px; }
+/* the one sentence the whole page is for, sat directly under the figure that earns it */
+.pull { max-width: 620px; margin: 26px 0 30px; padding-left: 18px;
+  border-left: 3px solid var(--accent);
+  font-size: 19px; line-height: 1.5; font-weight: 560; letter-spacing: -.01em; color: var(--ink); }
+@media (max-width: 620px) { .pull { font-size: 17px; } }
 
 .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
 @media (max-width: 720px) { .grid3 { grid-template-columns: 1fr; } }
@@ -940,6 +945,11 @@ footer a { color: inherit; }
       <div id="why-same" style="width:100%;height:340px"></div>
       <p class="chart-src" id="why-same-src"></p>
     </div>
+    <p class="pull">
+      The pay number describes your month. The ownership number describes whether you can buy a
+      house, survive losing your job, or leave anything behind. The one that decides your life is
+      the one nobody quotes.
+    </p>
     <p class="sub">
       Now the same country and the same years through a Gini, which is the number almost every
       report quotes. It barely moves. A Gini compresses the whole curve into one figure, and at
@@ -1532,6 +1542,17 @@ function parse(raw) {
   // TRIPLE: the three measured faces held together, one dot per country
   if (/\bthree faces\b|\ball three\b|\bfaces together\b|\bfaces sit\b|\bsit together\b|\bhealth (sit|together)\b/.test(r))
     return { kind: 'triple' };
+  // TABLES: the same countries ranked twice, once by earning and once by owning
+  if (/\bleague table\b|\btwo tables\b|\brank\w* (twice|both)\b|\bsame ranking\b|\brank on each\b|\bearns? and .*owns?\b|\bown as unevenly as\b/.test(r))
+    return { kind: 'tables', isos, region };
+  // TURN: the years the data itself picks out, then what was going on around them
+  if (/\bsharpest\b|\bsteepest\b|\bturning point\b|\bchanged most\b|\bbiggest (shift|change|move)\b|\bwhen did .*(change|shift|move) most\b/.test(r))
+    return { kind: 'turn', iso: isos[0] || null, isos };
+  // PEERS: the same years, against countries that started somewhere similar
+  if (/\bpeers?\b|\bcomparable countries\b|\bsimilar countries\b|\bcompared with (other|similar)\b|\bdifferently from\b|\bvs its peers\b/.test(r))
+    return { kind: 'peers', iso: isos[0] || null, isos,
+      year: years.length ? Math.min(...years) : null,
+      until: years.length > 1 ? Math.max(...years) : null };
   // BREAK: who defies the current relationship
   if (/\bbreaks? the pattern\b|\bbreaks? the trend\b|\boutliers?\b|\boff the (trend|line|pattern)\b|\bexceptions?\b|\bdefy\w*\b|\bover[- ]?perform\w*\b|\bunder[- ]?perform\w*\b|\bbeat the (trend|pattern)\b|\bpunch\w* above\b|\bbetter than\b.*\bsuggests?\b|\bdo better than\b/.test(r))
     return { kind: 'break', metrics };
@@ -1809,7 +1830,7 @@ function syncCellFromFact(f) {
 
     : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
-  cell.view = ['reach', 'ratio', 'triple'].includes(f.kind) ? f.kind : null;
+  cell.view = ['reach', 'ratio', 'triple', 'tables', 'turn', 'peers'].includes(f.kind) ? f.kind : null;
   cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
     : ctx.region ? ('r:' + ctx.region) : null;
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
@@ -1827,6 +1848,17 @@ function runCell() {
   ctx.lastIso = cell.place; ctx.lastAspect = cell.against;
   let p, q;
   if (cell.view === 'triple') { runParse({ kind: 'triple' }, 'the three faces together'); return; }
+  if (cell.view === 'tables') {
+    runParse({ kind: 'tables', isos: cell.places.slice(), region: ctx.region },
+      'the two league tables'); return;
+  }
+  if (cell.view === 'turn') {
+    runParse({ kind: 'turn', iso: cell.place }, 'the sharpest years'); return;
+  }
+  if (cell.view === 'peers') {
+    runParse({ kind: 'peers', iso: cell.place, year: cell.since, until: cell.until },
+      'against comparable countries'); return;
+  }
   if (cell.view === 'reach') {
     runParse({ kind: 'reach', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
       'did the growth reach the typical person'); return;
@@ -2119,6 +2151,145 @@ function buildAnswer(p, q) {
     }
   }
 
+  else if (p.kind === 'turn') {
+    // the turn is found in the data first. we do not go looking around an episode we
+    // already believe in, because that only ever finds what it went looking for.
+    const key = META[ctx.metric] && META[ctx.metric].series ? ctx.metric : facetIneqDefault();
+    const m = META[key];
+    const iso = p.iso || cell.place || ctx.lastIso;
+    if (!iso || !BY_ISO[iso]) { showNotice('This one reads one country. Add a place first.'); return null; }
+    const ser = seriesOf(key, iso);
+    const SPAN = 6;
+    if (ser.length < SPAN + 1) return miss();
+    const at = {}; ser.forEach(d => { at[d.year] = d.v; });
+    let best = null;
+    for (const d of ser) {
+      const y2 = d.year + SPAN;
+      if (at[y2] == null) continue;
+      const dv = at[y2] - d.v;
+      if (!best || Math.abs(dv) > Math.abs(best.dv)) best = { a: d.year, b: y2, dv };
+    }
+    if (!best) return miss();
+    const ev = eventsNear(iso, best.a, best.b);
+    ctx.lastIso = iso;
+    f.isos = [iso]; f.mode = 'turn'; f.metricUsed = key;
+    f.turn = { iso, key, ser, a: best.a, b: best.b, dv: best.dv, span: SPAN, events: ev };
+    const dir = best.dv >= 0 ? 'rose' : 'fell';
+    f.text = `The sharpest ${SPAN} years for ${m.label} in <strong>${esc(BY_ISO[iso].name)}</strong> ` +
+      `were <strong>${best.a} to ${best.b}</strong>, when it ${dir} ` +
+      `<strong>${m.fmtD(Math.abs(best.dv))}</strong>. ` +
+      (ev.length
+        ? `What was going on then, or in the ${EVENT_LAG} years before: ` +
+          ev.map(e => `${esc(e.k)} (${e.a === e.b ? e.a : e.a + ' to ' + e.b})`).join(', ') + '. '
+        : `Nothing in the atlas's event list falls in that window or the ${EVENT_LAG} years before it. `) +
+      `<em>The window was chosen by the size of the move, not by the events. Nothing here says ` +
+      `one caused the other.</em>`;
+  }
+
+  else if (p.kind === 'peers') {
+    // never before and after on its own: the world moved too. the question is whether
+    // this country moved differently from countries starting in a similar place.
+    const key = META[ctx.metric] && META[ctx.metric].series ? ctx.metric : facetIneqDefault();
+    const m = META[key];
+    const iso = p.iso || cell.place || ctx.lastIso;
+    if (!iso || !BY_ISO[iso]) { showNotice('This one holds a country against its peers. Add a place first.'); return null; }
+    const own = seriesOf(key, iso);
+    if (own.length < 2) return miss();
+    const a = p.year || own[0].year;
+    const b = p.until || own[own.length - 1].year;
+    if (b - a < 3) { showNotice('Hold it over at least a few years, or there is nothing to compare.'); return null; }
+    // peers are countries in the same third of GDP per person, which is a stated rule
+    // rather than a hand-picked club
+    const gp = rankedPool('gdp_pc', 'high', null);
+    const meAt = gp.findIndex(rr => rr.geo_id === iso);
+    const third = gp.length ? Math.floor(gp.length / 3) : 0;
+    const bandOf = k => k < third ? 0 : k < 2 * third ? 1 : 2;
+    const myBand = meAt >= 0 ? bandOf(meAt) : null;
+    const val = (i, y) => { const s2 = seriesOf(key, i); const h = s2.filter(d => d.year <= y);
+      return h.length && h[h.length - 1].year >= y - 2 ? h[h.length - 1].v : null; };
+    const moves = [];
+    for (const rr of gp) {
+      if (myBand != null && bandOf(gp.indexOf(rr)) !== myBand) continue;
+      const va = val(rr.geo_id, a), vb = val(rr.geo_id, b);
+      if (va == null || vb == null) continue;
+      moves.push({ iso: rr.geo_id, name: BY_ISO[rr.geo_id].name, dv: vb - va });
+    }
+    if (moves.length < 6) { showNotice('Too few comparable countries carry this measure over those years.'); return null; }
+    moves.sort((x, y) => y.dv - x.dv);
+    const mine = moves.find(x => x.iso === iso);
+    if (!mine) return miss();
+    const others = moves.filter(x => x.iso !== iso).map(x => x.dv).sort((x, y) => x - y);
+    const med = others[Math.floor(others.length / 2)];
+    const rank = moves.findIndex(x => x.iso === iso) + 1;
+    ctx.lastIso = iso;
+    f.isos = [iso]; f.mode = 'peers'; f.metricUsed = key;
+    f.peers = { iso, key, a, b, moves, med, rank, band: myBand };
+    const sgn = v => (v >= 0 ? '+' : '-') + m.fmtD(Math.abs(v));
+    const bandName = myBand === 0 ? 'the richest third of countries'
+      : myBand === 1 ? 'the middle third by income per person' : 'the poorest third of countries';
+    f.text = `From ${a} to ${b}, ${m.label} in <strong>${esc(BY_ISO[iso].name)}</strong> moved ` +
+      `<strong>${sgn(mine.dv)}</strong>. Across ${moves.length - 1} comparable countries the middle ` +
+      `one moved <strong>${sgn(med)}</strong>, which puts it <strong>${ordinal(rank)} of ` +
+      `${moves.length}</strong>. The gap against the middle is <strong>${sgn(mine.dv - med)}</strong>. ` +
+      `<em>Peers are ${bandName}, by GDP per person, which is how the set was chosen rather than ` +
+      `hand-picked. Subtracting them takes out what moved everybody.</em>`;
+  }
+
+  else if (p.kind === 'tables') {
+    // rank every country twice, by what the top 1% earns and by what it owns, and
+    // put the two ranks against each other. a country on the diagonal is ranked the
+    // same way by both. the distance off it is the whole argument of the atlas.
+    const X = 'income_top1', Y = 'wealth_top1';
+    if (!SERIES[X] || !SERIES[Y]) return miss();
+    const pts = [];
+    for (const iso in BY_ISO) {
+      if (!inScope(iso, p.region)) continue;
+      const xs = seriesOf(X, iso), ys = seriesOf(Y, iso);
+      if (!xs.length || !ys.length) continue;
+      const ym = new Map(ys.map(d => [d.year, d.v]));
+      let hit = null;
+      for (let i = xs.length - 1; i >= 0; i--) if (ym.has(xs[i].year)) {
+        hit = { year: xs[i].year, x: xs[i].v, y: ym.get(xs[i].year) }; break;
+      }
+      if (hit) pts.push({ iso, name: BY_ISO[iso].name, year: hit.year, inc: hit.x, wea: hit.y });
+    }
+    if (pts.length < 12) return miss();
+    const byInc = pts.slice().sort((a, b) => b.inc - a.inc);
+    const byWea = pts.slice().sort((a, b) => b.wea - a.wea);
+    byInc.forEach((q, i) => { q.ri = i + 1; });
+    byWea.forEach((q, i) => { q.rw = i + 1; });
+    const n = pts.length;
+    const dsq = pts.reduce((t, q) => t + (q.ri - q.rw) * (q.ri - q.rw), 0);
+    const rho = 1 - 6 * dsq / (n * (n * n - 1));
+    // the countries the two tables disagree about most, which is what to label
+    const far = pts.slice().sort((a, b) => Math.abs(b.ri - b.rw) - Math.abs(a.ri - a.rw));
+    const focus = (p.isos && p.isos.length ? p.isos : (ctx.lastIso ? [ctx.lastIso] : []))
+      .filter(i => pts.some(q => q.iso === i));
+    ctx.metric = Y;
+    f.mode = 'tables';
+    f.tables = { pts, rho, x: X, y: Y, focus, far: far.slice(0, 3).map(q => q.iso) };
+    f.isos = focus;
+    const yrs = pts.map(q => q.year);
+    let t = `Ranked by what the top 1% earns and by what it owns, ${n} countries make two ` +
+      `different tables. They agree at <strong>${rho.toFixed(2)}</strong> ` +
+      `(${rho > 0.7 ? 'closely' : rho > 0.4 ? 'loosely' : 'barely'}); a single ranking would ` +
+      `be one of them pretending to be both.`;
+    if (focus.length) {
+      t += ' ' + focus.map(i => {
+        const q = pts.find(z => z.iso === i);
+        return `<strong>${esc(q.name)}</strong> is ${ordinal(q.ri)} on income and ` +
+          `<strong>${ordinal(q.rw)}</strong> on wealth`;
+      }).join('; ') + '.';
+    } else {
+      const w = far[0];
+      t += ` The two disagree most about <strong>${esc(w.name)}</strong>: ${ordinal(w.ri)} on ` +
+        `income, ${ordinal(w.rw)} on wealth. Name a country to find your own.`;
+    }
+    t += ` <em>Each country at the latest year both were measured (${Math.min(...yrs)} to ` +
+      `${Math.max(...yrs)}).</em>`;
+    f.text = t;
+  }
+
   else if (p.kind === 'triple') {
     // the same top hundredth in wealth and in income, against how long people live:
     // three faces of the cube, and the two economic ones now read the same way
@@ -2156,6 +2327,69 @@ function buildAnswer(p, q) {
       t += ' Name a country to have it marked and its three readings dropped to the walls.';
     }
     f.text = t;
+  }
+
+  else if (p.kind === 'break') {
+    // fit the current relationship, name who sits furthest from the robust line
+    let x, y;
+    const lastSc = chain.slice().reverse().find(ff => ff.scatter);
+    if (lastSc) { x = lastSc.scatter.x; y = lastSc.scatter.y; }
+    else { x = isIneq(ctx.metric) ? ctx.metric : facetIneqDefault(); y = ctx.lastAspect; }
+    const aspNamed = p.metrics.find(m => !isIneq(m) && META[m].series);
+    if (aspNamed) y = aspNamed;
+    if (!y) y = SERIES.life_exp ? 'life_exp' : 'income_gini';   // a sensible relationship to break by default
+    const mx = META[x], my = META[y];
+    const pts = pairedPoints(x, y, null, p.year);
+    const fit = theilSen(pts);
+    if (!fit || pts.length < 8) return miss();
+    for (const pt of pts) pt.resid = pt.y - (fit.slope * pt.x + fit.intercept);
+    const sorted = pts.slice().sort((a, b) => b.resid - a.resid);
+    const over = sorted.slice(0, 2), under = sorted.slice(-2).reverse();
+    ctx.metric = x; if (!isIneq(y)) ctx.lastAspect = y;
+    const focus = focusIsos().filter(i => pts.some(pt => pt.iso === i));
+    const labelIsos = [...over, ...under].map(p => p.iso);
+    if (focus.length) { f.isos = focus; ctx.lastIso = focus[focus.length - 1]; }
+    f.mode = 'scatter';
+    f.scatter = { x, y, pts, r: pearson(pts), region: null, focus, fit, labelIsos };
+    const say = a => `${esc(a.name)} <strong>${my.fmtD(Math.abs(a.resid))}</strong> ${a.resid >= 0 ? 'above' : 'below'}`;
+    let t = `Against ${mx.label}, the countries furthest off the line: ` +
+      `${say(over[0])} and ${say(over[1])} what their inequality predicts on ${my.label}; ` +
+      `${say(under[0])} and ${say(under[1])}.`;
+    if (focus.length === 1) {
+      const pt = pts.find(x => x.iso === focus[0]);
+      t += ` ${esc(pt.name)} sits <strong>${my.fmtD(Math.abs(pt.resid))}</strong> ${pt.resid >= 0 ? 'above' : 'below'} the line.`;
+    }
+    f.text = t;
+  }
+
+  else if (p.kind === 'divergence') {
+    // the same top hundredth, once in what it owns and once in what it earns. both are
+    // shares of a total on the same WID basis, so they go on one axis in levels.
+    // indexing them would mislead: see FOUNDATION.md section 4.
+    const iso = p.iso;
+    if (!iso || !BY_ISO[iso]) { showNotice('This one reads one country. Name a place.'); return null; }
+    const W = seriesOf('wealth_top1', iso), I = seriesOf('income_top1', iso);
+    if (W.length < 3 || I.length < 3) {
+      showNotice(`The atlas does not hold both a wealth and an income top 1% share for ` +
+        `${esc(BY_ISO[iso].name)}. Try a country with tax records behind it.`);
+      return null;
+    }
+    const lo = Math.max(W[0].year, I[0].year);
+    const w = W.filter(d => d.year >= lo), i = I.filter(d => d.year >= lo);
+    if (w.length < 2 || i.length < 2) return miss();
+    const both = Math.min(w[w.length - 1].year, i[i.length - 1].year);
+    const at = (arr, y) => { const m2 = arr.filter(d => d.year <= y); return m2.length ? m2[m2.length - 1].v : arr[0].v; };
+    const dw = at(w, both) - w[0].v, di = at(i, both) - i[0].v;
+    ctx.metric = 'wealth_top1'; ctx.lastIso = iso; f.isos = [iso];
+    f.mode = 'divergence'; f.diverge = { iso, w, i, lo, both };
+    const pp = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(1);
+    f.text = `In <strong>${esc(BY_ISO[iso].name)}</strong>, the top 1% took ` +
+      `<strong>${pc(i[0].v)}</strong> of national income in ${lo} and held ` +
+      `<strong>${pc(w[0].v)}</strong> of national wealth. By ${both} that was ` +
+      `<strong>${pc(at(i, both))}</strong> and <strong>${pc(at(w, both))}</strong>: ` +
+      `${pp(di)} points of income against ${pp(dw)} of wealth. ` +
+      `<em>Both are WID, per adult, split equally within the couple, so the two can be read ` +
+      `against each other directly.</em>`;
   }
 
   else if (p.kind === 'break') {
@@ -2725,16 +2959,16 @@ const INTERACTIONS = { link: 'link', extend: 'extend' };
 // ten distinct things the accordion and chat can do; each cycles through the box, fillable
 const PROMPT_SETS = {
   default: [
+    'does my country own as unevenly as it earns?',
+    'are wealth and income pulling apart here?',
     'how unequal is France?',
+    'when did this country change most?',
     'where is wealth most concentrated?',
-    'does life expectancy track inequality?',
-    'wealth vs income in the US',
+    'did it move differently from comparable countries?',
     'how has France changed over time?',
-    'does poverty follow inequality?',
-    'which countries are happiest?',
-    'who breaks the pattern?',
+    'does life expectancy track inequality?',
     'what about among rich countries?',
-    'does life satisfaction track inequality?',
+    'how much more do the richest hold than the poorest?',
   ],
   income: [
     'how unequal is Brazil?',
@@ -2754,16 +2988,28 @@ const PROMPT_SETS = {
   ],
 };
 // one question per kind of analysis the atlas can do. the strip tunes them from here.
+// The catalogue is the argument, in order, not a sample of what the grammar can
+// express. Each question serves a claim in FOUNDATION.md section 3 and has to pass
+// the five tests in section 10. The comment on each line says which claim it serves.
 const QUESTIONS = [
-  { k: '', qs: [
-    'did the growth reach the typical person?',
-    'how much more do the richest hold than the poorest?',
+  { k: 'the two are not one thing', qs: [
+    'does my country own as unevenly as it earns?',      // claim 2, the strongest
+    'are wealth and income pulling apart here?',          // claim 1, one country
+    'how much more do the richest hold than the poorest?' // claim 1, as a multiple
+  ] },
+  { k: 'where a country stands', qs: [
     'where is wealth most concentrated?',
     'how has inequality changed over time?',
-    'does life expectancy track inequality?',
-    'which countries do better than their wealth suggests?',
-    'are wealth and income pulling apart in the US?',
-    'how do wealth, income and health sit together?'] },
+  ] },
+  { k: 'what moved, and against what', qs: [
+    'when did this country change most?',                 // claim 3, turn picks the years
+    'did it move differently from comparable countries?', // the peer contrast
+    'did the growth reach the typical person?',           // claim 3
+  ] },
+  { k: 'what it sits with', qs: [
+    'does life expectancy track inequality?',             // claim 4, drawn weak on purpose
+    'how do wealth, income and health sit together?',
+  ] },
   { k: '', facet: 'opportunity', qs: [
     'if you grow up poor here, what do you earn later?',
     "does credit depend on your parents' income?"] },
@@ -3350,6 +3596,9 @@ const VIEW_DEF = {
   reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'] },
   ratio:  { label: 'top tenth against bottom half', uses: ['place'], ignores: ['facet', 'against', 'when'] },
   triple: { label: 'the three faces at once', uses: ['place'], ignores: ['facet', 'against', 'among', 'when'] },
+  tables: { label: 'the two league tables', uses: ['place'], ignores: ['facet', 'against', 'when'] },
+  turn:   { label: 'the sharpest years here', uses: ['place'], ignores: ['against', 'among', 'when'] },
+  peers:  { label: 'against comparable countries', uses: ['place', 'when'], ignores: ['against', 'among'] },
 };
 const FORM_DEF = {
   rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
@@ -3380,6 +3629,10 @@ function previewQuestion(q) {
   else if (p.kind === 'reach') cell.view = 'reach';
   else if (p.kind === 'ratio') cell.view = 'ratio';
   else if (p.kind === 'triple') cell.view = 'triple';
+  else if (p.kind === 'tables') cell.view = 'tables';
+  else if (p.kind === 'turn') { cell.view = 'turn'; if (p.iso) cell.place = p.iso; }
+  else if (p.kind === 'peers') { cell.view = 'peers'; if (p.iso) cell.place = p.iso;
+    if (p.year) { cell.span = 'run'; cell.since = p.year; cell.until = p.until || null; } }
   else if (p.kind === 'spread') cell.form = 'spread';
   else if (p.kind === 'lorenz') { cell.form = 'lorenz'; if (p.isos && p.isos[0]) cell.place = p.isos[0]; }
   if (cell.against === facetIneqDefault()) cell.against = null;   // nothing is held against itself
@@ -3695,6 +3948,44 @@ const BASE_LAYOUT = {
 };
 const CFG = { responsive: true, displayModeBar: false };
 // shaded years: only global, dated episodes, so a turn in a line can be read against them
+// What was going on, for looking up beside a turn the data picked. These are never
+// used to explain a move: see FOUNDATION.md section 4. `band` marks the four drawn
+// as background shading on every time chart; the rest are lookup only.
+const EVENTS = [
+  { a: 1993, b: 1993, k: 'Maastricht, the EU formed', where: 'europe' },
+  { a: 1995, b: 1995, k: 'the WTO founded', where: null },
+  { a: 1997, b: 1998, k: 'the Asian financial crisis',
+    where: ['IDN', 'KOR', 'MYS', 'THA', 'PHL', 'HKG', 'SGP', 'JPN'] },
+  { a: 1999, b: 2002, k: 'the euro, then euro cash', where: 'eurozone' },
+  { a: 2001, b: 2001, k: 'China joins the WTO', where: null },
+  { a: 2003, b: 2005, k: 'the Hartz reforms', where: ['DEU'] },
+  { a: 2004, b: 2004, k: 'EU enlargement',
+    where: ['POL', 'CZE', 'HUN', 'SVK', 'SVN', 'EST', 'LVA', 'LTU', 'MLT', 'CYP'] },
+  { a: 2007, b: 2009, k: 'the global financial crisis', where: null, band: 1 },
+  { a: 2010, b: 2012, k: 'the euro debt crisis and the bailouts', where: 'eurozone', band: 1 },
+  { a: 2011, b: 2012, k: 'the Arab Spring',
+    where: ['TUN', 'EGY', 'LBY', 'SYR', 'YEM', 'BHR', 'MAR', 'JOR', 'DZA'] },
+  { a: 2013, b: 2016, k: 'TTIP negotiated, then abandoned', where: 'ttip' },
+  { a: 2016, b: 2020, k: 'the Brexit vote, then leaving', where: ['GBR'] },
+  { a: 2017, b: 2017, k: 'the US tax act', where: ['USA'] },
+  { a: 2018, b: 2019, k: 'the US and China tariffs', where: null },
+  { a: 2020, b: 2021, k: 'covid', where: null, band: 1 },
+  { a: 2022, b: 2022, k: 'Russia invades Ukraine', where: null },
+];
+const EUROZONE = 'AUT BEL CYP DEU ESP EST FIN FRA GRC HRV IRL ITA LTU LUX LVA MLT NLD PRT SVK SVN'.split(' ');
+// how many years an event may have ended before a turn and still be worth naming
+// beside it. a policy does not land on a distribution the year it passes.
+const EVENT_LAG = 5;
+function eventsNear(iso, a, b) {
+  return EVENTS.filter(e => {
+    if (e.where === 'europe') { if (regionOf(iso) !== 'europe') return false; }
+    else if (e.where === 'eurozone') { if (!EUROZONE.includes(iso)) return false; }
+    else if (e.where === 'ttip') { if (iso !== 'USA' && !EUROZONE.includes(iso) && iso !== 'GBR') return false; }
+    else if (Array.isArray(e.where)) { if (!e.where.includes(iso)) return false; }
+    // overlapping the stretch, or ending in the years just before it
+    return (e.b >= a - EVENT_LAG) && (e.a <= b);
+  });
+}
 const ERAS = [
   { a: 2000, b: 2002, k: 'dot-com bust' },
   { a: 2007, b: 2009, k: 'financial crisis' },
@@ -3919,62 +4210,32 @@ function drawChart() {
 
   else if (mode === 'divergence') {
     const dv = chain.slice().reverse().find(f => f.mode === 'divergence').diverge;
-    const w = dv.w, inc = dv.inc, base = dv.base;
-    const wBase = (w.series.find(d => d.year >= base) || {}).v;
-    const iMap = {}; for (const d of inc) iMap[d.year] = d.v;
-    const iBase = iMap[base] || (inc.find(d => d.year >= base) || {}).v;
-    const wLine = w.series.filter(d => d.year >= base);
-    const iLine = inc.filter(d => d.year >= base);
-    // never shade an era the lines do not reach
-    const dvHi = Math.max(wLine.length ? wLine[wLine.length - 1].year : base,
-      iLine.length ? iLine[iLine.length - 1].year : base);
-    const traces = [
-      { type: 'scatter', mode: 'lines', name: cap(w.label),
-        x: wLine.map(d => d.year), y: wLine.map(d => d.v / wBase * 100),
-        line: { color: metricColor('wealth_top1'), width: 2.4, shape: 'spline', smoothing: 0.6 },
-        hovertemplate: cap(w.label) + ' %{y:.0f} (base ' + base + ' = 100)<extra></extra>' },
-      { type: 'scatter', mode: 'lines', name: 'Income Gini',
-        x: iLine.map(d => d.year), y: iLine.map(d => d.v / iBase * 100),
-        line: { color: metricColor('income_gini'), width: 2.4 , shape: 'spline', smoothing: 0.6 },
-        hovertemplate: 'Income Gini %{y:.0f} (base ' + base + ' = 100)<extra></extra>' },
-    ];
-    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+    const hi = Math.max(dv.w[dv.w.length - 1].year, dv.i[dv.i.length - 1].year);
+    const top = Math.max(...dv.w.map(d => d.v), ...dv.i.map(d => d.v));
+    Plotly.react(el, [
+      { type: 'scatter', mode: 'lines', name: 'of all wealth',
+        x: dv.w.map(d => d.year), y: dv.w.map(d => d.v),
+        line: { color: metricColor('wealth_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        hovertemplate: 'the top 1% own %{y:.1%} of all wealth<extra></extra>' },
+      { type: 'scatter', mode: 'lines', name: 'of all income',
+        x: dv.i.map(d => d.year), y: dv.i.map(d => d.v),
+        line: { color: metricColor('income_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        hovertemplate: 'the top 1% take %{y:.1%} of all income<extra></extra>' },
+    ], Object.assign({}, BASE_LAYOUT, {
       showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
-      margin: { t: 14, r: 16, b: 40, l: 48 },
-      shapes: eraShapes(base, dvHi), annotations: eraLabels(base, dvHi),
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: `indexed to ${base} = 100`, font: { size: 11 } } }),
+      margin: { t: 14, r: 16, b: 40, l: 54 },
+      shapes: eraShapes(dv.lo, hi), annotations: eraLabels(dv.lo, hi),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { range: [0, top * 1.14], autorange: false,
+        tickformat: '.0%', title: { text: 'share taken by the top 1%', font: { size: 11 } } }),
     }), CFG);
-    title.textContent = `${BY_ISO[dv.iso] ? BY_ISO[dv.iso].name : dv.iso}: wealth and income inequality since ${base}`;
-    src.textContent = `Both indexed to ${base} = 100, so the lines start together and you can read how far each has moved. ` +
-      (dv.iso === 'USA' ? 'Wealth: Fed Distributional Financial Accounts. Income: World Bank PIP.' : 'Wealth: WID. Income: World Bank PIP.') + ' via OWID. ' +
-      `The two lines end in different years (wealth ${wLine.length ? wLine[wLine.length - 1].year : 'n/a'}, income ${iLine.length ? iLine[iLine.length - 1].year : 'n/a'}). ` +
-      provenance(['wealth_top1', 'income_gini']);
-  }
-
-  else if (mode === 'path') {
-    const pa = chain.slice().reverse().find(f => f.mode === 'path').path;
-    const mx = META[pa.x], my = META[pa.y];
-    const scale = (m, v) => m.fmt === pc ? v * 100 : v;
-    const pts = pa.pts;
-    const xs = pts.map(p => scale(mx, p.x)), ys = pts.map(p => scale(my, p.y));
-    const traces = [{
-      type: 'scatter', mode: 'lines+markers',
-      x: xs, y: ys, text: pts.map(p => p.year),
-      line: { color: '#c9d3e0', width: 1.5 , shape: 'spline', smoothing: 0.6 },
-      marker: { size: 8, color: pts.map((_, i) => i), colorscale: [[0, '#cde2fb'], [1, '#0d366b']], line: { color: '#fff', width: 1 , shape: 'spline', smoothing: 0.6 } },
-      hovertemplate: '%{text}<br>' + mx.label + ': %{x}<br>' + my.label + ': %{y}<extra></extra>',
-    }];
-    const ann = [[0, 'start'], [pts.length - 1, 'latest']].map(([i]) => ({
-      x: xs[i], y: ys[i], text: '' + pts[i].year, showarrow: false,
-      yshift: 12, font: { size: 11, color: cssVar('--ink', '#1a2744') },
-    }));
-    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
-      margin: { t: 8, r: 16, b: 44, l: 56 }, annotations: ann,
-      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: mx.label, font: { size: 12 } }, ticksuffix: mx.fmt === pc ? '%' : '' }),
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' }),
-    }), CFG);
-    title.textContent = `${BY_ISO[pa.iso].name}: ${my.label} against ${mx.label} over time`;
-    src.textContent = `The path runs light (earliest) to dark (latest). ${(mx.lineSrc || '').replace(/^Source: /, mx.label + ': ')} ` + provenance([pa.x, pa.y]);
+    title.textContent = `${BY_ISO[dv.iso].name}: the same top 1%, ${dv.lo} to ${hi}`;
+    src.textContent =
+      `Levels, not an index: two shares of the same kind of total on one axis, so they can be read ` +
+      `against each other directly. Indexing them would mislead, because a share already high has ` +
+      `little room left to move. Both lines are WID, pretax national income and household net ` +
+      `wealth, per adult with each split equally within the couple. They stop in different years: ` +
+      `wealth runs to ${dv.w[dv.w.length - 1].year}, income to ${dv.i[dv.i.length - 1].year}. ` +
+      provenance(['wealth_top1', 'income_top1']);
   }
 
   else if (mode === 'reach') {
@@ -4087,6 +4348,157 @@ function drawChart() {
     src.textContent = 'Top 10% share of household net wealth divided by the bottom 50% share, latest year per country. ' +
       'A multiple, not an index: 10x means the top tenth hold ten times what the bottom half hold together. ' +
       provenance(['wealth_top1']);
+  }
+
+  else if (mode === 'turn') {
+    const tn = chain.slice().reverse().find(f => f.mode === 'turn').turn;
+    const m = META[tn.key];
+    const lo = tn.ser[0].year, hi = tn.ser[tn.ser.length - 1].year;
+    const inWin = tn.ser.filter(d => d.year >= tn.a && d.year <= tn.b);
+    Plotly.react(el, [
+      { type: 'scatter', mode: 'lines', name: BY_ISO[tn.iso].name, showlegend: false,
+        x: tn.ser.map(d => d.year), y: tn.ser.map(d => d.v),
+        line: { color: metricColor(tn.key), width: 2.4, shape: 'spline', smoothing: 0.6 },
+        hovertemplate: BY_ISO[tn.iso].name + ': ' + m.hover + '<extra></extra>' },
+      { type: 'scatter', mode: 'lines', name: 'the sharpest stretch', showlegend: false,
+        x: inWin.map(d => d.year), y: inWin.map(d => d.v),
+        line: { color: hlFill(tn.key), width: 4, shape: 'spline', smoothing: 0.6 },
+        hovertemplate: m.hover + '<extra></extra>' },
+    ], Object.assign({}, BASE_LAYOUT, {
+      // two staggered rows of event labels sit above the plot and need the room
+      margin: { t: 48, r: 16, b: 40, l: 54 },
+      shapes: [{ type: 'rect', xref: 'x', yref: 'paper', layer: 'below',
+        x0: tn.a, x1: tn.b, y0: 0, y1: 1,
+        fillcolor: 'rgba(128,132,140,0.13)', line: { width: 0 } }],
+      // the events sit above the plot as marks, not as bands behind the line: they are
+      // a lookup beside the turn, and drawing them behind it would read as cause
+      annotations: tn.events.map((e, i) => ({
+        x: Math.max(lo, (e.a + e.b) / 2), y: 1, xref: 'x', yref: 'paper',
+        yanchor: 'bottom', yshift: 2 + (i % 2) * 13, text: e.k, showarrow: false,
+        font: { size: 9.5, color: cssVar('--ink-3', '#999999') },
+      })),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, m.fmt === pc ? { tickformat: '.0%' } : {}),
+    }), CFG);
+    title.textContent = `${BY_ISO[tn.iso].name}: the sharpest ${tn.span} years, ${tn.a} to ${tn.b}`;
+    src.textContent =
+      `The window is the ${tn.span}-year stretch with the largest move in this series, found by ` +
+      `searching every stretch. The labels above are what the atlas records happening in those ` +
+      `years or in the ${EVENT_LAG} before, which is a lookup and not an explanation: a policy does ` +
+      `not land on a distribution the year it passes, and nothing here tests whether it landed at all. ` +
+      (m.lineSrc || '') + ' ' + provenance([tn.key]);
+  }
+
+  else if (mode === 'peers') {
+    const pr = chain.slice().reverse().find(f => f.mode === 'peers').peers;
+    const m = META[pr.key];
+    const isPct = m.fmt === pc;
+    const sc = v => isPct ? v * 100 : v;
+    // fifty-odd countries cannot be a bar each: the question is where this one sits
+    // among them, so it is drawn as the distribution it actually is
+    const swarm = arr => {
+      const xs = arr.map(r => sc(r.dv));
+      const lo = Math.min(...xs), hi = Math.max(...xs), span = (hi - lo) || 1;
+      const bins = new Map();
+      return xs.map(x => {
+        const k = Math.round((x - lo) / span * 46);
+        const n = bins.get(k) || 0; bins.set(k, n + 1);
+        return (n % 2 ? 1 : -1) * Math.ceil(n / 2) * 0.09;
+      });
+    };
+    const bg = pr.moves.filter(r => r.iso !== pr.iso);
+    const fg = pr.moves.filter(r => r.iso === pr.iso);
+    const fmtD = v => (v >= 0 ? '+' : '-') + m.fmtD(Math.abs(v));
+    Plotly.react(el, [{
+      type: 'scatter', mode: 'markers',
+      x: bg.map(r => sc(r.dv)), y: swarm(bg),
+      text: bg.map(r => r.name), customdata: bg.map(r => fmtD(r.dv)),
+      marker: { color: metricColor(pr.key), size: 7, opacity: 0.5 },
+      hovertemplate: '%{text}: %{customdata}<extra></extra>',
+    }, {
+      type: 'scatter', mode: 'markers+text',
+      x: fg.map(r => sc(r.dv)), y: fg.map(() => 0),
+      text: fg.map(r => r.name), customdata: fg.map(r => fmtD(r.dv)),
+      textposition: 'top center', textfont: { size: 12, color: cssVar('--ink', '#0a0a0a') },
+      marker: { color: hlFill(pr.key), size: 13, line: { color: hlEdge(), width: 2 } },
+      hovertemplate: '%{text}: %{customdata}<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, {
+      showlegend: false,
+      margin: { t: 26, r: 18, b: 44, l: 18 },
+      shapes: [{ type: 'line', xref: 'x', yref: 'paper', layer: 'below',
+        x0: sc(pr.med), x1: sc(pr.med), y0: 0, y1: 1,
+        line: { color: cssVar('--ink-3', '#999999'), width: 1.5, dash: 'dash' } },
+        { type: 'line', xref: 'x', yref: 'paper', layer: 'below',
+          x0: 0, x1: 0, y0: 0, y1: 1,
+          line: { color: 'rgba(128,132,140,0.35)', width: 1 } }],
+      annotations: [{ x: sc(pr.med), y: 1, xref: 'x', yref: 'paper', yanchor: 'bottom',
+        yshift: 3, text: 'the middle peer', showarrow: false,
+        font: { size: 10, color: cssVar('--ink-3', '#999999') } }],
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, {
+        title: { text: `move in ${m.label}, ${pr.a} to ${pr.b}`, font: { size: 11 } },
+        ticksuffix: isPct ? '%' : '', zeroline: false }),
+      yaxis: { visible: false, type: 'linear', range: [-1, 1], autorange: false },
+    }), CFG);
+    title.textContent = `${BY_ISO[pr.iso].name} among its peers, ${pr.a} to ${pr.b}`;
+    src.textContent =
+      `One dot per country, each the move in ${m.label} over the same years. Peers are the ` +
+      `countries in the same third of GDP per person, so the set is chosen by a rule rather than ` +
+      `by hand. The dashed line is the middle peer; the thin line is no change. Reading a country ` +
+      `against them takes out what moved everybody at once, which before-and-after on its own ` +
+      `cannot do. It still does not show cause. ` + provenance([pr.key]);
+  }
+
+  else if (mode === 'tables') {
+    const tb = chain.slice().reverse().find(f => f.mode === 'tables').tables;
+    const foc = new Set(tb.focus), lab = new Set(tb.far.concat(tb.focus));
+    const n = tb.pts.length;
+    const plain = tb.pts.filter(q => !foc.has(q.iso));
+    const hit = tb.pts.filter(q => foc.has(q.iso));
+    const traces = [{
+      // the line of agreement. every country would sit on it if the two tables matched
+      type: 'scatter', mode: 'lines', x: [1, n], y: [1, n], showlegend: false,
+      line: { color: 'rgba(128,132,140,0.45)', width: 1, dash: 'dot' }, hoverinfo: 'skip',
+    }, {
+      type: 'scatter', mode: 'markers+text', showlegend: false,
+      x: plain.map(q => q.ri), y: plain.map(q => q.rw),
+      text: plain.map(q => lab.has(q.iso) ? q.name : ''),
+      textposition: 'top center', textfont: { size: 10, color: cssVar('--ink-2', '#555555') },
+      marker: { size: 7, color: metricColor('wealth_top1'), opacity: 0.55 },
+      customdata: plain.map(q => [q.name, q.year]),
+      hovertemplate: '%{customdata[0]} (%{customdata[1]})<br>income rank %{x}<br>wealth rank %{y}<extra></extra>',
+    }];
+    if (hit.length) traces.push({
+      type: 'scatter', mode: 'markers+text', showlegend: false,
+      x: hit.map(q => q.ri), y: hit.map(q => q.rw), text: hit.map(q => q.name),
+      textposition: 'top center', textfont: { size: 12, color: cssVar('--ink', '#0a0a0a') },
+      marker: { size: 13, color: hlFill('wealth_top1'), line: { color: hlEdge(), width: 2 } },
+      customdata: hit.map(q => [q.name, q.year]),
+      hovertemplate: '%{customdata[0]} (%{customdata[1]})<br>income rank %{x}<br>wealth rank %{y}<extra></extra>',
+    });
+    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 14, r: 18, b: 46, l: 56 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { range: [0, n + 1], autorange: false,
+        title: { text: 'rank by what the top 1% earns  (1 = most concentrated)', font: { size: 11 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { range: [0, n + 1], autorange: false,
+        title: { text: 'rank by what the top 1% owns  (1 = most concentrated)', font: { size: 11 } } }),
+      // which side of the line means what, or the chart is a cloud with a diagonal in it
+      annotations: [
+        { x: n * 0.80, y: n * 0.30, xref: 'x', yref: 'y', showarrow: false,
+          text: 'ranked more unequal<br>on wealth than on income', align: 'center',
+          font: { size: 10.5, color: cssVar('--ink-3', '#999999') } },
+        { x: n * 0.24, y: n * 0.86, xref: 'x', yref: 'y', showarrow: false,
+          text: 'ranked more unequal<br>on income than on wealth', align: 'center',
+          font: { size: 10.5, color: cssVar('--ink-3', '#999999') } },
+      ],
+    }), CFG);
+    title.textContent = `Two tables, ${n} countries`;
+    src.textContent =
+      `Each country is ranked twice, once by its top 1% share of income and once by its top 1% ` +
+      `share of wealth, at the latest year both were measured. The dotted line is where a country ` +
+      `would sit if the two rankings agreed; distance from it is disagreement. Spearman ` +
+      `${tb.rho.toFixed(2)}. Both sides are WID on the same equal-split adult basis, so the ` +
+      `comparison is like for like. Many of these countries are modelled rather than measured: ` +
+      `narrow the set with "among" to read it on countries with tax records. ` +
+      provenance([tb.x, tb.y]);
   }
 
   else if (mode === 'triple') {
