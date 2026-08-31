@@ -325,6 +325,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .fchip[aria-pressed="true"] { color: #fff; background: var(--fc); border-color: var(--fc); }
 .fchip.w { --fc: var(--wealth); } .fchip.i { --fc: var(--income); }
 .fchip.o { --fc: var(--opportunity); } .fchip.h { --fc: var(--health); }
+/* a face that is not open yet says so on the cube and in the chip row */
+.cube .face.soon .q { color: var(--ink-3); font-weight: 500; }
+.cube .face.soon .lab { opacity: .75; }
 .scope-tag { font-family: var(--mono); font-size: 8.5px; letter-spacing: .06em; margin-left: 5px;
   padding: 1px 4px; border-radius: 3px; border: 1px solid currentColor; opacity: .75; vertical-align: 1px; }
 .fchip.meta { --fc: var(--ink-2); font-size: 11px; color: var(--ink-3); border-style: dashed; background: transparent; }
@@ -647,6 +650,15 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .db h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
 .db .sub { color: var(--ink-2); max-width: 620px; margin-bottom: 28px; }
 /* the one sentence the whole page is for, sat directly under the figure that earns it */
+/* the Why page is a walk through an argument, so each step gets a heading */
+.why-step { font-size: 22px; letter-spacing: -.015em; margin: 46px 0 12px; max-width: 620px; }
+.why-step:first-of-type { margin-top: 34px; }
+.why-table { border-collapse: collapse; margin: 18px 0 22px; font-size: 14px; max-width: 520px; width: 100%; }
+.why-table th, .why-table td { text-align: left; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--border); }
+.why-table thead th { font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-3); font-weight: 400; }
+.why-table td:first-child { color: var(--ink-2); }
+.why-table td:not(:first-child) { font-variant-numeric: tabular-nums; font-weight: 560; color: var(--ink); }
 .pull { max-width: 620px; margin: 26px 0 30px; padding-left: 18px;
   border-left: 3px solid var(--accent);
   font-size: 19px; line-height: 1.5; font-weight: 560; letter-spacing: -.01em; color: var(--ink); }
@@ -765,7 +777,7 @@ footer a { color: inherit; }
             <div class="face f-wealth" data-facet="wealth"><span class="lab">wealth</span><div class="q">The wealth held by the richest one percent.</div></div>
             <div class="face f-income" data-facet="income"><span class="lab">income</span><div class="q">How unevenly income is shared out.</div></div>
             <div class="face f-opportunity" data-facet="opportunity"><span class="lab">opportunity &middot; US only</span><div class="q">How much your parents' income sets your own, across 741 US commuting zones</div></div>
-            <div class="face f-health" data-facet="health"><span class="lab">health</span><div class="q">How much longer the rich live than the poor.</div></div>
+            <div class="face f-health soon" data-facet="health"><span class="lab">health &middot; coming soon</span><div class="q">A national average cannot show the gap between rich and poor. We are waiting on data that can.</div></div>
             <div class="face f-link" data-facet="link"><span class="lab">link</span><div class="q">One face read alongside another</div></div>
             <div class="face f-extend" data-facet="extend"><span class="lab">extend</span><div class="q">The same face through time and across geography</div></div>
           </div>
@@ -776,7 +788,7 @@ footer a { color: inherit; }
           <button class="fchip w" data-facet="wealth" aria-pressed="true">wealth</button>
           <button class="fchip i" data-facet="income" aria-pressed="false">income</button>
           <button class="fchip o" data-facet="opportunity" aria-pressed="false">opportunity<span class="scope-tag">US</span></button>
-          <button class="fchip h" data-facet="health" aria-pressed="false">health</button>
+          <button class="fchip h" data-facet="health" aria-pressed="false">health<span class="scope-tag">soon</span></button>
         </div>
       </div>
       <form class="askbox" id="ask-form">
@@ -922,65 +934,121 @@ footer a { color: inherit; }
 
   <div id="view-why" class="wrap db" hidden>
     <h1>Why</h1>
+
     <p class="sub">
-      Since 1990 the richest one per cent of Americans went from holding 29% of everything owned in
-      the country to holding 35%. Over the same years the bottom half went from 1.7% to 1.0%, and
-      spent eleven of those years below zero: they collectively owed more than they owned. That is
-      the transfer. It is a change in who owns the country, and it happened to wealth, not to pay.
+      Almost everything written about inequality is about pay. It is the figure governments
+      publish, so it is the figure that gets quoted, and when a country is called fair or unfair
+      pay is nearly always what is meant. Ownership is a different thing and it is measured far
+      less often. This page is about what happens when you look at it instead.
+    </p>
+
+    <h2 class="why-step">The bottom half of your country owns less than it used to</h2>
+    <p class="sub">
+      Take the poorest half of a country and add up everything they own, after debts. In the
+      United Kingdom that came to 6.2% of the country's wealth in 1995 and 4.6% by 2024. In Italy
+      it went from 10.2% to 2.5%. In Sweden it went from 5.8% to minus 10.9%, which means the
+      poorest half of Sweden now owes more than it owns.
+    </p>
+    <p class="sub">
+      This is the most consistent thing in the whole atlas. The bottom half's share fell in 18 of
+      the 25 rich countries we hold, and unlike most findings about inequality it does not change
+      depending on which year you start counting from.
     </p>
     <div class="chart-card">
-      <div class="chart-title" id="why-shares-title">Who owns the United States</div>
-      <div id="why-shares" style="width:100%;height:380px"></div>
-      <p class="chart-src" id="why-shares-src"></p>
+      <div class="chart-title" id="why-own-title">What the bottom half owns</div>
+      <div id="why-own" style="width:100%;height:360px"></div>
+      <p class="chart-src" id="why-own-src"></p>
     </div>
+
+    <h2 class="why-step">It is not because their wages collapsed</h2>
     <p class="sub">
-      Owning and earning are different things, and the gap between them is the argument. Take the
-      same top one per cent, measured the same way by the same source, once in what it owns and
-      once in what it earns. In 1990 it took 14.7% of American income and held 29.0% of American
-      wealth. By 2021 it took 19.0% of income and held 36.3% of wealth. Both rose. Wealth started
-      higher and rose faster, by 7.2 points against 4.3.
+      The obvious explanation would be that these people are simply earning less, and in some
+      countries they are. But in Britain and France the poorest half's share of the national
+      income actually went up over the same years that their share of the wealth went down. They
+      were earning slightly better and owning considerably less at the same time.
+    </p>
+    <p class="sub">
+      Each dot below is a country. Right of the middle line means the bottom half took a bigger
+      slice of the income than before. Below the horizontal line means they ended up with a
+      smaller slice of the wealth. Most countries sit below it.
     </p>
     <div class="chart-card">
-      <div class="chart-title" id="why-same-title">The same top 1%</div>
-      <div id="why-same" style="width:100%;height:340px"></div>
-      <p class="chart-src" id="why-same-src"></p>
+      <div class="chart-title" id="why-pay-title">Earning and owning, the bottom half</div>
+      <div id="why-pay" style="width:100%;height:380px"></div>
+      <p class="chart-src" id="why-pay-src"></p>
+    </div>
+
+    <h2 class="why-step">What they cannot get is a house</h2>
+    <p class="sub">
+      For most people who own anything at all, what they own is where they live. So when houses
+      get dearer faster than wages rise, the people who already have one get richer without doing
+      anything, and the people who do not are locked out of the only asset they were ever likely
+      to hold.
+    </p>
+    <p class="sub">
+      In 1995 the average British house cost about £102,000 in today's money. By 2007 it cost
+      about £289,000. Wages did not do anything remotely like that. The United States has the
+      same shape but its version burst in 2008 and partly came back down. Britain's never did.
+    </p>
+    <div class="chart-card">
+      <div class="chart-title" id="why-house-title">Houses and pay</div>
+      <div id="why-house" style="width:100%;height:360px"></div>
+      <p class="chart-src" id="why-house-src"></p>
     </div>
     <p class="pull">
       The pay number describes your month. The ownership number describes whether you can buy a
       house, survive losing your job, or leave anything behind. The one that decides your life is
       the one nobody quotes.
     </p>
+
+    <h2 class="why-step">And it gets handed down</h2>
     <p class="sub">
-      Now the same country and the same years through a Gini, which is the number almost every
-      report quotes. It barely moves. A Gini compresses the whole curve into one figure, and at
-      0.83 it has little room left: the top hundredth can take seven more points of everything and
-      the Gini shrugs. The bottom half falling through zero is a rounding error inside it. This is
-      why the atlas keeps shares, and why a single inequality number is close to useless for the
-      question people actually mean.
+      Everything above compares whole countries. It cannot show how any of this reaches a
+      particular person, because that needs data on individuals, and only the United States
+      publishes it deep enough to follow.
     </p>
-    <div class="chart-card">
-      <div class="chart-title" id="why-title">The same years, through a Gini</div>
-      <div id="why-chart" style="width:100%;height:300px"></div>
-      <p class="chart-src" id="why-src"></p>
-    </div>
+    <p class="sub">
+      There we can track children born in the early 1980s into their thirties. Two of them growing
+      up in the same town, whose parents earned different amounts, end up like this:
+    </p>
+    <table class="why-table">
+      <thead><tr><th></th><th>parents poorer</th><th>parents richer</th></tr></thead>
+      <tbody>
+        <tr><td>credit score</td><td>650</td><td>711</td></tr>
+        <tr><td>behind on payments</td><td>55% of the time</td><td>33%</td></tr>
+        <tr><td>mortgage carried</td><td>$47,700</td><td>$92,700</td></tr>
+        <tr><td>student debt</td><td>$8,700</td><td>$11,600</td></tr>
+      </tbody>
+    </table>
+    <p class="sub">
+      The mortgage line is the one to sit with. It is not that the children of poorer parents
+      borrowed less to buy a house. It is mostly that they never bought one.
+    </p>
+    <p class="sub">
+      That is one country and one generation of children, and it is marked as such throughout the
+      atlas. It is also the only place here where you can watch inequality being passed from one
+      person to the next rather than measured across a population, which is why it is worth the
+      space. Open the <strong>opportunity</strong> face to go through it.
+    </p>
+
     <div class="grid3">
       <div class="block">
-        <h2>Not only America</h2>
-        <p>The bottom half's share of wealth fell in most rich countries over the same
-        years: 13.1% to 4.6% in the United Kingdom, 10.2% to 2.5% in Italy, 8.9% to 4.8%
-        in France. The Netherlands moved the other way.</p>
+        <h2>Where this leaves policy</h2>
+        <p>If the gap in what people own is wider than the gap in what they earn, then
+        income tax, minimum wages and benefits are all working on the narrower one.
+        None of them reach what somebody already holds.</p>
       </div>
       <div class="block">
-        <h2>The middle, squeezed</h2>
-        <p>The American middle 40%, everyone between the median and the top tenth, took
-        44.4% of national income in 1990 and 40.6% in 2021. Ask the income face for
-        <em>the middle 40%</em> to follow it anywhere else.</p>
+        <h2>Two countries, same pay gap</h2>
+        <p>In 2017 the richest 1% took 10.8% of Swiss income and 10.9% of Greek income.
+        They owned 31.5% of Switzerland and 23.3% of Greece. Judging those two places on
+        pay alone would call them the same.</p>
       </div>
       <div class="block">
-        <h2>Owning is not earning</h2>
-        <p>The bottom half of America earns 13.8% of national income and owns 0.8% of
-        national wealth. Those are the same people, counted the same way, in the same
-        year.</p>
+        <h2>What is still missing</h2>
+        <p>Houses are two countries here, not sixty, because the international series
+        sits behind sources we cannot reach yet. Health is closed for the same reason:
+        no one publishes the rich-poor gap in a way that compares across borders.</p>
       </div>
     </div>
   </div>
@@ -1275,6 +1343,12 @@ const META = {
     lineSrc: 'Source: WID. Share of pretax national income taken by the bottom 50%, per adult, split equally within the couple.',
     poolSrc: 'Source: WID, bottom 50% pretax income share, latest year per country.',
   },
+  house_price: {
+    label: 'house prices', topic: 'wealth', series: true, file: 'data/house_prices.json',
+    fmt: v => v == null ? 'n/a' : v.toFixed(0), fmtD: v => v == null ? 'n/a' : v.toFixed(0), hover: '%{y:.0f}',
+    lineSrc: 'Source: Nationwide for the United Kingdom, S&P Case-Shiller for the United States, deflated by World Bank consumer prices. An index after inflation, 2015 = 100: only the growth means anything, not the level.',
+    poolSrc: 'Source: Nationwide and Case-Shiller, real house price index, two countries only.',
+  },
   life_satisfaction: {
     label: 'life satisfaction', topic: 'wellbeing', series: true, file: 'data/life_satisfaction.json',
     fmt: v => v == null ? 'n/a' : v.toFixed(2), fmtD: v => v == null ? 'n/a' : v.toFixed(2), hover: '%{y:.2f}',
@@ -1304,6 +1378,7 @@ const BASIS = {
   modelled:  'modelled, with annual values imputed for most countries from the smaller set that has tax records',
   estimated: 'an estimated annual series, interpolated between benchmark years',
   dina:      'built from tax records, surveys and national accounts together, in a snapshot taken from WID in September 2022',
+  deflated:  'a market price index put into constant money with that country\'s own consumer price inflation, and held for two countries only',
 };
 const SERIES_BASIS = {
   wealth_gini: 'modelled', wealth_top1: 'modelled', wealth_bottom50: 'modelled',
@@ -1311,6 +1386,7 @@ const SERIES_BASIS = {
   life_exp: 'estimated', co2_pc: 'estimated', gdp_pc: 'estimated',
   life_satisfaction: 'survey',
   income_top1: 'dina', income_top10: 'dina', income_middle40: 'dina', income_bottom50: 'dina',
+  house_price: 'deflated',
 };
 // the last year the series actually carries, read from the data rather than assumed
 const vintageCache = {};
@@ -1847,7 +1923,7 @@ function runCell() {
   ctx.metric = facetIneqDefault();
   ctx.lastIso = cell.place; ctx.lastAspect = cell.against;
   let p, q;
-  if (cell.view === 'triple') { runParse({ kind: 'triple' }, 'the three faces together'); return; }
+  if (cell.view === 'triple') { runParse({ kind: 'triple' }, 'wealth, income and life expectancy'); return; }
   if (cell.view === 'tables') {
     runParse({ kind: 'tables', isos: cell.places.slice(), region: ctx.region },
       'the two league tables'); return;
@@ -2950,7 +3026,20 @@ const FACETS = {
                  note: 'Opportunity is not measured the way the other three are. It is 741 United States commuting zones, ' +
                    'for children born in the early 1980s: one country, one cohort, no run of years. ' +
                    'It is here because it is the clearest picture of the mechanism that exists anywhere, not because it is global.' },
-  health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'life expectancy' },
+  // Closed on purpose. Life expectancy is a national average, so it cannot show a gap
+  // between rich and poor inside a country, which is what a face of this cube claims to
+  // do. Nobody publishes health inequality in a form that compares across borders: the
+  // WHO has child deaths by wealth quintile for poorer countries, the OECD has life
+  // expectancy by education for richer ones, and the two were built differently and do
+  // not join. So the face says what it is waiting for instead of showing an average.
+  // Life expectancy itself stays in the atlas as something to hold inequality against.
+  health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'coming soon',
+                 soon: true,
+                 note: 'Health is not open yet. Life expectancy here is a national average, ' +
+                   'which cannot show the gap between rich and poor inside a country. No source ' +
+                   'publishes that gap in a form that compares across borders, so rather than ' +
+                   'fill the face with an average we have left it closed. You can still hold any ' +
+                   'measure against life expectancy from the "against" fold.' },
 };
 // the two poles of the cube are not faces of inequality: they are what you do to a
 // face. link holds it against another face; extend takes the same face somewhere finer.
@@ -3008,7 +3097,7 @@ const QUESTIONS = [
   ] },
   { k: 'what it sits with', qs: [
     'does life expectancy track inequality?',             // claim 4, drawn weak on purpose
-    'how do wealth, income and health sit together?',
+    'how do wealth, income and life expectancy sit together?',
   ] },
   { k: '', facet: 'opportunity', qs: [
     'if you grow up poor here, what do you earn later?',
@@ -3045,6 +3134,7 @@ const ACC = () => FACET_HEX[curFacet] || '#2a78d6';   // the UI accent follows t
 const METRIC_HEX = {
   wealth_top1: '#2a78d6', wealth_gini: '#2a78d6', wealth_bottom50: '#2a78d6',
   income_gini: '#2f9e8f', median_income: '#2f9e8f', gdp_pc: '#2f9e8f', poverty_rate: '#2f9e8f',
+  house_price: '#2a78d6',
   income_top1: '#2f9e8f', income_top10: '#2f9e8f', income_middle40: '#2f9e8f', income_bottom50: '#2f9e8f',
   life_exp: '#c0607a', life_satisfaction: '#c0607a', co2_pc: '#c98a2b',
 };
@@ -3166,7 +3256,7 @@ function dimGroups(dim, filter) {
       g.push({ k: 'not in the atlas', gaps: [
         ['a ranking, a spread, a Lorenz curve',
           'Those read a measure across countries. This layer has one country and 741 zones.', null],
-        ['the three faces at once',
+        ['wealth, income and life expectancy at once',
           'That needs wealth, income and health for the same place. Opportunity is not measured that way.', null]] });
     } else {
       g.push({ k: 'not in the atlas', gaps: [['over time',
@@ -3512,12 +3602,17 @@ function faceToFront(name) {
 function runInteraction(name) {
   // you land on the pole and stay there. the face you were reading is untouched.
   document.querySelectorAll('#cube .face').forEach(el => el.classList.toggle('lit', el.dataset.facet === name));
-  if (name === 'link') { ask('how do the three faces sit together?'); return; }
+  if (name === 'link') { ask('how do wealth, income and life expectancy sit together?'); return; }
   showNotice(`Extend reads ${curFacet} through time and across geography. Open <em>when</em> or <em>place</em> in the strip.`);
 }
 function chooseFacet(name) {
   if (INTERACTIONS[name]) { runInteraction(name); return; }
   if (!FACETS[name]) return;
+  if (FACETS[name].soon) {   // a closed face turns to, and says so, but sets nothing
+    paintFacet(name); faceToFront(name); settle(); updateChips();
+    showNotice(FACETS[name].note);
+    return;
+  }
   paintFacet(name);
   faceToFront(name);
   settle();
@@ -3595,7 +3690,7 @@ function setStage(next) {
 const VIEW_DEF = {
   reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'] },
   ratio:  { label: 'top tenth against bottom half', uses: ['place'], ignores: ['facet', 'against', 'when'] },
-  triple: { label: 'the three faces at once', uses: ['place'], ignores: ['facet', 'against', 'among', 'when'] },
+  triple: { label: 'wealth, income and how long people live', uses: ['place'], ignores: ['facet', 'against', 'among', 'when'] },
   tables: { label: 'the two league tables', uses: ['place'], ignores: ['facet', 'against', 'when'] },
   turn:   { label: 'the sharpest years here', uses: ['place'], ignores: ['against', 'among', 'when'] },
   peers:  { label: 'against comparable countries', uses: ['place', 'when'], ignores: ['against', 'among'] },
@@ -3734,7 +3829,7 @@ function initCube() {
   setInterval(() => {
     const qb = document.getElementById('q');
     if (stage !== 'compose' || cDragging || (qb && qb.value)) return;
-    const others = ['wealth', 'income', 'opportunity', 'health'].filter(f => f !== curFacet);
+    const others = Object.keys(FACETS).filter(f => f !== curFacet && !FACETS[f].soon);
     chooseFacet(randomOf(others));
   }, 7000);
 }
@@ -5139,166 +5234,183 @@ function initUS() {
 const WHY_ISO = 'USA';
 // syncChartTheme lives in drawChart, which the Why page never goes through: without
 // this call these two draw with the light grid baked in, blazing white over a dark page
-function drawWhy() { syncChartTheme(); drawWhyShares(); drawWhySame(); drawWhyGini(); }
+function drawWhy() { syncChartTheme(); drawWhyOwn(); drawWhyPay(); drawWhyHouse(); }
 
-// the like-for-like comparison, and the reason the income shares were loaded at all:
-// the same top hundredth, measured the same way by the same source, once in what it
-// owns and once in what it earns. wealth is both the higher share and the faster one.
-function drawWhySame() {
-  const el = document.getElementById('why-same');
-  if (!el || !window.Plotly) return;
-  const iso = WHY_ISO;
-  const w = seriesOf('wealth_top1', iso), i = seriesOf('income_top1', iso);
-  if (w.length < 3 || i.length < 3) return;
-  const lo = Math.max(w[0].year, i[0].year, 1913);
-  const W = w.filter(d => d.year >= lo), I = i.filter(d => d.year >= lo);
-  const hi = Math.max(W[W.length - 1].year, I[I.length - 1].year);
-  // the two series stop in different years, so the change either one is credited with
-  // has to be measured over the span they share, not over each one's own full run
-  const both = Math.min(W[W.length - 1].year, I[I.length - 1].year);
-  const at = (a, y) => { const m = a.filter(d => d.year <= y); return m.length ? m[m.length - 1].v : a[0].v; };
-  const pt = a => at(a, both) - a[0].v;
-  Plotly.react(el, [
-    { type: 'scatter', mode: 'lines', name: 'of all wealth',
-      x: W.map(d => d.year), y: W.map(d => d.v),
-      line: { color: metricColor('wealth_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
-      hovertemplate: 'the top 1% own %{y:.1%} of all wealth<extra></extra>' },
-    { type: 'scatter', mode: 'lines', name: 'of all income',
-      x: I.map(d => d.year), y: I.map(d => d.v),
-      line: { color: metricColor('income_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
-      hovertemplate: 'the top 1% take %{y:.1%} of all income<extra></extra>' },
-  ], Object.assign({}, BASE_LAYOUT, {
-    showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
-    margin: { t: 14, r: 16, b: 40, l: 54 },
+// Step one: the poorest half's share of everything owned, which fell nearly everywhere.
+// One line per country and no median across them, because a median would hide the range
+// and the range is part of the point.
+const WHY_OWN = ['GBR', 'FRA', 'DEU', 'ITA', 'USA'];
+function drawWhyOwn() {
+  const el = document.getElementById('why-own');
+  if (!el || !window.Plotly || !SERIES.wealth_bottom50) return;
+  // 1995, not 1990. the first few years of the wealth series are smooth model output on
+  // thin data for most countries, and starting there invents a cliff: the UK appears to
+  // halve between 1990 and 1994 because the model was revised, not because anything moved.
+  const FROM = 1995;
+  const got = WHY_OWN.filter(i => seriesOf('wealth_bottom50', i).filter(d => d.year >= FROM).length > 3);
+  if (!got.length) return;
+  const ramp = shadesOf(metricColor('wealth_bottom50'), Math.max(2, got.length));
+  let lo = Infinity, hi = -Infinity;
+  const traces = got.map((iso, k) => {
+    const ser = seriesOf('wealth_bottom50', iso).filter(d => d.year >= FROM);
+    lo = Math.min(lo, ser[0].year); hi = Math.max(hi, ser[ser.length - 1].year);
+    return { type: 'scatter', mode: 'lines', name: BY_ISO[iso].name,
+      x: ser.map(d => d.year), y: ser.map(d => d.v),
+      line: { color: ramp[k], width: 2.6, shape: 'spline', smoothing: 0.6 },
+      hovertemplate: BY_ISO[iso].name + ': the bottom half own %{y:.1%}<extra></extra>' };
+  });
+  Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
+    showlegend: true, legend: { orientation: 'h', y: 1.16, font: { size: 11 } },
+    margin: { t: 14, r: 16, b: 40, l: 56 },
     shapes: eraShapes(lo, hi), annotations: eraLabels(lo, hi),
-    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, {
-      range: [0, Math.max(...W.map(d => d.v)) + 0.05], autorange: false, tickformat: '.0%',
-      title: { text: 'share taken by the top 1%', font: { size: 11 } } }),
+    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { tickformat: '.0%',
+      title: { text: 'share of all wealth owned by the poorest half', font: { size: 11 } } }),
   }), CFG);
-  const t = document.getElementById('why-same-title');
-  if (t) t.textContent = `The same top 1%, ${lo} to ${hi}`;
-  const src = document.getElementById('why-same-src');
+  const t = document.getElementById('why-own-title');
+  if (t) t.textContent = `What the bottom half owns, ${lo} to ${hi}`;
+  const src = document.getElementById('why-own-src');
   if (src) src.textContent =
-    `Both lines are WID, pretax national income and household net wealth, both per adult with income and ` +
-    `wealth split equally within the couple. That is what makes them comparable: same source, same unit, ` +
-    `same definition of the top 1%. Over ${lo} to ${both}, the years both series cover, wealth is the higher ` +
-    `share and the faster one: it rose ${(pt(W) * 100).toFixed(1)} points against ` +
-    `${(pt(I) * 100).toFixed(1)} for income. The wealth line runs on to ${W[W.length - 1].year}; ` +
-    `the income line stops at ${I[I.length - 1].year}, so the last stretch of blue has nothing to be read against. ` +
-    provenance(['wealth_top1', 'income_top1']);
+    `Net wealth, so debts are subtracted, which is how a share can fall below zero. ` +
+    `Drawn from ${FROM} rather than 1990: the first years of this series are smooth model output ` +
+    `on thin data for most countries, and starting there invents falls that are revisions rather ` +
+    `than history. ` +
+    `Five countries are drawn because a line each is readable and an average across them ` +
+    `would hide how differently they moved. Across the 25 rich countries the atlas holds, ` +
+    `this share fell in 18, and it fell in 18 whether you start counting in 1990, 1995 or 2000. ` +
+    provenance(['wealth_bottom50']);
 }
 
-// the argument itself: who owns the country, top hundredth against bottom half.
-// a Gini cannot carry this. it is one number for the whole curve and it is nearly
-// deaf at both ends: at 0.83 it is close to its ceiling, and the bottom half moving
-// from 1.7% of everything to below zero is a rounding error inside it.
-function drawWhyShares() {
-  const el = document.getElementById('why-shares');
-  if (!el || !window.Plotly) return;
-  const iso = WHY_ISO;
-  const t1 = seriesOf('wealth_top1', iso), b5 = seriesOf('wealth_bottom50', iso);
-  if (t1.length < 3 || b5.length < 3) return;
-  const lo = Math.max(t1[0].year, b5[0].year);
-  const T = t1.filter(d => d.year >= lo), B = b5.filter(d => d.year >= lo);
-  const hi = Math.min(T[T.length - 1].year, B[B.length - 1].year);
-  const yrs = T.filter(d => d.year <= hi).map(d => d.year);
-  const bAt = {}; B.forEach(d => { bAt[d.year] = d.v; });
-  const tAt = {}; T.forEach(d => { tAt[d.year] = d.v; });
-  const tv = yrs.map(y => tAt[y]), bv = yrs.map(y => bAt[y]);
-  const blue = metricColor('wealth_top1');
-  // both lines are wealth, so both are the wealth blue; the lower one is shaded away
-  // from the page and dashed, which separates them by texture as well as by tone
-  const bot = shade(blue, isDark() ? 0.34 : -0.42);
-  // deep enough below the lowest point that the era labels on the floor clear the line
-  const floor = Math.min(0, Math.min(...bv)) - 0.075, ceil = Math.max(...tv) + 0.04;
-  const first = (a, k) => a[0], last = a => a[a.length - 1];
-  Plotly.react(el, [
-    // the band between the two lines is the wealth that separates them
-    { type: 'scatter', mode: 'lines', x: yrs, y: bv, showlegend: false,
-      line: { width: 0 }, hoverinfo: 'skip' },
-    { type: 'scatter', mode: 'lines', x: yrs, y: tv, showlegend: false,
-      line: { width: 0 }, fill: 'tonexty', fillcolor: 'rgba(42,120,214,0.10)', hoverinfo: 'skip' },
-    { type: 'scatter', mode: 'lines', name: 'top 1%',
-      x: yrs, y: tv,
-      line: { color: blue, width: 2.8, shape: 'spline', smoothing: 0.6 },
-      hovertemplate: 'top 1% hold %{y:.1%} of all wealth<extra></extra>' },
-    { type: 'scatter', mode: 'lines', name: 'bottom 50%',
-      x: yrs, y: bv,
-      line: { color: bot, width: 2.6, dash: 'dash', shape: 'spline', smoothing: 0.6 },
-      hovertemplate: 'bottom 50% hold %{y:.1%} of all wealth<extra></extra>' },
-  ], Object.assign({}, BASE_LAYOUT, {
-    // a filled trace flips Plotly's legend order by default; these read top then bottom
-    showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 }, traceorder: 'normal' },
-    margin: { t: 14, r: 16, b: 40, l: 54 },
-    shapes: eraShapes(lo, hi).concat([{
-      // drawn because the bottom half crosses it: below this line they owe more than they own
-      type: 'line', xref: 'x', yref: 'y', layer: 'below',
-      x0: lo, x1: hi, y0: 0, y1: 0, line: { color: 'rgba(128,132,140,0.55)', width: 1 },
-    }]),
-    annotations: eraLabels(lo, hi),
-    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, {
-      range: [floor, ceil], autorange: false, tickformat: '.0%',
-      title: { text: 'share of all household net wealth', font: { size: 11 } } }),
+// Step two: earning against owning, for the same people. A dot per country, so the
+// claim is not carried by whichever country was picked to illustrate it.
+function drawWhyPay() {
+  const el = document.getElementById('why-pay');
+  if (!el || !window.Plotly || !SERIES.income_bottom50 || !SERIES.wealth_bottom50) return;
+  const A = 1995, B = 2017;
+  const pts = [];
+  for (const iso in BY_ISO) {
+    const w = seriesOf('wealth_bottom50', iso), i = seriesOf('income_bottom50', iso);
+    const at = (ser, y) => { const m = ser.filter(d => d.year <= y); return m.length && m[m.length - 1].year >= y - 2 ? m[m.length - 1].v : null; };
+    const wa = at(w, A), wb = at(w, B), ia = at(i, A), ib = at(i, B);
+    if (wa == null || wb == null || ia == null || ib == null) continue;
+    if (!inScope(iso, null)) continue;
+    pts.push({ iso, name: BY_ISO[iso].name, di: (ib - ia) * 100, dw: (wb - wa) * 100 });
+  }
+  if (pts.length < 8) return;
+  const NAME = ['GBR', 'FRA', 'ITA', 'SWE', 'USA', 'DEU'];
+  const lab = new Set(NAME);
+  const plain = pts.filter(p => !lab.has(p.iso)), hit = pts.filter(p => lab.has(p.iso));
+  const mk = (arr, big) => ({
+    type: 'scatter', mode: big ? 'markers+text' : 'markers',
+    x: arr.map(p => p.di), y: arr.map(p => p.dw),
+    text: arr.map(p => p.name),
+    // names alternate above and below so neighbouring labels do not sit on each other
+    textposition: big ? arr.map((p, k) => k % 2 ? 'bottom center' : 'top center') : 'top center',
+    textfont: { size: 11, color: cssVar('--ink', '#0a0a0a') },
+    marker: big
+      ? { size: 12, color: hlFill('wealth_bottom50'), line: { color: hlEdge(), width: 2 } }
+      : { size: 7, color: metricColor('wealth_bottom50'), opacity: 0.45 },
+    hovertemplate: '%{text}<br>share of income %{x:+.1f} points<br>share of wealth %{y:+.1f} points<extra></extra>',
+  });
+  const xs = pts.map(p => p.di), ys = pts.map(p => p.dw);
+  const pad = (v, k) => { const l = Math.min(...v), h = Math.max(...v), g = (h - l) * k; return [l - g, h + g]; };
+  const rx = pad(xs, 0.12);
+  // one country ran so far from the rest that keeping it on scale flattens everyone
+  // else into a stripe. the axis holds the bulk and the stragglers are named at the
+  // edge, so nothing is hidden and the shape of the cloud is still readable.
+  const sorted = ys.slice().sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(sorted.length * 0.25)], q3 = sorted[Math.floor(sorted.length * 0.75)];
+  const cut = Math.min(...ys) < q1 - 3 * (q3 - q1 || 1) ? q1 - 3 * (q3 - q1 || 1) : Math.min(...ys);
+  const ry = [Math.min(cut, -1) * 1.12, Math.max(...ys) * 1.12 || 1];
+  const off = pts.filter(p => p.dw < ry[0]);
+  const fell = pts.filter(p => p.dw < 0).length;
+  const both = pts.filter(p => p.dw < 0 && p.di > 0).length;
+  Plotly.react(el, [mk(plain, false), mk(hit, true)], Object.assign({}, BASE_LAYOUT, {
+    showlegend: false,
+    margin: { t: 16, r: 20, b: 48, l: 60 },
+    shapes: [
+      { type: 'line', xref: 'x', yref: 'y', x0: 0, x1: 0, y0: ry[0], y1: ry[1],
+        line: { color: 'rgba(128,132,140,0.4)', width: 1 } },
+      { type: 'line', xref: 'x', yref: 'y', x0: rx[0], x1: rx[1], y0: 0, y1: 0,
+        line: { color: 'rgba(128,132,140,0.4)', width: 1 } },
+    ],
+    annotations: [{ x: rx[1], y: ry[0], xref: 'x', yref: 'y', xanchor: 'right', yanchor: 'bottom',
+      text: 'earning more of the pie,<br>owning less of it', showarrow: false, align: 'right',
+      font: { size: 10.5, color: cssVar('--ink-3', '#999999') } }].concat(
+      // stagger them, or two countries close on the x axis print on top of each other
+      off.slice().sort((m, n) => m.di - n.di).map((p, k) => ({
+        x: p.di, y: ry[0], xref: 'x', yref: 'y', yanchor: 'bottom', yshift: 4 + (k % 2) * 22,
+        text: `${esc(p.name)} ${p.dw.toFixed(0)}pt`, showarrow: true,
+        arrowhead: 0, arrowsize: 1, arrowwidth: 1, ax: 0, ay: -(24 + (k % 2) * 22), align: 'center',
+        arrowcolor: hlEdge(), font: { size: 10, color: cssVar('--ink-2', '#555555') } }))),
+    xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { range: rx, autorange: false, ticksuffix: 'pt',
+      title: { text: `change in their share of the income, ${A} to ${B}`, font: { size: 11 } } }),
+    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { range: ry, autorange: false, ticksuffix: 'pt',
+      title: { text: 'change in their share of the wealth', font: { size: 11 } } }),
   }), CFG);
-  const t = document.getElementById('why-shares-title');
-  if (t) t.textContent = `Who owns the United States, ${lo} to ${hi}`;
-  const pp = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(1);
-  const neg = yrs.filter(y => bAt[y] < 0);
-  const src = document.getElementById('why-shares-src');
+  const t = document.getElementById('why-pay-title');
+  if (t) t.textContent = `Earning and owning, the poorest half, ${A} to ${B}`;
+  const src = document.getElementById('why-pay-src');
   if (src) src.textContent =
-    `Shares of the same total, so they can be read against each other and against zero. ` +
-    `From ${lo} to ${hi} the top 1% went from ${(first(tv) * 100).toFixed(1)}% to ` +
-    `${(last(tv) * 100).toFixed(1)}% of all household net wealth (${pp(last(tv) - first(tv))} points), ` +
-    `while the bottom 50% went from ${(first(bv) * 100).toFixed(1)}% to ${(last(bv) * 100).toFixed(1)}% ` +
-    `(${pp(last(bv) - first(bv))} points)` +
-    (neg.length ? `, and spent ${neg[0]} to ${neg[neg.length - 1]} below zero: the bottom half of the ` +
-      `country collectively owed more than it owned` : '') + `. ` +
-    `Both lines are the same series family, so the comparison is like for like. ` +
-    provenance(['wealth_top1', 'wealth_bottom50']);
+    `Each dot is one country, measured in percentage points of the national total. ` +
+    `Of ${pts.length} countries, ${fell} ended with a smaller share of the wealth, and ${both} of ` +
+    `those ended with a larger share of the income at the same time. ` +
+    (off.length
+      ? `${off.map(p => esc(p.name) + ' at ' + p.dw.toFixed(1) + ' points').join(', ')} ` +
+        `${off.length === 1 ? 'falls' : 'fall'} below the bottom of the axis and ${off.length === 1 ? 'is' : 'are'} ` +
+        `named there rather than dropped: keeping ${off.length === 1 ? 'it' : 'them'} on scale flattens ` +
+        `every other country into a stripe. `
+      : '') +
+    provenance(['income_bottom50', 'wealth_bottom50']);
 }
 
-// the second claim: the number everyone quotes did not move while the first chart happened
-function drawWhyGini() {
-  const el = document.getElementById('why-chart');
-  if (!el || !window.Plotly) return;
-  // Levels, not an index. Indexing two Ginis inverts this: a Gini already at 0.83 moves
-  // little in per-cent terms even as the top pulls away.
-  const iso = WHY_ISO;
-  const wg = seriesOf('wealth_gini', iso), ig = seriesOf('income_gini', iso);
-  if (wg.length < 3 || ig.length < 3) return;
-  const base = Math.max(wg[0].year, ig[0].year);
-  const W = wg.filter(d => d.year >= base), I = ig.filter(d => d.year >= base);
-  const hi = Math.max(W[W.length - 1].year, I[I.length - 1].year);
-  const pt = a => (a[a.length - 1].v - a[0].v);
+// Step three: houses against pay. Two countries only, and the caption says so, because
+// the sixty-country series sits behind sources this build cannot reach.
+function drawWhyHouse() {
+  const el = document.getElementById('why-house');
+  if (!el || !window.Plotly || !SERIES.house_price) return;
+  const iso = 'GBR';
+  const hp = seriesOf('house_price', iso), inc = seriesOf('median_income', iso);
+  if (hp.length < 5 || inc.length < 3) return;
+  const lo = Math.max(hp[0].year, inc[0].year);
+  const H = hp.filter(d => d.year >= lo), I = inc.filter(d => d.year >= lo);
+  if (!H.length || !I.length) return;
+  const base = I[0].year;
+  const hAt = y => { const m = H.filter(d => d.year <= y); return m.length ? m[m.length - 1].v : H[0].v; };
+  const hBase = hAt(base), iBase = I[0].v;
+  const hi = Math.min(H[H.length - 1].year, I[I.length - 1].year);
+  const Hs = H.filter(d => d.year >= base && d.year <= hi);
+  const Is = I.filter(d => d.year <= hi);
   Plotly.react(el, [
-    { type: 'scatter', mode: 'lines', name: 'wealth Gini',
-      x: W.map(d => d.year), y: W.map(d => d.v),
-      line: { color: metricColor('wealth_gini'), width: 2.8, shape: 'spline', smoothing: 0.6 },
-      hovertemplate: 'wealth Gini %{y:.2f}<extra></extra>' },
-    { type: 'scatter', mode: 'lines', name: 'income Gini',
-      x: I.map(d => d.year), y: I.map(d => d.v),
-      line: { color: metricColor('income_gini'), width: 2.8, shape: 'spline', smoothing: 0.6 },
-      hovertemplate: 'income Gini %{y:.2f}<extra></extra>' },
+    { type: 'scatter', mode: 'lines', name: 'the price of a house',
+      x: Hs.map(d => d.year), y: Hs.map(d => d.v / hBase * 100),
+      line: { color: metricColor('wealth_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+      hovertemplate: 'houses %{y:.0f} (' + base + ' = 100)<extra></extra>' },
+    { type: 'scatter', mode: Is.length < 14 ? 'lines+markers' : 'lines', name: 'what people earn',
+      x: Is.map(d => d.year), y: Is.map(d => d.v / iBase * 100),
+      line: { color: metricColor('median_income'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+      marker: { size: 5 },
+      hovertemplate: 'income %{y:.0f} (' + base + ' = 100)<extra></extra>' },
   ], Object.assign({}, BASE_LAYOUT, {
-    showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
-    margin: { t: 14, r: 16, b: 40, l: 50 },
+    showlegend: true, legend: { orientation: 'h', y: 1.16, font: { size: 11 } },
+    margin: { t: 14, r: 16, b: 40, l: 52 },
     shapes: eraShapes(base, hi), annotations: eraLabels(base, hi),
-    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { range: [0, 1], autorange: false,
-      title: { text: 'Gini, both on the same 0 to 1 scale', font: { size: 11 } } }),
+    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, {
+      title: { text: `both after inflation, ${base} = 100`, font: { size: 11 } } }),
   }), CFG);
-  const t = document.getElementById('why-title');
-  if (t) t.textContent = `The same country, the same years, through a Gini`;
-  const src = document.getElementById('why-src');
-  if (src) src.textContent = `Levels, not an index: two Ginis on one 0 to 1 scale, so they can be read ` +
-    `against each other directly. Indexing them would mislead, because a Gini already near 0.83 has little ` +
-    `room left to move. Between ${base} and ${hi} the wealth Gini moved ${pt(W) >= 0 ? '+' : ''}` +
-    `${pt(W).toFixed(2)} and the income Gini ${pt(I) >= 0 ? '+' : ''}${pt(I).toFixed(2)}, over the same ` +
-    `years in which the top 1% took nearly six points more of everything. ` +
-    `The two sides are not like for like: wealth here is a share-based distribution from WID, income a ` +
-    `survey Gini from World Bank PIP. The atlas does not yet hold income top shares, which is what a ` +
-    `true like-for-like comparison would need. ` +
-    provenance(['wealth_gini', 'income_gini']);
+  const t = document.getElementById('why-house-title');
+  if (t) t.textContent = `The United Kingdom, houses and pay, ${base} to ${hi}`;
+  const src = document.getElementById('why-house-src');
+  if (src) src.textContent =
+    `Both lines are after inflation and both start at 100, so what matters is how far apart they ` +
+    `get. Houses are the Nationwide average UK price, deflated by consumer prices. Pay is median ` +
+    `household income from the World Bank, which is not the same as the wage figures used in the ` +
+    `usual house-price-to-earnings ratio: it is income after transfers, for a whole household. ` +
+    `The direction is the same, the denominator is not, and the gap here is the smaller of the two. ` +
+    `Only the United Kingdom and the United States are held, because the international series is ` +
+    `published by the BIS and the OECD and neither could be reached to build this. ` +
+    provenance(['median_income']);
 }
+
 function setView(name) {
   for (const v of VIEWS) {
     document.getElementById('view-' + v).hidden = v !== name;
@@ -5615,13 +5727,14 @@ Promise.all([
   opt('data/income_top10.json'),
   opt('data/income_middle40.json'),
   opt('data/income_bottom50.json'),
+  opt('data/house_prices.json'),
   opt('data/us_county.json'),
   opt('data/us_state.json'),
   opt('data/us_names.json'),
   opt('data/us_manifest.json'),
   opt('data/us_cz.json'),
 ]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50,
-  itop1, itop10, imid40, ibot50, usCounty, usState, usNames, usManifest, usCz]) => {
+  itop1, itop10, imid40, ibot50, hprice, usCounty, usState, usNames, usManifest, usCz]) => {
   LATEST = latest; US = us;
   // spine is the union of every country any module knows, named from geo_names
   const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
@@ -5648,6 +5761,7 @@ Promise.all([
   if (itop10 && Object.keys(itop10).length) SERIES.income_top10 = toSeries(itop10);
   if (imid40 && Object.keys(imid40).length) SERIES.income_middle40 = toSeries(imid40);
   if (ibot50 && Object.keys(ibot50).length) SERIES.income_bottom50 = toSeries(ibot50);
+  if (hprice && Object.keys(hprice).length) SERIES.house_price = toSeries(hprice);
   if (usCounty && Object.keys(usCounty).length) { US_COUNTY = usCounty; US_STATE = usState; US_NAMES = usNames; US_MANIFEST = usManifest; }
   if (usCz && Object.keys(usCz).length) US_CZ = usCz;
 
