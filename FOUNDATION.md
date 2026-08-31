@@ -10,6 +10,20 @@ data is rebuilt, this file gets rebuilt with it.
 
 ---
 
+## 0. The point, in one paragraph
+
+Someone told you a number about your country. It was almost certainly the income
+Gini, because that is the one that gets published. It describes pay. This atlas
+puts the ownership number next to it, and they do not match: Sweden pays out more
+evenly than almost anywhere and owns more unevenly than Britain, and its bottom
+half takes 24 per cent of national income while owning less than nothing. Which of
+those two numbers you happened to hear decided what you believe about where you
+live. The pay number describes your month. The ownership number describes whether
+you can buy a house, survive losing your job, or leave anything behind. The one
+that decides your life is the one nobody quotes.
+
+---
+
 ## 1. The premise
 
 "Inequality" is used as one word for at least four different measurements that do
@@ -151,6 +165,50 @@ So: draw the events, never compute their effect. A number attributing a move to 
 party would be exactly the garbled claim this atlas exists to dismantle, and
 publishing one would cost us the standing that everything else earns.
 
+### 4a. What replaces attribution
+
+Three moves, in order of value. None of them is causal and none pretends to be.
+
+**Peer contrast, never before and after.** The question is not "what did this
+policy do", it is "did this country move differently from comparable countries
+over the same years". The global shock dominates every series, and subtracting it
+changes the reading every time:
+
+| episode | raw move | peer median | gap | rank |
+|---|---|---|---|---|
+| Germany, Hartz and after, 2003-2010 | +0.72pt | +0.80pt | -0.08 | 12 of 22 |
+| US, after the 2017 tax act, 2017-2021 | +0.78pt | +0.12pt | +0.66 | 5 of 22 |
+| US, QE years, 2008-2014 | +1.84pt | +1.40pt | +0.44 | 9 of 22 |
+| UK, after the Brexit vote, 2016-2021 | -0.13pt | +0.46pt | -0.59 | 18 of 22 |
+| Greece, the bailouts, 2009-2015 | +7.80pt | +1.17pt | +6.63 | 1 of 22 |
+
+Read raw, Hartz coincides with rising wealth concentration and the story writes
+itself. Read against peers, Germany was ordinary and the rise belonged to the
+world. That is confirmation bias caught in the act, and the contrast is the cure.
+
+**Let the data choose the turning points.** Importing a list of episodes we already
+believe in and looking for movement around them is the bias. Detect each country's
+steepest stretch first, then look up what was happening. Done that way the largest
+moves are mostly not the episodes anyone would have gone looking for:
+
+| country | steepest 6 years | move |
+|---|---|---|
+| Russia | 1995-2001 | +20.37pt |
+| Hungary | 2011-2017 | +8.76pt |
+| Netherlands | 1997-2003 | -8.57pt |
+| Greece | 2011-2017 | +8.00pt |
+| France | 1995-2001 | +7.72pt |
+
+Events are a lookup layer beneath the chart. They never drive the reading.
+
+**Composition is the only real explanation available.** Wealth concentration moves
+through asset prices and through who owns which asset. If the bottom half's wealth
+is a house and the top's is equities, an equity boom concentrates wealth
+arithmetically. That is accounting, not causal inference, and it is the mechanism
+the reader arrived wanting explained. It needs portfolio composition by wealth
+group: the Fed's Distributional Financial Accounts for the US, the ECB's HFCS for
+the euro area. Both are already in the wealth pipeline and neither reaches the app.
+
 ## 5. The unit is the country
 
 The user asked whether to explore this overall, by country, or by bloc. The data
@@ -187,6 +245,32 @@ honest possible treatment of a fragile trend, and no other inequality tool does 
 The cube is the composite. You can only see one face at a time, which is exactly
 what happens when somebody says "inequality" and means the income Gini. Turning it
 is the argument.
+
+**What earns a face: a thing distributed among people.** Wealth, income, health and
+opportunity are each spread unevenly across a population, which is what makes them
+inequalities and what makes them comparable to one another. This is the only rule
+that keeps the cube coherent, and it settles two open questions:
+
+- **Productivity is not a face.** It is an aggregate. It is not distributed among
+  anyone, so it cannot be unequal. It belongs inside the income face as the reading
+  that answers "where did the growth go", which is the upgrade to `reach`.
+  Productivity per hour against median pay is the clearest single picture of owning
+  beating earning. A reading, not a face.
+- **Subjective wellbeing could be a face, but not with what we hold.** Wellbeing is
+  distributed across people and the World Happiness Report publishes the
+  within-country dispersion. What `life_satisfaction.json` holds is the country
+  mean of the Cantril ladder, which is a level. The spread would qualify. The mean
+  does not.
+
+**The cube promises four inequalities and delivers two.** Wealth and income hold
+real distributions. Health holds a national average life expectancy, which by
+construction cannot show a gap between rich and poor inside a country. Opportunity
+holds a US-only single-cohort snapshot. Adding a fifth or sixth face while half the
+existing ones are misnamed makes the problem worse. Fix the four first.
+
+The remaining two faces of the solid stay as `link` and `extend`. Four things and
+two moves is a good structure, and forcing six distributions would mean inventing
+two we cannot measure.
 
 | face | what it measures | source | standing |
 |---|---|---|---|
@@ -263,14 +347,24 @@ Gary listener would come.
    ties the atlas to the argument the reader arrived with. Right now `reach` uses
    GDP per person against median survey income, which is not like for like and is
    flagged as such. Productivity per hour would make it honest.
-4. **Life expectancy by income group.** Without it the health face is misnamed.
-5. **Comparability tiers, which we already have and throw away.** The wealth
+4. **Portfolio composition by wealth group.** What each group actually owns: a
+   house, a pension, equities. This is the mechanism in section 4a, the only
+   explanation of a move that is arithmetic rather than assertion. The Fed's DFA
+   holds it for the US and the ECB's HFCS for the euro area, both already in the
+   wealth pipeline and neither reaching the app.
+5. **Life expectancy by income group.** Without it the health face is misnamed.
+6. **Within-country dispersion of life satisfaction.** Published by the World
+   Happiness Report. Turns a level we already hold into an inequality, and is the
+   only cheap route to a fifth real face.
+7. **Comparability tiers, which we already have and throw away.** The wealth
    release carries `comparability_tier` and `observed_vs_modeled` per row. The JSON
    build drops them. Carrying them through would let every chart say how solid each
    country's line is, and would have caught the 1990 baseline problem in section 4
    automatically instead of by hand.
 
-Item 5 is the cheapest and it improves everything else.
+Item 7 is the cheapest and it improves everything else. Item 4 is the one that
+turns the atlas from a demonstration that the numbers disagree into an explanation
+of why.
 
 ## 10. Checking a new question
 
