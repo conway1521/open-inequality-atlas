@@ -3035,11 +3035,12 @@ const FACETS = {
   // Life expectancy itself stays in the atlas as something to hold inequality against.
   health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'coming soon',
                  soon: true,
-                 note: 'Health is not open yet. Life expectancy here is a national average, ' +
-                   'which cannot show the gap between rich and poor inside a country. No source ' +
-                   'publishes that gap in a form that compares across borders, so rather than ' +
-                   'fill the face with an average we have left it closed. You can still hold any ' +
-                   'measure against life expectancy from the "against" fold.' },
+                 note: 'Health is not open as a face of its own. Life expectancy across countries ' +
+                   'is a national average, which cannot show the gap between rich and poor inside ' +
+                   'one, and no source publishes that gap in a way that compares across borders. ' +
+                   'Where it can be seen is the opportunity layer: ask "how much longer do the rich ' +
+                   'live here?" for 595 US commuting zones. You can also hold any measure against ' +
+                   'national life expectancy from the "against" fold.' },
 };
 // the two poles of the cube are not faces of inequality: they are what you do to a
 // face. link holds it against another face; extend takes the same face somewhere finer.
@@ -3101,7 +3102,8 @@ const QUESTIONS = [
   ] },
   { k: '', facet: 'opportunity', qs: [
     'if you grow up poor here, what do you earn later?',
-    "does credit depend on your parents' income?"] },
+    "does credit depend on your parents' income?",
+    'how much longer do the rich live here?'] },
 ];
 let promptIdx = 0;
 function nextPrompt(jump) {
@@ -3241,7 +3243,8 @@ function dimGroups(dim, filter) {
     }
     if (dim === 'against') {
       g.push({ k: "by parents' income", opts: [['credit score', "credit by parents' income"],
-        ['mortgage balance', "mortgages by parents' income"], ['delinquency', "delinquency by parents' income"]] });
+        ['mortgage balance', "mortgages by parents' income"], ['delinquency', "delinquency by parents' income"],
+        ['how long people live', 'how much longer do the rich live here?']] });
       g.push({ k: 'against the place', opts: [['median income', 'mobility and income'],
         ['poverty', 'mobility and poverty'], ['rent', 'mobility and rent']] });
       g.push({ k: 'not in the atlas', gaps: [['mobility outside the US',
@@ -3857,6 +3860,31 @@ function oppAnswer(q, strict) {
       `<strong>${g.fmt(m25)}</strong>. Children whose parents were in the top quarter reach <strong>${g.fmt(m75)}</strong>.`;
     return f;
   }
+  // Health, inside the one layer that can carry it. Life expectancy at 40 by household
+  // income quarter, per zone, which is a gap between people in the same place rather
+  // than an average over a country. The global health face stays closed for want of
+  // anything comparable across borders.
+  if (/\blive\b|\blives\b|\blife expect\w*|\bhow long\b|\bdie\b|\bdying\b|\blongevit\w*|\bhealth\b/.test(r)) {
+    const pts = zones.filter(z => z.leq1M != null && z.leq4M != null && z.leq1F != null && z.leq4F != null)
+      .map(z => ({ name: z.name, m1: z.leq1M, m4: z.leq4M, f1: z.leq1F, f4: z.leq4F, mob: z.mob }));
+    if (pts.length < 20) { showNotice('The life expectancy layer is not loaded.'); return null; }
+    const med = a => { const v = a.slice().sort((x, y) => x - y); return v[Math.floor(v.length / 2)]; };
+    const gm = med(pts.map(p => p.m4 - p.m1)), gf = med(pts.map(p => p.f4 - p.f1));
+    const poor = pts.map(p => p.m1);
+    const lo = pts.reduce((a, b) => a.m1 < b.m1 ? a : b), hi = pts.reduce((a, b) => a.m1 > b.m1 ? a : b);
+    const withMob = pts.filter(p => p.mob != null);
+    const rr = pearson(withMob.map(p => ({ x: p.m1, y: p.mob })));
+    f.opp = { kind: 'life', pts, gm, gf };
+    f.text = `Across <strong>${pts.length}</strong> US commuting zones, a man in the poorest quarter of ` +
+      `households lives <strong>${gm.toFixed(1)} years</strong> less than one in the richest quarter of ` +
+      `the same zone. For women it is <strong>${gf.toFixed(1)} years</strong>. ` +
+      `Where you live matters about as much: a poor man's life expectancy runs from ` +
+      `<strong>${lo.m1.toFixed(1)}</strong> in ${esc(lo.name)} to <strong>${hi.m1.toFixed(1)}</strong> ` +
+      `in ${esc(hi.name)}, a spread of ${(hi.m1 - lo.m1).toFixed(1)} years for the same income group.` +
+      (rr != null ? ` <em>Poor men live longer in the zones where poor children climb furthest ` +
+        `(r = ${rr.toFixed(2)} against upward mobility, ${withMob.length} zones).</em>` : '');
+    return f;
+  }
   const cov = /\bpoverty\b/.test(r) ? { key: 'pov', label: 'poverty rate' }
     : /\brent\b|\bhousing cost\b/.test(r) ? { key: 'rent', label: 'two-bed rent' }
     : /\bincome\b|\bagainst\b|\bvs\b|\btrack|\bcorrelat/.test(r) ? { key: 'inc', label: 'median income' } : null;
@@ -3896,6 +3924,36 @@ function drawOpp(f) {
     }), CFG);
     title.textContent = `${cap(o.label)} by parents' income, across commuting zones`;
     src.textContent = 'Each dot is a commuting zone. The line marks the same outcome for both. Source: Opportunity Insights.';
+  } else if (o.kind === 'life') {
+    const all = o.pts.flatMap(p => [p.m1, p.m4, p.f1, p.f4]);
+    const lo = Math.min(...all) - 0.6, hi = Math.max(...all) + 0.6;
+    const series = (key1, key4, name, colour, op) => ({
+      type: 'scatter', mode: 'markers', name,
+      x: o.pts.map(p => p[key1]), y: o.pts.map(p => p[key4]), text: o.pts.map(p => p.name),
+      marker: { color: colour, size: 6, opacity: op },
+      hovertemplate: '%{text}<br>poorest quarter %{x:.1f}<br>richest quarter %{y:.1f}<extra></extra>',
+    });
+    Plotly.react(el, [
+      { x: [lo, hi], y: [lo, hi], mode: 'lines', showlegend: false,
+        line: { color: '#cbd5e1', width: 1, dash: 'dash' }, hoverinfo: 'skip' },
+      series('f1', 'f4', 'women', shade(AM, -0.35), 0.5),
+      series('m1', 'm4', 'men', AM, 0.55),
+    ], Object.assign({}, BASE_LAYOUT, {
+      showlegend: true, legend: { orientation: 'h', y: 1.14, font: { size: 11 } },
+      margin: { t: 14, r: 16, b: 44, l: 54 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { range: [lo, hi], autorange: false,
+        title: { text: 'life expectancy at 40, poorest quarter', font: { size: 11 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { range: [lo, hi], autorange: false,
+        title: { text: 'richest quarter', font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = 'How long the rich and the poor live, by commuting zone';
+    src.textContent =
+      `Each dot is one commuting zone, plotted by how long its poorest quarter lives against how ` +
+      `long its richest quarter lives. On the dashed line they would live the same length of time; ` +
+      `nowhere does. Life expectancy at 40, race-adjusted, so zones are compared on something other ` +
+      `than who lives in them. Median gap ${o.gm.toFixed(1)} years for men and ${o.gf.toFixed(1)} for ` +
+      `women. Source: Chetty et al, the Health Inequality Project, deaths 2001 to 2014. This is one ` +
+      `country: no source publishes the same gap in a form that compares across borders.`;
   } else if (o.kind === 'scatter') {
     Plotly.react(el, [{ x: o.pts.map(p => p.x), y: o.pts.map(p => p.y), text: o.pts.map(p => p.name),
       mode: 'markers', marker: { color: AM, size: 6, opacity: 0.45 }, hovertemplate: '%{text}<extra></extra>' }],
