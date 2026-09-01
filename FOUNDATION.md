@@ -102,14 +102,27 @@ This is the finding that proves the premise, and it belongs on the landing page.
 State this for the United States, over those years. Do not generalise it. See
 section 4.
 
-### Claim 4: concentration and how long people live. WEAK. Say so on the chart.
+### Claim 4: concentration and how long people live. WEAK across countries, STRONG inside one.
 
-Wealth top 1% against life expectancy, rich countries only, latest shared year:
-r = **-0.38**, n = 25, which is about p = 0.06. Income top 1% is weaker at -0.26.
-Across all 209 countries wealth falls to -0.14, because development swamps it.
+Across countries it is weak and the chart says so. Wealth top 1% against life
+expectancy, rich countries only, latest shared year: r = **-0.38**, n = 25, about
+p = 0.06. Income top 1% is weaker at -0.26. Across all 209 countries wealth falls
+to -0.14, because development swamps it.
 
-This is suggestive and nothing more. It is currently the only thing in the atlas
-that reaches toward daily life, and it is not enough. See section 9.
+Inside the United States, where the data is by income group rather than a national
+average, it is a different matter. Across 595 commuting zones a man in the poorest
+quarter of households lives **8.7 years** less than one in the richest quarter of the
+same place. For women it is 5.6 years. No zone has no gap: the narrowest is 1.7 years
+and the widest 13.5.
+
+Where you live carries about as much as being rich does. A poor man's life expectancy
+runs from 72.2 in Pecos to 80.8 in Glenwood Springs, a spread of 8.6 years for the
+same income group.
+
+And it lines up with mobility: **r = +0.39** on 595 zones between how long poor men
+live and how far poor children climb. That is the strongest relationship anywhere in
+the atlas, and it is the closest thing here to showing that the two faces are the same
+story. It is one country and it is a correlation, not a mechanism.
 
 ## 4. What we do not claim
 
@@ -276,14 +289,19 @@ two we cannot measure.
 |---|---|---|---|
 | wealth | top 1% share, bottom 50% share, Gini | WID plus the harmonised release | core |
 | income | top 1% / middle 40% / bottom 50% share, Gini, median | WID and World Bank PIP | core |
-| health | life expectancy, life satisfaction | UN WPP, World Happiness Report | thin, national averages only |
-| opportunity | upward mobility across 741 US commuting zones | Opportunity Insights | **beta, US only** |
+| health | closed | | **not open as a face** |
+| opportunity | mobility, credit, debt and life expectancy by income, 741 US commuting zones | Opportunity Insights, Health Inequality Project | **beta, US only** |
 
-Health is the weakest of the three "core" faces and should not be called an
-inequality of health. Life expectancy here is a national average. It cannot show
-a gap between rich and poor inside a country, which is what the face implies.
-Either we get life expectancy by income decile, or the face gets renamed to what
-it actually holds.
+Health is closed as a face and that is the honest position. Life expectancy across
+countries is a national average, which cannot show a gap between rich and poor inside
+one, and no source publishes that gap in a form that compares across borders. The face
+says so and hands the cube back rather than setting a measure.
+
+The gap itself is now visible, in the only place it can be: 595 US commuting zones,
+life expectancy at 40 by household income quarter, race-adjusted, from the Health
+Inequality Project. It lives inside the opportunity layer because that is the same
+geography and the same kind of claim, about people in one place rather than between
+countries. National life expectancy stays available to hold any measure against.
 
 ## 7. Opportunity is a beta layer
 
@@ -352,17 +370,16 @@ Gary listener would come.
    explanation of a move that is arithmetic rather than assertion. The Fed's DFA
    holds it for the US and the ECB's HFCS for the euro area, both already in the
    wealth pipeline and neither reaching the app.
-5. **Life expectancy by income group.** Without it the health face is misnamed.
-6. **Within-country dispersion of life satisfaction.** Published by the World
+5. **Within-country dispersion of life satisfaction.** Published by the World
    Happiness Report. Turns a level we already hold into an inequality, and is the
    only cheap route to a fifth real face.
-7. **Comparability tiers, which we already have and throw away.** The wealth
+6. **Comparability tiers, which we already have and throw away.** The wealth
    release carries `comparability_tier` and `observed_vs_modeled` per row. The JSON
    build drops them. Carrying them through would let every chart say how solid each
    country's line is, and would have caught the 1990 baseline problem in section 4
    automatically instead of by hand.
 
-Item 7 is the cheapest and it improves everything else. Item 4 is the one that
+Item 6 is the cheapest and it improves everything else. Item 4 is the one that
 turns the atlas from a demonstration that the numbers disagree into an explanation
 of why.
 
