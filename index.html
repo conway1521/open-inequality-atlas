@@ -764,8 +764,9 @@ footer a { color: inherit; }
   <div id="view-ask" class="wrap stage-compose">
     <section class="ask">
       <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality</h1>
-      <p class="claim">Wealth and income are treated as one story. They came apart decades ago,
-        and which one you measure decides what you conclude.
+      <p class="claim">Wealth and income get treated as one story. In nearly every country the gap
+        in what people own is about twice the gap in what they earn, and in some countries the two
+        are pulling apart while in others they are closing.
         <button type="button" class="claim-link" id="claim-why">see it</button></p>
     </section>
 
@@ -1483,13 +1484,31 @@ function rankedPool(metric, dir, region, year) {
     .sort((a, b) => dir === 'low' ? a.val - b.val : b.val - a.val);
 }
 // 1st, 2nd, 3rd, 11th: a rank reads as a position, not as a bare number
+// "in the United Kingdom", not "in United Kingdom": the names that take an article
+const THE = new Set(['GBR', 'USA', 'NLD', 'PHL', 'ARE', 'CZE', 'DOM', 'BHS', 'MDV', 'COD', 'COG', 'CAF', 'GMB', 'COM', 'SYC', 'SLB', 'MHL']);
+function theName(iso) { const n = BY_ISO[iso] ? BY_ISO[iso].name : iso; return (THE.has(iso) ? 'the ' : '') + n; }
 function ordinal(n) {
   const t = n % 100, u = n % 10;
   const suf = (t >= 11 && t <= 13) ? 'th' : u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th';
   return n + suf;
 }
+// A ranking compares like with like by default: the richer third of countries by GDP
+// per person, which is close to the set with tax records behind their wealth figures.
+// Against all 213 the United Kingdom ranks 207th on wealth concentration, which is true
+// and tells a British reader the opposite of what is true about their country, because
+// the 150 places above it are modelled. "the whole world" in the among fold widens it,
+// and every sentence a ranking touches says which set it ran on.
+function richThird() {
+  if (richThird.cache && richThird.gen === (medianCache.gen || 0)) return richThird.cache;
+  const gp = poolOf('gdp_pc').slice().sort((a, b) => b.val - a.val);
+  richThird.gen = medianCache.gen || 0;
+  return (richThird.cache = new Set(gp.slice(0, Math.floor(gp.length / 3)).map(r => r.geo_id)));
+}
+function rankNarrowed() { return !ctx.pool && !ctx.region; }
+const RANK_SET_NOTE = ' among the richer third of countries';
 function rankOf(iso, metric) {
-  const pool = rankedPool(metric, 'high', null);
+  let pool = rankedPool(metric, 'high', null);
+  if (rankNarrowed()) { const rt = richThird(); pool = pool.filter(r => rt.has(r.geo_id)); }
   const i = pool.findIndex(r => r.geo_id === iso);
   return { rank: i + 1, of: pool.length, row: i >= 0 ? pool[i] : null };
 }
@@ -1547,24 +1566,31 @@ function inScope(iso, region) {
 function detectMetrics(r) {
   const found = [];
   const push = (re, key) => { if (re.test(r) && !found.includes(key)) found.push(key); };
-  push(/\btop\s*10\b|\b10%|\b10\s*(per\s*cent|percent|pct)\b/, 'top10_wealth_share');
-  push(/\btop\s*1\b|\b1%|\btop\s*one\b|\b1\s*(per\s*cent|percent|pct)\b|\brich(est)?\b/, 'top1_wealth_share');
-  push(/\bbottom\s*(50|half)\b|\b50%|\bpoor(est)?\s*half\b/, 'bottom50_wealth_share');
-  push(/\blife expectancy\b|\blongevity\b|\blifespan\b|\bhealth\b/, 'life_exp');
+  // the global series, never the US-only snapshots the old US page read: "the top 1%"
+  // typed by a reader in Leeds must reach the WID series that has Britain in it
+  push(/\btop\s*10\b|\b10%|\b10\s*(per\s*cent|percent|pct)\b/, 'income_top10');
+  push(/\btop\s*1\b|\b1%|\btop\s*one\b|\b1\s*(per\s*cent|percent|pct)\b|\brich(est)?\b|\bthe wealthy\b/, 'wealth_top1');
+  push(/\bbottom\s*(50|half)\b|\b50%|\bpoor(est)?\s*half\b|\bordinary people\b|\beveryone else\b/, 'wealth_bottom50');
+  push(/\bmiddle class\b|\bmiddle 40\b|\bthe middle\b(?! income)/, 'income_middle40');
+  push(/\blife expectancy\b|\blongevity\b|\blifespan\b|\bhealth\b|\blive longer\b|\blive long\w*\b|\bhow long .*\blive\b|\bdie (young|earl\w*|soon\w*)\b|\bdying\b|\byears of life\b/, 'life_exp');
+  push(/\bhous(e|es|ing)\b|\bhome ?prices?\b|\bproperty\b|\bmortgage\b|\brent\w*\b|\bafford\w*\b|\bon the ladder\b|\bget on the ladder\b/, 'house_price');
   push(/\bco2\b|\bcarbon\b|\bemissions?\b|\benvironment\w*\b|\bclimate\b/, 'co2_pc');
   push(/\bpoverty\b|\bpoor\b(?!\s*(est\s*)?half)/, 'poverty_rate');
-  push(/\bmedian income\b|\bmedian\b|\btypical income\b|\bmiddle\b/, 'median_income');
+  push(/\bmedian income\b|\bmedian\b|\btypical income\b|\bmiddle income\b/, 'median_income');
   push(/\bgdp\b|\boutput\b|\bprosper\w*\b|\beconomic size\b/, 'gdp_pc');
   push(/\bincome inequality\b|\bincome gini\b/, 'income_gini');
   push(/\bwealth gini\b/, 'wealth_gini');                                   // explicit Gini, for experts
   push(/\bwealth (inequality|concentration)\b|\bconcentration\b/, 'wealth_top1');  // default wealth measure = concentration
   // bare "income"/"wealth" only if no more specific income/wealth metric already matched
   if (!found.some(k => META[k].topic === 'income') && /\bincome\b|\bearnings\b|\bwages?\b/.test(r)) found.push('income_gini');
-  if (!found.some(k => k === 'wealth_gini' || k === 'wealth_top1' || META[k].snap) && /\bwealth\b/.test(r)) found.push('wealth_top1');
+  if (!found.some(k => k === 'wealth_gini' || k === 'wealth_top1' || k === 'wealth_bottom50') && /\bwealth\b/.test(r)) found.push('wealth_top1');
   push(/\bhappiness\b|\bhappy\b|\blife satisfaction\b|\bsatisfaction\b|\bcantril\b|\bladder\b/, 'life_satisfaction');
   if (/\bwell\s?being\b/.test(r) && !found.length) found.push('life_satisfaction');
   // bare "inequality"/"unequal" with nothing else: the concentration measure (fixes the dead front door)
-  if (/\binequalit\w*\b|\bunequal\b/.test(r) && !found.some(k => isIneq(k) || k === 'wealth_top1')) found.push(facetIneqDefault());
+  if (/\binequalit\w*\b|\bunequal\b/.test(r) && !found.some(k => isIneq(k) || k === 'wealth_top1')) {
+    const cur = facetIneqDefault();
+    found.push(isIneq(cur) || cur === 'wealth_bottom50' ? cur : (curFacet === 'income' ? 'income_top1' : 'wealth_top1'));
+  }
   if (/\bgini\b/.test(r) && !found.length) found.push(META[ctx.metric] && META[ctx.metric].giniFam ? ctx.metric : 'wealth_gini');
   return found;
 }
@@ -1576,7 +1602,8 @@ const INEQ_METRICS = ['wealth_gini', 'wealth_top1', 'income_gini', 'income_top1'
 function isIneq(key) { return INEQ_METRICS.includes(key); }
 // each facet offers a few measures; the accordion lets you click between them
 const FACET_MEASURES = {
-  wealth: [['wealth_top1', 'top 1% share'], ['wealth_gini', 'wealth Gini'], ['wealth_bottom50', 'bottom 50% share']],
+  wealth: [['wealth_top1', 'top 1% share'], ['wealth_gini', 'wealth Gini'], ['wealth_bottom50', 'bottom 50% share'],
+           ['house_price', 'house prices']],
   income: [['income_top1', 'top 1% share'], ['income_middle40', 'the middle 40%'], ['income_gini', 'income Gini'],
            ['median_income', 'median income'], ['poverty_rate', 'poverty rate']],
   health: [['life_exp', 'life expectancy'], ['life_satisfaction', 'life satisfaction']],
@@ -1629,6 +1656,24 @@ function parse(raw) {
     return { kind: 'peers', iso: isos[0] || null, isos,
       year: years.length ? Math.min(...years) : null,
       until: years.length > 1 ? Math.max(...years) : null };
+  // ── the questions a listener actually types, routed to the readings that exist ──
+  // "do rich people live longer": the rich, against how long people live
+  if (metrics.includes('life_exp') && (metrics.includes('wealth_top1') || /\brich\b/.test(r)) && !isos.length)
+    return { kind: 'correlate', x: 'wealth_top1', y: 'life_exp', region };
+  // a year with "after" or "since" in front of it is a run of years from there
+  const afterYear = r.match(/\b(after|since|from|post|following)\s+((?:19|20)\d{2})\b/);
+  if (afterYear) return { kind: 'time', isos, year: +afterYear[2], region, metric };
+  // a place plus a direction word is a question about change, not about a level
+  const trend = /\bgetting (richer|poorer|worse|better|bigger|wider|more unequal)\b|\brising\b|\bfalling\b|\bgoing up\b|\bgone up\b|\bgot worse\b|\bworse\b|\bbetter\b|\bchang(ed|ing)\b|\bpulling away\b|\bwidening\b|\bwhat happened\b|\bhappened to\b/.test(r);
+  const mine = /\bmy country\b|\bwhere i live\b|\bround here\b|\bmy place\b|\bback home\b/.test(r);
+  if (trend && isos.length) return { kind: 'time', isos, year: years[0] || null, region, metric };
+  // houses: the price of one against what people earn, which is the picture the
+  // question is actually asking for. two countries carry it and the fold shows which.
+  if (/\bhous(e|es|ing)\b|\bhome ?prices?\b|\bproperty\b|\bmortgage\b|\brent\w*\b|\bafford\w*\b|\bon the ladder\b/.test(r))
+    return { kind: 'houses', isos, iso: isos[0] || null };
+  // "my country", with none named: nothing is computed, the place fold opens and asks
+  if (mine && !isos.length) return { kind: 'profile', iso: null, needsPlace: true, metric };
+
   // BREAK: who defies the current relationship
   if (/\bbreaks? the pattern\b|\bbreaks? the trend\b|\boutliers?\b|\boff the (trend|line|pattern)\b|\bexceptions?\b|\bdefy\w*\b|\bover[- ]?perform\w*\b|\bunder[- ]?perform\w*\b|\bbeat the (trend|pattern)\b|\bpunch\w* above\b|\bbetter than\b.*\bsuggests?\b|\bdo better than\b/.test(r))
     return { kind: 'break', metrics };
@@ -1699,7 +1744,7 @@ function parse(raw) {
   ];
   for (const [re, mk, dir] of SUPER) if (re.test(r) && !isos.length) return { kind: 'rank', dir, region, metric: mk };
 
-  const riser = /\brisers?\b|\brisen\b|\bincreas\w*\b|\bclimb\w*\b|\bgrown\b|\bworsen\w*\b|\bjump\w*\b/.test(r);
+  const riser = /\brisers?\b|\brisen\b|\brising\b|\bincreas\w*\b|\bclimb\w*\b|\bgrown\b|\bgrowing\b|\bgoing up\b|\bgone up\b|\bworsen\w*\b|\bjump\w*\b/.test(r);
   const faller = /\bfallers?\b|\bfallen\b|\bdrop\w*\b|\bdeclin\w*\b|\bdecreas\w*\b|\bimprov\w*\b/.test(r);
   const th = r.match(/\b(above|over|below|under)\s+(\d{1,3}(?:\.\d+)?|\.\d+)\b/);
   const giniWords = hasEqual || hasUnequal;
@@ -1727,8 +1772,9 @@ function parse(raw) {
   if (metric && isos.length === 1 && years.length && META[metric].series)
     return { kind: 'point', iso: isos[0], year: years[0], metric };
   if (metric) {
-    if (META[metric].us && !isos.length && !ctx.lastIso) return { kind: 'us_shares', metric };
-    if (META[metric].series && !isos.length && !ctx.lastIso) return { kind: 'world', metric };
+    // a series measure named with no country and no ranking words: the honest answer is
+    // "which country?", not a world median and never the old US-only chart
+    if (META[metric].series && !isos.length && !ctx.lastIso) return { kind: 'profile', iso: null, needsPlace: true, metric };
     return { kind: 'metric', metric, isos };
   }
   if (isos.length >= 2) return { kind: 'compare', isos: isos.slice(0, 4) };
@@ -1906,7 +1952,7 @@ function syncCellFromFact(f) {
 
     : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
-  cell.view = ['reach', 'ratio', 'triple', 'tables', 'turn', 'peers'].includes(f.kind) ? f.kind : null;
+  cell.view = ['reach', 'ratio', 'triple', 'tables', 'turn', 'peers', 'houses'].includes(f.kind) ? f.kind : null;
   cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
     : ctx.region ? ('r:' + ctx.region) : null;
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
@@ -1938,6 +1984,10 @@ function runCell() {
   if (cell.view === 'reach') {
     runParse({ kind: 'reach', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
       'did the growth reach the typical person'); return;
+  }
+  if (cell.view === 'houses') {
+    runParse({ kind: 'houses', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
+      'houses against pay'); return;
   }
   if (cell.view === 'ratio') {
     runParse({ kind: 'ratio', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
@@ -2171,6 +2221,12 @@ function buildAnswer(p, q) {
       const pt = pts.find(x => x.iso === focus[0]);
       t += ` ${esc(pt.name)} is the highlighted point.`;
     }
+    // across countries this is a national average against a national average, which is
+    // why it is weak. the sharp version is inside one country, by income group.
+    if (p.y === 'life_exp' && US_CZ && Object.values(US_CZ).some(z => z.leq1M != null))
+      t += ` <em>Across countries this holds one average against another. Measured by income group ` +
+        `inside the United States, the poorest quarter live 8.7 years less than the richest in the same ` +
+        `place: turn to opportunity and ask "how much longer do the rich live here?"</em>`;
     // a weak global link often sharpens among rich countries: point there instead of leaving it flat
     if (Math.abs(r) < 0.22 && !p.region && !ctx.pool && SERIES.gdp_pc && pts.length > 30) {
       const rich = new Set(rankedPool('gdp_pc', 'high').slice(0, 60).map(rr => rr.geo_id));
@@ -2196,11 +2252,44 @@ function buildAnswer(p, q) {
     f.mode = 'reach';
     f.reach = { iso, base, gs, ms, gPct, mPct };
     const pc1 = v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%';
-    f.text = `In <strong>${esc(BY_ISO[iso].name)}</strong> from ${base}, output per person grew ` +
+    f.text = `In <strong>${esc(theName(iso))}</strong> from ${base}, output per person grew ` +
       `<strong>${pc1(gPct)}</strong> to ${gs[gs.length - 1].year}. The income of the person in the middle grew ` +
       `<strong>${pc1(mPct)}</strong> to ${ms[ms.length - 1].year}.` +
       (gPct - mPct > 5 ? ' The growth did not arrive in the middle.' : '') +
       ` <em>The median rests on ${ms.length} survey${ms.length === 1 ? '' : 's'} between ${ms[0].year} and ${ms[ms.length - 1].year}.</em>`;
+  }
+
+  else if (p.kind === 'houses') {
+    // the price of a house against what people earn, both after inflation, both from 100.
+    // the same shape as growth against the middle, because it is the same question with
+    // the thing the growth went into on the top line.
+    const iso = p.iso || ctx.lastIso || (focusIsos()[0] || null);
+    if (!iso || !BY_ISO[iso]) { showNotice('Name a country: this holds house prices against what people there earn.'); return null; }
+    const h = seriesOf('house_price', iso), m = seriesOf('median_income', iso);
+    if (h.length < 2) {
+      const have = Object.keys(SERIES.house_price || {}).filter(i => BY_ISO[i]).map(i => BY_ISO[i].name);
+      showNotice(`No house price series for ${esc(BY_ISO[iso].name)}. The atlas holds ${esc(have.join(' and '))} so far.`);
+      return null;
+    }
+    if (m.length < 2) return miss();
+    const base = Math.max(h[0].year, m[0].year);
+    const gs = h.filter(d => d.year >= base), ms = m.filter(d => d.year >= base);
+    if (gs.length < 2 || ms.length < 2) return miss();
+    const both = Math.min(gs[gs.length - 1].year, ms[ms.length - 1].year);
+    const at = (a, y) => { const q = a.filter(d => d.year <= y); return q.length ? q[q.length - 1].v : a[0].v; };
+    const gPct = (at(gs, both) / gs[0].v - 1) * 100, mPct = (at(ms, both) / ms[0].v - 1) * 100;
+    ctx.lastIso = iso; f.isos = [iso];
+    f.mode = 'reach';
+    f.reach = { iso, base, gs, ms, gPct, mPct, houses: true,
+      labels: { top: 'the price of a house', mid: 'what people earn' } };
+    const pc1 = v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%';
+    f.text = `In <strong>${esc(theName(iso))}</strong> from ${base} to ${both}, the price of a house rose ` +
+      `<strong>${pc1(gPct)}</strong> after inflation. What the typical household earns rose ` +
+      `<strong>${pc1(mPct)}</strong>.` +
+      (gPct - mPct > 20 ? ' Houses pulled away from pay.' : gPct - mPct < -20 ? ' Pay pulled away from houses.' : '') +
+      ` <em>Pay here is median household income after transfers, not the individual earnings the usual ` +
+      `house-price-to-earnings ratio divides by: same direction, smaller gap. The median rests on ` +
+      `${ms.length} survey${ms.length === 1 ? '' : 's'}.</em>`;
   }
 
   else if (p.kind === 'ratio') {
@@ -2668,6 +2757,8 @@ function buildAnswer(p, q) {
     ctx.metric = key;
     const m = META[key];
     let pool = rankedPool(key, p.dir, p.region, p.year);
+    const narrowed = rankNarrowed() && !(p.only && p.only.length);
+    if (narrowed) { const rt = richThird(); pool = pool.filter(r => rt.has(r.geo_id)); }
     if (p.only && p.only.length) {
       const want = p.only;
       pool = pool.filter(r => want.includes(r.geo_id));
@@ -2686,7 +2777,7 @@ function buildAnswer(p, q) {
       hlRank = pool.findIndex(r => r.geo_id === hl) + 1;
       if (!top.some(r => r.geo_id === hl)) top = top.concat([pool[hlRank - 1]]);
     }
-    const where = p.only && p.only.length ? '' : p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    const where = p.only && p.only.length ? '' : p.region ? ` in ${REGION_LABEL[p.region]}` : narrowed ? RANK_SET_NOTE : '';
     const three = top.slice(0, 3).map(r => `${esc(r.geo_name)} <strong>${m.fmt(r.val)}</strong>`).join(', ');
     ctx.lastRankDir = p.dir; ctx.lastIso = hl || top[0].geo_id; ctx.lastRegion = p.region || ctx.lastRegion;
     f.mode = 'bars';
@@ -2705,8 +2796,10 @@ function buildAnswer(p, q) {
       : `${p.dir === 'high' ? 'Highest' : 'Lowest'} ${m.label}${where}${poolNote()}: ${three}.`) +
       (hl && !(p.only && p.only.length)
         ? ` <strong>${esc(BY_ISO[hl].name)}</strong> is <strong>${ordinal(hlRank)}</strong> of ` +
-          `${pool.length}${p.region || ctx.pool ? ' here' : ''}, at ` +
+          `${pool.length}${p.region || ctx.pool || narrowed ? ' here' : ''}, at ` +
           `<strong>${m.fmt(pool[hlRank - 1].val)}</strong>.` : '') +
+      (narrowed ? ` <em>Ranked among the richer third of countries by GDP per person, which is close to ` +
+        `the set with tax records behind the figure. Ask for the whole world to widen it.</em>` : '') +
       when +
       (f.missNote ? ` <em>${esc(f.missNote.join(', '))} ${f.missNote.length === 1 ? 'has' : 'have'} ` +
         `no ${esc(m.label)} on record, so ${f.missNote.length === 1 ? 'it is' : 'they are'} not drawn.</em>` : '');
@@ -2718,8 +2811,11 @@ function buildAnswer(p, q) {
     const m = META[key];
     const pool = [];
     const s = SERIES[key] || {};
+    const dNarrow = rankNarrowed() && !(p.only && p.only.length);
+    const dRich = dNarrow ? richThird() : null;
     for (const iso in s) {
       if (!inScope(iso, p.region) || !BY_ISO[iso]) continue;
+      if (dRich && !dRich.has(iso)) continue;
       const pts = s[iso].filter(d => (!p.year || d.year >= p.year) && (!p.until || d.year <= p.until));
       if (pts.length < 2) continue;
       const from = pts[0];
@@ -2748,7 +2844,7 @@ function buildAnswer(p, q) {
       dRank = dPool.findIndex(x => x.geo_id === dhl) + 1;
       if (!top.some(x => x.geo_id === dhl)) top = top.concat([dPool[dRank - 1]]);
     }
-    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : '';
+    const where = p.region ? ` in ${REGION_LABEL[p.region]}` : dNarrow ? RANK_SET_NOTE : '';
     const rose = dPool.filter(x => x.val > 0).length, fell = dPool.filter(x => x.val < 0).length;
     const three = top.slice(0, 3).map(x =>
       `${esc(x.geo_name)} ${x.val >= 0 ? '+' : ''}<strong>${m.fmtD(Math.abs(x.val))}</strong>`).join(', ');
@@ -2916,7 +3012,8 @@ function buildAnswer(p, q) {
       const lv = latestValOf(p.metric, iso); if (!lv) return miss();
       const rk = rankOf(iso, p.metric);
       f.isos = isos.slice(0, 8); ctx.lastIso = iso; f.metricUsed = p.metric;
-      const rankBit = m.giniFam ? `${ord(rk.rank)} most unequal of ${rk.of}` : `${ord(rk.rank)} of ${rk.of}`;
+      const setBit = rankNarrowed() ? ' among the richer third of countries' : '';
+      const rankBit = (m.giniFam ? `${ord(rk.rank)} most unequal of ${rk.of}` : `${ord(rk.rank)} of ${rk.of}`) + setBit;
       f.text = `<strong>${esc(BY_ISO[iso].name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> in ${lv.year}, ${rankBit}.`;
     } else if (m.snap && isos.length) {
       const iso = isos[0], lv = latestValOf(p.metric, iso);
@@ -3092,6 +3189,7 @@ const QUESTIONS = [
     'how has inequality changed over time?',
   ] },
   { k: 'what moved, and against what', qs: [
+    'have houses pulled away from pay?',                  // the mechanism, two countries so far
     'when did this country change most?',                 // claim 3, turn picks the years
     'did it move differently from comparable countries?', // the peer contrast
     'did the growth reach the typical person?',           // claim 3
@@ -3215,9 +3313,12 @@ function regionOf(iso) {
 }
 // every country the facet's own measure actually covers
 function placePool() {
-  const s = SERIES[facetIneqDefault()] || {};
+  const key = cell.view === 'houses' ? 'house_price' : facetIneqDefault();
+  const s = SERIES[key] || {};
   let isos = Object.keys(s).filter(i => BY_ISO[i] && s[i].length);
-  if (isos.length < 20) isos = Object.keys(BY_ISO);
+  // a measure the atlas holds for nowhere falls back to every country; a measure it
+  // holds for a few shows those few, because offering 213 for a series of 2 is a lie
+  if (!isos.length) isos = Object.keys(BY_ISO);
   return isos.map(i => [BY_ISO[i].name, i]).sort((a, b) => a[0].localeCompare(b[0]));
 }
 // what the fold currently reads, in the same vocabulary the options use
@@ -3286,7 +3387,8 @@ function dimGroups(dim, filter) {
       if (near.length) g.push({ k: 'nearby', opts: near.map(p => [p[0], '+' + p[1]]) });
     }
     // every country the measure covers, in full, so the fold is browsable not a sample
-    g.push({ k: reg ? `all ${pool.length} countries` : `every country (${pool.length})`,
+    g.push({ k: pool.length < 20 ? `the ${pool.length} countries that carry this`
+        : reg ? `all ${pool.length} countries` : `every country (${pool.length})`,
       opts: pool.filter(p => !picked.includes(p[1])).map(p => [p[0], '+' + p[1]]) });
     if (picked.length) g.push({ k: '', opts: [['all countries', '']] });
     return g;
@@ -3692,6 +3794,7 @@ function setStage(next) {
 // kinds the cell has no coordinates for: keep the words, run them verbatim on send
 const VIEW_DEF = {
   reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'] },
+  houses: { label: 'houses against pay', uses: ['place'], ignores: ['facet', 'against', 'when'] },
   ratio:  { label: 'top tenth against bottom half', uses: ['place'], ignores: ['facet', 'against', 'when'] },
   triple: { label: 'wealth, income and how long people live', uses: ['place'], ignores: ['facet', 'against', 'among', 'when'] },
   tables: { label: 'the two league tables', uses: ['place'], ignores: ['facet', 'against', 'when'] },
@@ -3703,18 +3806,51 @@ const FORM_DEF = {
   tiers: 'by tier', break: 'who breaks the pattern',
 };
 const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'us_shares', 'among'];
+// a typed question that names a measure turns the cube to that measure's face, so the
+// answer is computed on what was asked and not on whichever face happened to be up
+function adoptMetric(m) {
+  if (!m || !META[m]) return;
+  for (const f in FACET_MEASURES) {
+    const i = FACET_MEASURES[f].findIndex(x => x[0] === m);
+    if (i < 0) continue;
+    facetMeasureIdx[f] = i;
+    if (f !== curFacet && FACETS[f] && !FACETS[f].soon) { paintFacet(f); faceToFront(f); settle(); }
+    ctx.metric = m;
+    return;
+  }
+  ctx.metric = m;
+}
+// the catalogue questions nearest to what was typed, by shared words, so a question
+// the parser cannot read is answered with three it can rather than a shrug
+const STOP = new Set('a an the is are was were do does did of in on to for my it this that what how why can i be and or with about there here'.split(' '));
+function nearestQuestions(q, n) {
+  const words = new Set(norm(q).split(/\W+/).filter(w => w.length > 2 && !STOP.has(w)));
+  const all = QUESTIONS.filter(g => !g.facet || g.facet === curFacet).flatMap(g => g.qs);
+  return all.map(c => ({ c, s: norm(c).split(/\W+/).filter(w => words.has(w)).length }))
+    .sort((a, b) => b.s - a.s).slice(0, n).map(x => x.c);
+}
+function offerNearest(q, lead) {
+  const near = nearestQuestions(q, 3);
+  showNotice(esc(lead) + ' The nearest things it can answer: ' +
+    near.map(c => `<button type="button" class="opt-near" data-q="${esc(c)}">${esc(c)}</button>`).join(', ') + '.');
+  document.querySelectorAll('#notice .opt-near').forEach(b =>
+    b.addEventListener('click', () => { const el = document.getElementById('q'); if (el) el.value = b.dataset.q; runPrompt(b.dataset.q); }));
+}
 function previewQuestion(q) {
   hideNotice();   // the last question's complaint is not about this one
   if (curFacet === 'opportunity') { resetCell(); cell.raw = q; updateCell(); return true; }
   let p;
   try { p = parse(q); } catch (e) { p = { kind: 'unknown' }; }
   if (p.kind === 'unknown' || p.kind === 'pending') {
-    showNotice('Could not read that. Try asking about a country, a ranking, a run of years, or one measure against another.');
+    offerNearest(q, 'Could not read that.');
     return false;
   }
   resetCell();
+  const mk = p.metric || p.x || (p.metrics && p.metrics[0]);
+  if (mk && !RAW_KINDS.includes(p.kind)) adoptMetric(mk);
   const iso = p.iso || (p.isos && p.isos.length === 1 ? p.isos[0] : null);
   if (iso) cell.place = iso;
+  else if (p.isos && p.isos.length > 1) cell.places = p.isos.slice(0, MAX_PLACES);
   if (p.region) cell.scope = 'r:' + p.region;
   if (p.pool) cell.scope = 'pool:' + (p.pool.dir === 'high' ? 'rich' : 'poor');
   if (p.kind === 'time') { cell.span = 'run'; cell.since = p.year || null; cell.until = p.until || null; }
@@ -3725,6 +3861,7 @@ function previewQuestion(q) {
     cell.against = (p.metrics || []).find(m => META[m] && !isIneq(m)) || null; }
   else if (p.kind === 'rank' || p.kind === 'delta_rank') cell.form = 'rank';
   else if (p.kind === 'reach') cell.view = 'reach';
+  else if (p.kind === 'houses') cell.view = 'houses';
   else if (p.kind === 'ratio') cell.view = 'ratio';
   else if (p.kind === 'triple') cell.view = 'triple';
   else if (p.kind === 'tables') cell.view = 'tables';
@@ -3742,8 +3879,10 @@ function previewQuestion(q) {
 // only now is anything computed
 function cellNeedsPlace() {
   if (curFacet === 'opportunity' || cell.place) return false;
-  if (cell.view === 'reach' || cell.form === 'lorenz') return true;
+  if (cell.view === 'reach' || cell.view === 'houses' || cell.form === 'lorenz') return true;
   if (cell.span === 'run' && !ctx.region && !ctx.pool) return true;
+  // a question was typed, it named a measure, and nothing else: it is about somewhere
+  if (cell.asked && !cell.raw && !cell.form && !cell.view && !cell.against && !cell.span) return true;
   return false;
 }
 function sendCell() {
@@ -3751,6 +3890,14 @@ function sendCell() {
   // a question left general on purpose has to be finished before it can answer
   if (cell.view === 'reach' && !cell.place) {
     showNotice('This holds one country\'s growth against its own median income. Add a place first.'); return;
+  }
+  if (cell.view === 'houses' && !cell.place) {
+    const have = Object.keys(SERIES.house_price || {}).filter(i => BY_ISO[i]).map(i => BY_ISO[i].name);
+    showNotice(`House prices are held for ${have.length} countr${have.length === 1 ? 'y' : 'ies'} so far: ` +
+      `${esc(have.join(' and '))}. The international series sits behind sources we could not reach. Pick one.`);
+    const rib = document.getElementById('rib-place');
+    if (rib && !rib.classList.contains('expanded')) toggleRib('place');
+    return;
   }
   if (cell.form === 'lorenz' && !cell.place) {
     showNotice('A Lorenz curve is drawn for one country. Add a place first.'); return;
@@ -3761,6 +3908,7 @@ function sendCell() {
   // several countries chosen, but this reading draws one: say which one it would keep
   // rather than quietly answering about the first and dropping the rest
   const oneOnly = cell.view === 'reach' ? VIEW_DEF.reach.label
+    : cell.view === 'houses' ? VIEW_DEF.houses.label
     : cell.view === 'ratio' ? VIEW_DEF.ratio.label
     : (cell.against && cell.span === 'run') ? 'a path across two measures'
     : null;
@@ -3774,6 +3922,15 @@ function sendCell() {
     return;
   }
   if (cell.raw) { const q = cell.raw; ask(q); return; }
+  if (cellNeedsPlace()) {
+    // the old behaviour here was a silent world ranking. this says what it read and asks
+    const m = META[facetIneqDefault()];
+    showNotice(`Read that as a question about ${m ? esc(m.label) : 'this measure'}. Which country? ` +
+      `Pick one from the place fold, or ask for "the most concentrated" to read it across all of them.`);
+    const rib = document.getElementById('rib-place');
+    if (rib && !rib.classList.contains('expanded')) toggleRib('place');
+    return;
+  }
   runCell();
   if (chain.length) setStage('result'); else showNotice('Nothing to show for that yet.');
 }
@@ -4416,10 +4573,10 @@ function drawChart() {
         // plain rgba: Plotly writes this into an SVG fill, where color-mix does not
         // land and it silently falls back to its own default palette instead
         fillcolor: 'rgba(47,158,143,0.15)', hoverinfo: 'skip' },
-      { type: 'scatter', mode: 'lines', name: 'output per person',
+      { type: 'scatter', mode: 'lines', name: (rc.labels && rc.labels.top) || 'output per person',
         x: rc.gs.map(d => d.year), y: idx(rc.gs),
         line: { color: metricColor('gdp_pc'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
-      { type: 'scatter', mode: rc.ms.length < 12 ? 'lines+markers' : 'lines', name: 'the income in the middle',
+      { type: 'scatter', mode: rc.ms.length < 12 ? 'lines+markers' : 'lines', name: (rc.labels && rc.labels.mid) || 'the income in the middle',
         x: rc.ms.map(d => d.year), y: mi,
         // both sides are income, so both wear the income colour, a step apart
         line: { color: shade(metricColor('median_income'), 0.42), width: 2.6, shape: 'spline', smoothing: 0.6 },
@@ -4430,8 +4587,17 @@ function drawChart() {
       shapes: eraShapes(rc.base, lastY), annotations: eraLabels(rc.base, lastY),
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: `indexed to ${rc.base} = 100`, font: { size: 11 } } }),
     }), CFG);
-    title.textContent = `${BY_ISO[rc.iso].name}: the economy and the middle, since ${rc.base}`;
-    src.textContent = `Both indexed to ${rc.base} = 100, so the gap between them is the answer. ` +
+    title.textContent = rc.houses
+      ? `${BY_ISO[rc.iso].name}: houses and pay, since ${rc.base}`
+      : `${BY_ISO[rc.iso].name}: the economy and the middle, since ${rc.base}`;
+    src.textContent = rc.houses
+      ? `Both after inflation and both starting at 100, so what matters is how far apart they get. ` +
+        `Houses are ${rc.iso === 'GBR' ? 'the Nationwide average price' : 'the Case-Shiller index'}, ` +
+        `deflated by consumer prices. Pay is median household income from the World Bank, after ` +
+        `transfers, which is not the individual earnings figure the usual house-price-to-earnings ratio ` +
+        `uses: same direction, smaller gap. Markers show where a survey landed; the line between them is ` +
+        `drawn, not measured. Two countries hold this so far. ` + provenance(['house_price', 'median_income'])
+      : `Both indexed to ${rc.base} = 100, so the gap between them is the answer. ` +
       `These are not like for like: output per person comes from national accounts, the median from household surveys, ` +
       `and the two are built on different definitions. Read the shape of the gap, not the exact percentages. ` +
       `Markers show where a survey actually landed; the line between them is drawn, not measured. ` +
