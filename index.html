@@ -579,6 +579,10 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .opt-find input:focus { border-color: var(--accent); }
 /* the country list is long on purpose: all of it, scrolled, not a sample of eight */
 .opt-scroll { max-height: 172px; overflow-y: auto; padding-right: 4px; }
+/* an option this cell cannot take: still there, still pressable, but it answers with
+   the one thing standing in the way instead of changing anything */
+.bellow-drawer .opt.off { opacity: .42; border-style: dashed; cursor: help; }
+.bellow-drawer .opt.off:hover { opacity: .62; color: var(--ink-2); border-color: var(--border); }
 .opt-x { margin-left: 5px; opacity: .7; font-size: 12px; }
 .opt.picked:hover .opt-x { opacity: 1; }
 /* naming two years outright, for when a pill is not the span you want */
@@ -3400,21 +3404,12 @@ function dimGroups(dim, filter) {
     return g;
   }
   if (dim === 'form') {
-    // only the shapes this cell can actually take. the rest are said to be unavailable.
-    // only the shapes this cell can take. a shape it cannot take is left out here and
-    // refused with its reason at send time, so the reason arrives when you reach for it
-    const held = cell.against && META[cell.against];
-    const opts = [['the plain reading', '']];
-    if (held) {
-      opts.push(['by tier', 'tiers'], ['who breaks the pattern', 'break']);
-    } else {
-      opts.push(['a ranking', 'rank'], ['the spread', 'spread']);
-      if (cell.place && curFacet === 'wealth') opts.push(['a Lorenz curve', 'lorenz']);
-    }
-    g.push({ k: 'drawn as', opts });
-    g.push({ k: 'a reading of its own', opts: Object.keys(VIEW_DEF)
-      .filter(v => v !== 'reach' || cell.place)
-      .map(v => [VIEW_DEF[v].label, v]) });
+    // every shape, always, with the ones this cell cannot take greyed rather than
+    // hidden. hiding them teaches nothing; greying shows the whole space and names
+    // the single thing standing in the way. whyNot decides which is which.
+    g.push({ k: 'drawn as', opts: [['the plain reading', '']].concat(
+      Object.keys(FORM_DEF).map(k => [FORM_DEF[k], k])) });
+    g.push({ k: 'a reading of its own', opts: Object.keys(VIEW_DEF).map(v => [VIEW_DEF[v].label, v]) });
     return g;
   }
   if (dim === 'time') {
@@ -3541,7 +3536,10 @@ function renderDrawer(dim, rib, opts, filter) {
     if (grp.range) { range = grp.range; rangeK = grp.k || ''; continue; }
     if (grp.year) { yearPick = grp.year; rangeK = grp.k || ''; continue; }
     if (heads && grp.k && (grp.opts || grp.rows || []).length) pills.push(['\u0001' + grp.k, '']);
-    for (const o of grp.opts || []) pills.push(grp.chosen ? [o[0], o[1], 'chosen'] : o);
+    for (const o of grp.opts || []) {
+      const bad = grp.chosen ? null : whyNot(dim, o[1]);
+      pills.push(grp.chosen ? [o[0], o[1], 'chosen'] : (bad ? [o[0], o[1], 'off', bad] : o));
+    }
     for (const r of grp.rows || []) pills.push([r[0], r[1]]);
     for (const gp of grp.gaps || []) gaps.push(gp);
   }
@@ -3553,8 +3551,9 @@ function renderDrawer(dim, rib, opts, filter) {
   html += `<div class="opt-wrap${dim === 'place' ? ' opt-scroll' : ''}">` + capped.map(o =>
     (o[0][0] === '\u0001'
       ? `<span class="opt-group-k">${esc(o[0].slice(1))}</span>`
-      : `<button type="button" class="opt${o[2] === 'chosen' ? ' on picked' : o[1] === cur ? ' on' : ''}" ` +
-        `data-val="${esc(o[1])}">${esc(o[0])}${o[2] === 'chosen' ? '<span class="opt-x">\u00d7</span>' : ''}</button>`)
+      : `<button type="button" class="opt${o[2] === 'chosen' ? ' on picked' : o[2] === 'off' ? ' off' : o[1] === cur ? ' on' : ''}" ` +
+        `data-val="${esc(o[1])}"${o[2] === 'off' ? ` data-why="${esc(o[3])}" aria-disabled="true"` : ''}` +
+        `>${esc(o[0])}${o[2] === 'chosen' ? '<span class="opt-x">\u00d7</span>' : ''}</button>`)
   ).join('') + '</div>';
   // typing a year is the precise way in; the pills above are only the common cases
   const yrIn = (id, val, lo, hi, lab) =>
@@ -3576,8 +3575,13 @@ function renderDrawer(dim, rib, opts, filter) {
   opts.style.setProperty('--pick', dim === 'against' && cur && META[cur] ? metricColor(cur)
     : dim === 'facet' ? ACC() : 'var(--accent)');
 
+  const offNote = opts.querySelector('.opt-note');
   opts.querySelectorAll('.opt').forEach(btn => btn.addEventListener('click', () => {
     const v = btn.dataset.val;
+    if (btn.dataset.why) {   // greyed: say what is in the way, change nothing
+      if (offNote) { offNote.textContent = btn.dataset.why; offNote.hidden = false; }
+      return;
+    }
     if (curFacet === 'opportunity' && dim !== 'facet') { closeDrawer(); ask(v); return; }
     if (dim === 'place' && v) { keepOpen = dim; applyDim(dim, v); keepOpen = null; return; }
     closeDrawer();
@@ -3793,14 +3797,80 @@ function setStage(next) {
 }
 // kinds the cell has no coordinates for: keep the words, run them verbatim on send
 const VIEW_DEF = {
-  reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'] },
-  houses: { label: 'houses against pay', uses: ['place'], ignores: ['facet', 'against', 'when'] },
+  reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
+  houses: { label: 'houses against pay', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
   ratio:  { label: 'top tenth against bottom half', uses: ['place'], ignores: ['facet', 'against', 'when'] },
   triple: { label: 'wealth, income and how long people live', uses: ['place'], ignores: ['facet', 'against', 'among', 'when'] },
   tables: { label: 'the two league tables', uses: ['place'], ignores: ['facet', 'against', 'when'] },
-  turn:   { label: 'the sharpest years here', uses: ['place'], ignores: ['against', 'among', 'when'] },
-  peers:  { label: 'against comparable countries', uses: ['place', 'when'], ignores: ['against', 'among'] },
+  turn:   { label: 'the sharpest years here', uses: ['place'], ignores: ['against', 'among', 'when'], needsPlace: 1, oneOnly: 1 },
+  peers:  { label: 'against comparable countries', uses: ['place', 'when'], ignores: ['against', 'among'], needsPlace: 1, oneOnly: 1 },
 };
+// ── what this cell can and cannot take ──────────────────────────────
+// One place for every rule about which options fit which cell. The drawer greys out
+// what does not fit and says why when you press it, and sendCell asks the same
+// function before computing, so the fold and the answer can never disagree. Showing a
+// greyed option beats hiding it: hiding teaches nothing, greying shows the shape of
+// what is possible and names the one thing standing in the way.
+function whyNot(dim, val) {
+  if (curFacet === 'opportunity') return null;   // that layer runs its own rules
+  const held = cell.against && META[cell.against];
+  const n = cell.places.length;
+  if (dim === 'form') {
+    const v = VIEW_DEF[val];
+    if (v) {
+      if (v.needsPlace && !cell.place)
+        return `${cap(v.label)} is drawn for one country. Name a place first.`;
+      if (val === 'houses') {
+        const have = Object.keys(SERIES.house_price || {}).filter(i => BY_ISO[i]);
+        if (!have.length) return 'No house price series is loaded.';
+        if (cell.place && !have.includes(cell.place))
+          return `House prices are held for ${have.map(i => BY_ISO[i].name).join(' and ')} so far, ` +
+            `not for ${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place}.`;
+      }
+      if (val === 'reach' && cell.place && seriesOf('median_income', cell.place).length < 2)
+        return `No median income series for ${BY_ISO[cell.place].name}, so there is nothing to hold the growth against.`;
+      if (n > 1 && v.oneOnly)
+        return `${cap(v.label)} is drawn for one country, and ${n} are chosen.`;
+      return null;
+    }
+    if (['rank', 'spread', 'lorenz'].includes(val) && held)
+      return `${cap(FORM_DEF[val])} reads one measure on its own. Drop what it is held against first.`;
+    if (['tiers', 'break'].includes(val) && !held)
+      return `${cap(FORM_DEF[val])} needs a second measure to split by. Add one under "against".`;
+    if (val === 'lorenz') {
+      if (!cell.place) return 'A Lorenz curve is drawn for one country. Name a place first.';
+      if (curFacet !== 'wealth') return 'A Lorenz curve splits wealth across a population, so it needs the wealth face.';
+      if (n > 5) return `A Lorenz curve draws five countries at most, and ${n} are chosen.`;
+    }
+    return null;
+  }
+  if (dim === 'against') {
+    if (cell.view && (VIEW_DEF[cell.view].ignores || []).includes('against'))
+      return `${cap(VIEW_DEF[cell.view].label)} brings its own measures, so it has nothing to be held against.`;
+    return null;
+  }
+  if (dim === 'time') {
+    if (cell.view && (VIEW_DEF[cell.view].ignores || []).includes('when'))
+      return `${cap(VIEW_DEF[cell.view].label)} sets its own years.`;
+    if (cell.form === 'lorenz') return 'A Lorenz curve is drawn at one moment, the latest one there is.';
+    return null;
+  }
+  if (dim === 'scope') {
+    if (cell.view && (VIEW_DEF[cell.view].ignores || []).includes('among'))
+      return `${cap(VIEW_DEF[cell.view].label)} reads one country, so the set it sits in makes no difference.`;
+    if (cell.place && val) return 'A country is already named, so narrowing the set changes nothing. Clear the place first.';
+    return null;
+  }
+  if (dim === 'place') {
+    if (cell.view === 'houses' && val) {
+      const iso = val[0] === '+' ? val.slice(1) : val;
+      if (iso && !seriesOf('house_price', iso).length)
+        return `No house price series for ${BY_ISO[iso] ? BY_ISO[iso].name : iso}. Two countries carry it so far.`;
+    }
+    return null;
+  }
+  return null;
+}
 const FORM_DEF = {
   rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
   tiers: 'by tier', break: 'who breaks the pattern',
@@ -3859,7 +3929,11 @@ function previewQuestion(q) {
   else if (p.kind === 'tiers') { cell.form = 'tiers'; cell.against = p.aspect || null; }
   else if (p.kind === 'break') { cell.form = 'break';
     cell.against = (p.metrics || []).find(m => META[m] && !isIneq(m)) || null; }
-  else if (p.kind === 'rank' || p.kind === 'delta_rank') cell.form = 'rank';
+  else if (p.kind === 'rank') cell.form = 'rank';
+  // a question about risers is a ranking of change, so it carries its years across:
+  // dropping them turned "is inequality rising" into "who is highest", which is a
+  // different question with a confident answer
+  else if (p.kind === 'delta_rank') { cell.form = 'rank'; cell.span = 'run'; cell.since = p.year || null; }
   else if (p.kind === 'reach') cell.view = 'reach';
   else if (p.kind === 'houses') cell.view = 'houses';
   else if (p.kind === 'ratio') cell.view = 'ratio';
@@ -3879,7 +3953,11 @@ function previewQuestion(q) {
 // only now is anything computed
 function cellNeedsPlace() {
   if (curFacet === 'opportunity' || cell.place) return false;
+  // a reading that ranks or spreads across countries wants no place at all
+  const acrossCountries = ['rank', 'spread', 'tiers', 'break'].includes(cell.form);
+  if (cell.view && !VIEW_DEF[cell.view].needsPlace) return false;
   if (cell.view === 'reach' || cell.view === 'houses' || cell.form === 'lorenz') return true;
+  if (acrossCountries) return false;
   if (cell.span === 'run' && !ctx.region && !ctx.pool) return true;
   // a question was typed, it named a measure, and nothing else: it is about somewhere
   if (cell.asked && !cell.raw && !cell.form && !cell.view && !cell.against && !cell.span) return true;
@@ -3887,38 +3965,25 @@ function cellNeedsPlace() {
 }
 function sendCell() {
   if (!DATA_READY) { showNotice('The figures are still loading. Ask again in a moment.'); return; }
-  // a question left general on purpose has to be finished before it can answer
-  if (cell.view === 'reach' && !cell.place) {
-    showNotice('This holds one country\'s growth against its own median income. Add a place first.'); return;
+  // the drawer greys these out already, so reaching one here means it was set by a typed
+  // question rather than by a click. same rules either way.
+  const stop = whyNot('form', cell.view || cell.form || '') ||
+    (cell.against ? whyNot('against', cell.against) : null);
+  if (stop) {
+    showNotice(stop);
+    if (/name a place|which country/i.test(stop)) {
+      const rib = document.getElementById('rib-place');
+      if (rib && !rib.classList.contains('expanded')) toggleRib('place');
+    }
+    return;
   }
-  if (cell.view === 'houses' && !cell.place) {
-    const have = Object.keys(SERIES.house_price || {}).filter(i => BY_ISO[i]).map(i => BY_ISO[i].name);
-    showNotice(`House prices are held for ${have.length} countr${have.length === 1 ? 'y' : 'ies'} so far: ` +
-      `${esc(have.join(' and '))}. The international series sits behind sources we could not reach. Pick one.`);
+  // a ranking over a run of years is the biggest movers across countries, which is a
+  // reading that wants no place at all: only a plain line needs somewhere to follow
+  if (cell.span === 'run' && !cell.place && !ctx.region && !ctx.pool && !cell.view
+      && !['rank', 'spread', 'tiers', 'break'].includes(cell.form)) {
+    showNotice('Over the years needs somewhere to follow. Add a place, or a region.');
     const rib = document.getElementById('rib-place');
     if (rib && !rib.classList.contains('expanded')) toggleRib('place');
-    return;
-  }
-  if (cell.form === 'lorenz' && !cell.place) {
-    showNotice('A Lorenz curve is drawn for one country. Add a place first.'); return;
-  }
-  if (cell.span === 'run' && !cell.place && !ctx.region && !ctx.pool) {
-    showNotice('Over the years needs somewhere to follow. Add a place, or a region.'); return;
-  }
-  // several countries chosen, but this reading draws one: say which one it would keep
-  // rather than quietly answering about the first and dropping the rest
-  const oneOnly = cell.view === 'reach' ? VIEW_DEF.reach.label
-    : cell.view === 'houses' ? VIEW_DEF.houses.label
-    : cell.view === 'ratio' ? VIEW_DEF.ratio.label
-    : (cell.against && cell.span === 'run') ? 'a path across two measures'
-    : null;
-  if (cell.places.length > 5 && cell.form === 'lorenz') {
-    showNotice(`A Lorenz curve draws five countries at most, and ${cell.places.length} are chosen.`);
-    return;
-  }
-  if (cell.places.length > 1 && oneOnly) {
-    showNotice(`${cap(oneOnly)} is drawn for one country, and ${cell.places.length} are chosen. ` +
-      `Drop the others, or pick a reading that takes them all.`);
     return;
   }
   if (cell.raw) { const q = cell.raw; ask(q); return; }
@@ -4572,10 +4637,10 @@ function drawChart() {
         line: { width: 0 }, fill: 'tonexty',
         // plain rgba: Plotly writes this into an SVG fill, where color-mix does not
         // land and it silently falls back to its own default palette instead
-        fillcolor: 'rgba(47,158,143,0.15)', hoverinfo: 'skip' },
+        fillcolor: rc.houses ? 'rgba(42,120,214,0.13)' : 'rgba(47,158,143,0.15)', hoverinfo: 'skip' },
       { type: 'scatter', mode: 'lines', name: (rc.labels && rc.labels.top) || 'output per person',
         x: rc.gs.map(d => d.year), y: idx(rc.gs),
-        line: { color: metricColor('gdp_pc'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
+        line: { color: metricColor(rc.houses ? 'house_price' : 'gdp_pc'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
       { type: 'scatter', mode: rc.ms.length < 12 ? 'lines+markers' : 'lines', name: (rc.labels && rc.labels.mid) || 'the income in the middle',
         x: rc.ms.map(d => d.year), y: mi,
         // both sides are income, so both wear the income colour, a step apart
@@ -4637,6 +4702,41 @@ function drawChart() {
     title.textContent = 'How the wealth of a country is split';
     src.textContent = 'Each bar is one country\'s household wealth, split into the poorest half, the middle 40% and the richest tenth. ' +
       'The multiple in the sentence is the last band divided by the first. ' + provenance(['wealth_top1']);
+  }
+
+  else if (mode === 'path') {
+    // one country walking through two measures at once. the line is the order the years
+    // came in, so a loop means it went somewhere and came back.
+    const pa = chain.slice().reverse().find(f => f.mode === 'path').path;
+    const mx = META[pa.x], my = META[pa.y];
+    const sc = (m, v) => m.fmt === pc ? v * 100 : v;
+    const xs = pa.pts.map(d => sc(mx, d.x)), ys = pa.pts.map(d => sc(my, d.y));
+    const yrs = pa.pts.map(d => d.year);
+    const ends = [0, pa.pts.length - 1];
+    Plotly.react(el, [
+      { type: 'scatter', mode: 'lines+markers', showlegend: false,
+        x: xs, y: ys, text: yrs.map(String),
+        line: { color: metricColor(pa.x), width: 2, shape: 'spline', smoothing: 0.5 },
+        marker: { size: 5, color: metricColor(pa.x), opacity: 0.55 },
+        hovertemplate: '%{text}<br>' + mx.label + ' %{x}<br>' + my.label + ' %{y}<extra></extra>' },
+      { type: 'scatter', mode: 'markers+text', showlegend: false,
+        x: ends.map(i => xs[i]), y: ends.map(i => ys[i]), text: ends.map(i => String(yrs[i])),
+        textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#0a0a0a') },
+        marker: { size: 11, color: hlFill(pa.x), line: { color: hlEdge(), width: 2 } },
+        hovertemplate: '%{text}<extra></extra>' },
+    ], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 16, r: 18, b: 46, l: 58 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: cap(mx.label), font: { size: 11 } },
+        ticksuffix: mx.fmt === pc ? '%' : '', type: 'linear', autorange: true }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: cap(my.label), font: { size: 11 } },
+        ticksuffix: my.fmt === pc ? '%' : '', type: 'linear', autorange: true }),
+    }), CFG);
+    title.textContent = `${BY_ISO[pa.iso].name}: ${mx.label} against ${my.label}, ${yrs[0]} to ${yrs[yrs.length - 1]}`;
+    src.textContent =
+      `One country, not a cloud of them. Each point is a year, joined in the order they happened, ` +
+      `so the direction of travel is the reading and a loop means it went somewhere and came back. ` +
+      `Only the ${pa.pts.length} years where both were measured are drawn. ` +
+      provenance([pa.x, pa.y]);
   }
 
   else if (mode === 'ratio_unused') {
