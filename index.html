@@ -3173,6 +3173,8 @@ const PROMPT_SETS = {
   ],
   opportunity: [
     'where do children climb highest?',
+    'does knowing better-off people help you climb?',
+    'are they not here, or here and not mixing?',
     "how does credit differ by parents' income?",
     "how do mortgages differ by parents' income?",
     'does mobility follow income?',
@@ -3204,6 +3206,8 @@ const QUESTIONS = [
   ] },
   { k: '', facet: 'opportunity', qs: [
     'if you grow up poor here, what do you earn later?',
+    'does knowing better-off people help you climb?',
+    'are they not here, or here and not mixing?',
     "does credit depend on your parents' income?",
     'how much longer do the rich live here?'] },
 ];
@@ -3350,6 +3354,9 @@ function dimGroups(dim, filter) {
       g.push({ k: "by parents' income", opts: [['credit score', "credit by parents' income"],
         ['mortgage balance', "mortgages by parents' income"], ['delinquency', "delinquency by parents' income"],
         ['how long people live', 'how much longer do the rich live here?']] });
+      g.push({ k: 'who they grow up around', opts: [
+        ['who they know', 'does knowing better-off people help you climb?'],
+        ['not here, or not mixing', 'are they not here, or here and not mixing?']] });
       g.push({ k: 'against the place', opts: [['median income', 'mobility and income'],
         ['poverty', 'mobility and poverty'], ['rent', 'mobility and rent']] });
       g.push({ k: 'not in the atlas', gaps: [['mobility outside the US',
@@ -4082,6 +4089,59 @@ function oppAnswer(q, strict) {
       `<strong>${g.fmt(m25)}</strong>. Children whose parents were in the top quarter reach <strong>${g.fmt(m75)}</strong>.`;
     return f;
   }
+  // Who a poor child grows up around. County level, not commuting zone: this is how
+  // it is published, us_county.json already holds mobility for 3208 counties, and the
+  // only crosswalk in the repo covers half of them, skewed to the large ones.
+  if (/\bconnect\w*|\bknow\w*|\bfriend\w*|\bsocial capital\b|\bnetworks?\b|\bmix\w*\b|\bsegregat\w*\b|\bexposure\b|\bbias\b|\bbetter[- ]off people\b|\bgrow up around\b|\bwho they meet\b/.test(r)) {
+    if (!US_COUNTY || !US_COUNTY.us_econ_conn) { showNotice('The social capital layer is not loaded.'); return null; }
+    const mob = US_COUNTY.us_mobility || {}, ec = US_COUNTY.us_econ_conn || {};
+    const ex = US_COUNTY.us_exposure || {}, bi = US_COUNTY.us_bias || {};
+    const nameOf = c => (US_NAMES && US_NAMES[c]) ? US_NAMES[c].split(',')[0] : c;
+    // "is it that they are not here, or that nobody mixes": the split underneath the
+    // headline number, and the more interesting half of it
+    const wantsSplit = /\bmix\w*|\bsegregat\w*|\bexposure\b|\bbias\b|\bwhy\b|\bsplit\b|\bapart\b/.test(r);
+    if (wantsSplit && Object.keys(ex).length) {
+      const pts = [];
+      for (const c in ex) {
+        if (bi[c] == null || mob[c] == null) continue;
+        pts.push({ id: c, name: nameOf(c), x: ex[c], y: bi[c], mob: mob[c] });
+      }
+      if (pts.length < 100) return null;
+      const med = a => { const v = a.slice().sort((m, n2) => m - n2); return v[Math.floor(v.length / 2)]; };
+      const mx = med(pts.map(q => q.x)), my = med(pts.map(q => q.y));
+      const rEx = pearson(pts.map(q => ({ x: q.x, y: q.mob })));
+      const rBi = pearson(pts.map(q => ({ x: q.y, y: q.mob })));
+      const rXY = pearson(pts.map(q => ({ x: q.x, y: q.y })));
+      const quad = (lo, hi) => pts.filter(q => (lo ? q.x < mx : q.x >= mx) && (hi ? q.y >= my : q.y < my));
+      const mm = a => a.length ? a.reduce((t, q) => t + q.mob, 0) / a.length : null;
+      f.opp = { kind: 'mix', pts, mx, my };
+      f.text = `Two things have to happen before a poor child knows anyone richer. Higher-income ` +
+        `people have to be around at all, and once they are, people have to actually mix. ` +
+        `Across <strong>${pts.length}</strong> US counties those two barely move together ` +
+        `(r = ${rXY.toFixed(2)}), so a place can fail at either. Being around them tracks climbing at ` +
+        `<strong>r = ${rEx.toFixed(2)}</strong>; not mixing tracks it at <strong>${rBi.toFixed(2)}</strong>. ` +
+        `Where both go well children reach the <strong>${Math.round(mm(quad(false, false)) * 100)}th</strong> ` +
+        `percentile on average; where neither does, the <strong>${Math.round(mm(quad(true, true)) * 100)}th</strong>.`;
+      return f;
+    }
+    const pts = [];
+    for (const c in ec) { if (mob[c] == null) continue; pts.push({ name: nameOf(c), x: ec[c], y: mob[c] }); }
+    if (pts.length < 100) return null;
+    const rr = pearson(pts.map(q => ({ x: q.x, y: q.y })));
+    const sorted = pts.slice().sort((a, b2) => a.x - b2.x);
+    const lo = sorted.slice(0, Math.floor(sorted.length / 5)), hi = sorted.slice(-Math.floor(sorted.length / 5));
+    const avg = a => a.reduce((t, q) => t + q.y, 0) / a.length;
+    f.opp = { kind: 'conn', pts, r: rr };
+    f.text = `Across <strong>${pts.length}</strong> US counties, how many higher-income friends a ` +
+      `low-income child has predicts how far they climb better than anything else in this atlas: ` +
+      `<strong>r = ${rr.toFixed(2)}</strong>. In the fifth of counties where poor children know the ` +
+      `fewest richer people they reach the <strong>${Math.round(avg(lo) * 100)}th</strong> percentile ` +
+      `by adulthood; in the fifth where they know the most, the ` +
+      `<strong>${Math.round(avg(hi) * 100)}th</strong>. ` +
+      `<em>A correlation across places, not a mechanism inside one.</em>`;
+    return f;
+  }
+
   // Health, inside the one layer that can carry it. Life expectancy at 40 by household
   // income quarter, per zone, which is a gap between people in the same place rather
   // than an average over a country. The global health face stays closed for want of
@@ -4121,7 +4181,8 @@ function oppAnswer(q, strict) {
   const mobWords = /\bmobilit\w*|\bclimb\w*|\bmove up\b|\bopportunit\w*|\brank\w*|\bbest\b|\bworst\b|\bhighest\b|\blowest\b|\bwhere\b|\bzones?\b|\bgrow up poor\b|\bearn later\b|\bborn poor\b/.test(r);
   if (strict && !mobWords) return null;   // a question that doesn't translate to this facet drops, it doesn't get faked
   if (!strict && !mobWords) {
-    showNotice('Opportunity is the US commuting-zone layer. Ask about upward mobility, or credit, mortgages, and delinquency by parents\' income.');
+    showNotice('Opportunity is the US layer. Ask about climbing, about credit, mortgages, delinquency or ' +
+      'how long people live by their parents\' income, or about who a poor child grows up around.');
     return null;
   }
   const ranked = zones.filter(z => z.mob != null).sort((a, b) => b.mob - a.mob);
@@ -4146,6 +4207,73 @@ function drawOpp(f) {
     }), CFG);
     title.textContent = `${cap(o.label)} by parents' income, across commuting zones`;
     src.textContent = 'Each dot is a commuting zone. The line marks the same outcome for both. Source: Opportunity Insights.';
+  } else if (o.kind === 'conn') {
+    Plotly.react(el, [{
+      type: 'scatter', mode: 'markers',
+      x: o.pts.map(q => q.x), y: o.pts.map(q => q.y * 100), text: o.pts.map(q => q.name),
+      marker: { color: AM, size: 5, opacity: 0.4 },
+      hovertemplate: '%{text}<br>connectedness %{x:.2f}<br>reaches the %{y:.0f}th percentile<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 16, r: 18, b: 46, l: 56 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { type: 'linear', autorange: true,
+        title: { text: 'how many of a poor child\u2019s friends are better off', font: { size: 11 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'linear', autorange: true,
+        title: { text: 'where they end up, income percentile', font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = `Who you grow up around, and where you end up`;
+    src.textContent =
+      `One dot per US county. Across is economic connectedness: among a low-income person\u2019s ` +
+      `friends, the share who are high-income, scaled so 1 means no sorting by income at all. Up is ` +
+      `the income percentile a child with poor parents reaches by their mid thirties. r = ${o.r.toFixed(2)}, ` +
+      `the strongest relationship in this atlas. It is a correlation across places and not a mechanism ` +
+      `inside one: the same counties differ in a hundred other ways. ` +
+      `Source: Chetty et al, the Social Capital Atlas and Opportunity Insights.`;
+  } else if (o.kind === 'mix') {
+    // the tails are thin and stretch the ramp flat, so the colour runs over the middle
+    // ninety per cent and the few beyond it sit at the ends
+    const mobs = o.pts.map(q => q.mob).sort((a2, b2) => a2 - b2);
+    const band = [mobs[Math.floor(mobs.length * 0.05)], mobs[Math.floor(mobs.length * 0.95)]];
+    Plotly.react(el, [{
+      type: 'scatter', mode: 'markers',
+      x: o.pts.map(q => q.x), y: o.pts.map(q => q.y),
+      text: o.pts.map(q => q.name), customdata: o.pts.map(q => Math.round(q.mob * 100)),
+      marker: { size: 5.5, opacity: 0.72, color: o.pts.map(q => q.mob),
+        colorscale: [[0, shade(AM, -0.62)], [1, shade(AM, 0.45)]], cmin: band[0], cmax: band[1],
+        colorbar: { title: { text: 'where a poor<br>child ends up', font: { size: 10 } },
+          thickness: 9, len: 0.62, tickfont: { size: 9 },
+          tickvals: band, ticktext: ['lower', 'higher'] } },
+      hovertemplate: '%{text}<br>exposure %{x:.2f}<br>friending bias %{y:.2f}' +
+        '<br>reaches the %{customdata}th percentile<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 22, r: 18, b: 46, l: 58 },
+      shapes: [
+        { type: 'line', xref: 'x', yref: 'paper', x0: o.mx, x1: o.mx, y0: 0, y1: 1,
+          line: { color: 'rgba(128,132,140,0.45)', width: 1, dash: 'dot' } },
+        { type: 'line', xref: 'paper', yref: 'y', x0: 0, x1: 1, y0: o.my, y1: o.my,
+          line: { color: 'rgba(128,132,140,0.45)', width: 1, dash: 'dot' } },
+      ],
+      annotations: [
+        { x: 0.99, y: 0.02, xref: 'paper', yref: 'paper', xanchor: 'right', yanchor: 'bottom',
+          text: 'they are here,<br>and people mix', showarrow: false, align: 'right',
+          font: { size: 10, color: cssVar('--ink-3', '#999999') } },
+        { x: 0.01, y: 0.98, xref: 'paper', yref: 'paper', xanchor: 'left', yanchor: 'top',
+          text: 'they are not here,<br>and nobody mixes', showarrow: false, align: 'left',
+          font: { size: 10, color: cssVar('--ink-3', '#999999') } },
+      ],
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { type: 'linear', autorange: true,
+        title: { text: 'are better-off people around at all', font: { size: 11 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'linear', autorange: true,
+        title: { text: 'how much less people mix', font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = 'Not here, or here and not mixing';
+    src.textContent =
+      `One dot per US county, darker where poor children climb further. Across: how many better-off ` +
+      `people a low-income person meets in the settings they move through. Up: friending bias, how ` +
+      `much less likely a friendship across the income line is than it would be if people mixed at ` +
+      `random, so higher means less mixing. The dotted lines are the middle county on each. ` +
+      `The two are close to independent, which is the point: a single connectedness number cannot ` +
+      `tell you which of the two a place is failing at, and they call for different things. ` +
+      `Source: Chetty et al, the Social Capital Atlas and Opportunity Insights.`;
   } else if (o.kind === 'life') {
     const all = o.pts.flatMap(p => [p.m1, p.m4, p.f1, p.f4]);
     const lo = Math.min(...all) - 0.6, hi = Math.max(...all) + 0.6;
