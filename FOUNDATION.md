@@ -120,9 +120,38 @@ runs from 72.2 in Pecos to 80.8 in Glenwood Springs, a spread of 8.6 years for t
 same income group.
 
 And it lines up with mobility: **r = +0.39** on 595 zones between how long poor men
-live and how far poor children climb. That is the strongest relationship anywhere in
-the atlas, and it is the closest thing here to showing that the two faces are the same
-story. It is one country and it is a correlation, not a mechanism.
+live and how far poor children climb. It is one country and it is a correlation, not a
+mechanism. Note that this is the level, not the gap: how long poor people live in a
+place, rather than how far apart rich and poor are there. The gap itself is tied to
+almost nothing, which is the next section.
+
+### Claim 2, tested again inside one country. STRONG.
+
+The United States is the only place where all four faces are measured at the same fine
+geography, so it is the only place the claim can be checked a second way. Across US
+counties, every pair:
+
+| | climbing | who you know | income gap | house value | life gap |
+|---|---|---|---|---|---|
+| **children climbing** | | +0.72 | -0.49 | -0.05 | -0.05 |
+| **who you know** | +0.72 | | -0.46 | +0.26 | +0.13 |
+| **income gap** | -0.49 | -0.46 | | +0.20 | -0.10 |
+| **house value** | -0.05 | +0.26 | +0.20 | | -0.12 |
+| **rich-poor life gap** | -0.05 | +0.13 | -0.10 | -0.12 | |
+
+Between 1,555 and 3,126 counties per pair. Two things stand out and both matter.
+
+**Who a poor child grows up around beats everything else at predicting whether they
+climb: r = +0.72,** against -0.49 for the county's own income gap. This is the
+strongest relationship anywhere in the atlas.
+
+**The rich-poor gap in how long people live is tied to none of it.** Its strongest
+link to anything else here is 0.13. A county can share out its income evenly and
+still bury its poor a decade early.
+
+That is claim 2 again, at a scale a thousand times finer, with the same answer. The
+faces disagree between countries and they disagree between counties inside one of
+them.
 
 ## 4. What we do not claim
 

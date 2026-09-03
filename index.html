@@ -3173,8 +3173,10 @@ const PROMPT_SETS = {
   ],
   opportunity: [
     'where do children climb highest?',
+    'do the four faces agree inside one country?',
     'does knowing better-off people help you climb?',
     'are they not here, or here and not mixing?',
+    'does the income gap track climbing?',
     "how does credit differ by parents' income?",
     "how do mortgages differ by parents' income?",
     'does mobility follow income?',
@@ -3205,9 +3207,11 @@ const QUESTIONS = [
     'how do wealth, income and life expectancy sit together?',
   ] },
   { k: '', facet: 'opportunity', qs: [
+    'do the four faces agree inside one country?',
     'if you grow up poor here, what do you earn later?',
     'does knowing better-off people help you climb?',
     'are they not here, or here and not mixing?',
+    'does the income gap track climbing?',
     "does credit depend on your parents' income?",
     'how much longer do the rich live here?'] },
 ];
@@ -3357,6 +3361,11 @@ function dimGroups(dim, filter) {
       g.push({ k: 'who they grow up around', opts: [
         ['who they know', 'does knowing better-off people help you climb?'],
         ['not here, or not mixing', 'are they not here, or here and not mixing?']] });
+      g.push({ k: 'the other faces, same counties', opts: [
+        ['all four at once', 'do the four faces agree inside one country?'],
+        ['the income gap', 'does the income gap track climbing?'],
+        ['the life gap', 'does the life gap track climbing?'],
+        ['house values', 'do house values track climbing?']] });
       g.push({ k: 'against the place', opts: [['median income', 'mobility and income'],
         ['poverty', 'mobility and poverty'], ['rent', 'mobility and rent']] });
       g.push({ k: 'not in the atlas', gaps: [['mobility outside the US',
@@ -4079,7 +4088,7 @@ function oppAnswer(q, strict) {
   const f = { id: ++factSeq, query: q, kind: 'opp', isos: [], mode: 'opp', text: '', opp: {} };
   const zones = Object.values(US_CZ);
   const fin = OPP_FIN.find(x => x.re.test(r));
-  if (fin || /\bgap\b|\brich[- ]?poor\b|\bp25\b|\bp75\b|\bstart\w* poor\b|\bborn poor\b/.test(r)) {
+  if (fin || /\bby (their )?parents\b|\bparents.? income\b|\brich[- ]?poor gap\b|\bp25\b|\bp75\b|\bstart\w* poor\b|\bborn poor\b/.test(r)) {
     const g = fin || OPP_FIN[2];
     const pts = zones.filter(z => z[g.key + '25'] != null && z[g.key + '75'] != null)
       .map(z => ({ name: z.name, x: z[g.key + '25'], y: z[g.key + '75'] }));
@@ -4089,6 +4098,79 @@ function oppAnswer(q, strict) {
       `<strong>${g.fmt(m25)}</strong>. Children whose parents were in the top quarter reach <strong>${g.fmt(m75)}</strong>.`;
     return f;
   }
+  // The whole point of the cube, asked inside one country. The US is the only place
+  // where all four faces are measured at the same fine geography, so it is the only
+  // place the atlas can test whether they agree with each other. They mostly do not.
+  const FACE_COLS = [
+    { k: 'us_mobility',    lab: 'children climbing', face: 'opportunity', fmt: v => Math.round(v * 100) + 'th' },
+    { k: 'us_econ_conn',   lab: 'who you know',      face: 'opportunity', fmt: v => v.toFixed(2) },
+    { k: 'us_income_gini', lab: 'income gap',        face: 'income',      fmt: v => v.toFixed(2) },
+    { k: 'us_house_value', lab: 'house value',       face: 'wealth',      fmt: v => '$' + Math.round(v).toLocaleString('en-US') },
+    { k: 'us_le_gap',      lab: 'rich-poor life gap', face: 'health',     fmt: v => v.toFixed(1) + 'y' },
+  ];
+  if (/\bfaces\b|\bagree\b|\bfour\b|\ball of (them|it)\b|\btogether\b|\bsame places\b|\boverlap\b|\bsame counties\b|\bone country\b/.test(r)) {
+    if (!US_COUNTY || !US_COUNTY.us_mobility) { showNotice('The county layer is not loaded.'); return null; }
+    const cols = FACE_COLS.filter(c => US_COUNTY[c.k] && Object.keys(US_COUNTY[c.k]).length > 200);
+    if (cols.length < 3) return null;
+    const grid = [], ns = [];
+    for (const a of cols) {
+      const row = [], nrow = [];
+      for (const b2 of cols) {
+        if (a.k === b2.k) { row.push(null); nrow.push(0); continue; }
+        const A = US_COUNTY[a.k], B = US_COUNTY[b2.k];
+        const pts = [];
+        for (const c in A) { const y = B[c]; if (y == null || A[c] == null) continue; pts.push({ x: A[c], y }); }
+        const rr = pts.length > 100 ? pearson(pts) : null;
+        row.push(rr); nrow.push(pts.length);
+      }
+      grid.push(row); ns.push(nrow);
+    }
+    const at = (a, b2) => grid[cols.findIndex(c => c.k === a)][cols.findIndex(c => c.k === b2)];
+    const health = cols.findIndex(c => c.k === 'us_le_gap');
+    const worst = health >= 0
+      ? Math.max(...grid[health].filter(v => v != null).map(Math.abs)) : null;
+    f.opp = { kind: 'faces', cols, grid, ns };
+    f.text = `The United States is the only country where all four faces are measured at the same ` +
+      `fine geography, so it is the only place the atlas can ask whether they agree. Across roughly ` +
+      `three thousand counties, mostly they do not. Where a poor child climbs furthest is tied to who ` +
+      `they grow up around (<strong>${at('us_mobility', 'us_econ_conn').toFixed(2)}</strong>) and, more ` +
+      `weakly, to how evenly income is spread (<strong>${at('us_mobility', 'us_income_gini').toFixed(2)}</strong>). ` +
+      (worst != null ? `The rich-poor gap in how long people live is tied to <strong>none of it</strong>: ` +
+        `its strongest link to anything else here is ${worst.toFixed(2)}. A county can share out its ` +
+        `income evenly and still bury its poor a decade early.` : '');
+    return f;
+  }
+  // any two of those five held against each other, at county level
+  {
+    const pick = [];
+    for (const c of FACE_COLS) {
+      const re = c.k === 'us_mobility' ? /\bmobilit\w*|\bclimb\w*|\bmove up\b/
+        : c.k === 'us_econ_conn' ? /\bconnect\w*|\bknow\w*|\bfriend\w*/
+        : c.k === 'us_income_gini' ? /\bincome (gap|inequalit\w*|gini)\b|\bgini\b/
+        : c.k === 'us_house_value' ? /\bhouse\w*|\bhome\w*|\bproperty\b/
+        : /\blife (gap|expectanc\w*)\b|\bhow long\b|\blive longer\b|\bdie\b|\bhealth gap\b/;
+      if (re.test(r) && US_COUNTY && US_COUNTY[c.k]) pick.push(c);
+    }
+    const keys = pick.map(c => c.k).sort().join('|');
+    if (pick.length >= 2 && keys !== 'us_econ_conn|us_mobility') {
+      const [X, Y] = pick.slice(0, 2);
+      const A = US_COUNTY[X.k], B = US_COUNTY[Y.k];
+      const nameOf = c => (US_NAMES && US_NAMES[c]) ? US_NAMES[c].split(',')[0] : c;
+      const pts = [];
+      for (const c in A) { if (B[c] == null || A[c] == null) continue; pts.push({ name: nameOf(c), x: A[c], y: B[c] }); }
+      if (pts.length > 100) {
+        const rr = pearson(pts);
+        f.opp = { kind: 'pair', x: X, y: Y, pts, r: rr };
+        const strength = Math.abs(rr) > 0.5 ? 'closely' : Math.abs(rr) > 0.25 ? 'loosely' : 'barely';
+        f.text = `Across <strong>${pts.length}</strong> US counties, ${X.lab} and ${Y.lab} move together ` +
+          `<strong>${strength}</strong>: r = <strong>${rr.toFixed(2)}</strong>. ` +
+          `<em>Two of the atlas's faces, measured in the same places, which is something it cannot do ` +
+          `anywhere outside this one country.</em>`;
+        return f;
+      }
+    }
+  }
+
   // Who a poor child grows up around. County level, not commuting zone: this is how
   // it is published, us_county.json already holds mobility for 3208 counties, and the
   // only crosswalk in the repo covers half of them, skewed to the large ones.
@@ -4207,6 +4289,64 @@ function drawOpp(f) {
     }), CFG);
     title.textContent = `${cap(o.label)} by parents' income, across commuting zones`;
     src.textContent = 'Each dot is a commuting zone. The line marks the same outcome for both. Source: Opportunity Insights.';
+  } else if (o.kind === 'faces') {
+    // a correlation matrix, which is the only honest way to show "do these agree":
+    // a scatter can carry two, and the claim is about all of them at once
+    const lab = o.cols.map(c => c.lab);
+    const txt = o.grid.map(row => row.map(v => v == null ? '' : v.toFixed(2)));
+    Plotly.react(el, [{
+      type: 'heatmap', x: lab, y: lab, z: o.grid,
+      zmin: -1, zmax: 1, xgap: 3, ygap: 3,
+      colorscale: [[0, metricColor('life_exp')], [0.5, cssVar('--surface', '#ffffff')], [1, metricColor('wealth_top1')]],
+      showscale: true,
+      colorbar: { thickness: 9, len: 0.6, tickfont: { size: 9 },
+        tickvals: [-1, 0, 1], ticktext: ['opposite', 'unrelated', 'together'] },
+      hovertemplate: '%{y} and %{x}<br>r = %{z:.2f}<extra></extra>',
+      hoverongaps: false,
+    }], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 12, r: 12, b: 92, l: 132 },
+      annotations: o.grid.flatMap((row, i) => row.map((v, j) => ({
+        x: lab[j], y: lab[i], text: txt[i][j], showarrow: false,
+        font: { size: 11.5, color: v == null ? 'rgba(0,0,0,0)'
+          : Math.abs(v) > 0.55 ? '#ffffff' : cssVar('--ink', '#0a0a0a') },
+      }))),
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { type: 'category', autorange: true,
+        tickangle: -35, tickfont: { size: 10.5 }, gridcolor: 'rgba(0,0,0,0)' }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category', autorange: 'reversed',
+        tickfont: { size: 10.5 }, gridcolor: 'rgba(0,0,0,0)' }),
+    }), CFG);
+    title.textContent = 'Do the faces agree, inside one country?';
+    src.textContent =
+      `Every pair of measures held against each other across US counties. Blue means they rise ` +
+      `together, rose means one rises as the other falls, pale means they have nothing to do with ` +
+      `each other. Between ${Math.min(...o.ns.flat().filter(Boolean)).toLocaleString('en-US')} and ` +
+      `${Math.max(...o.ns.flat()).toLocaleString('en-US')} counties carry each pair; the life gap is ` +
+      `published for the fewest. This is the atlas's own claim tested at a second scale: the four ` +
+      `faces disagree between countries, and they disagree between counties inside one of them. ` +
+      `Sources: Opportunity Insights, the Social Capital Atlas, the Health Inequality Project, ` +
+      `and the American Community Survey.`;
+  } else if (o.kind === 'pair') {
+    const sx = o.x.k === 'us_mobility', sy = o.y.k === 'us_mobility';
+    Plotly.react(el, [{
+      type: 'scatter', mode: 'markers',
+      x: o.pts.map(q => sx ? q.x * 100 : q.x), y: o.pts.map(q => sy ? q.y * 100 : q.y),
+      text: o.pts.map(q => q.name),
+      marker: { color: AM, size: 5, opacity: 0.4 },
+      hovertemplate: '%{text}<br>%{x}<br>%{y}<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 16, r: 18, b: 46, l: 62 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { type: 'linear', autorange: true,
+        title: { text: cap(o.x.lab) + (sx ? ', income percentile' : ''), font: { size: 11 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'linear', autorange: true,
+        title: { text: cap(o.y.lab) + (sy ? ', income percentile' : ''), font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = `${cap(o.x.lab)} and ${o.y.lab}, by county`;
+    src.textContent =
+      `One dot per US county, ${o.pts.length.toLocaleString('en-US')} of them. r = ${o.r.toFixed(2)}. ` +
+      `These are two different faces of the cube measured in the same places, which is only possible ` +
+      `in this one country. A correlation across counties, not a mechanism inside any of them. ` +
+      `Sources: Opportunity Insights, the Social Capital Atlas, the Health Inequality Project, ` +
+      `and the American Community Survey.`;
   } else if (o.kind === 'conn') {
     Plotly.react(el, [{
       type: 'scatter', mode: 'markers',
