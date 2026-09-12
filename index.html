@@ -94,6 +94,13 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .wordmark { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; white-space: nowrap;
   background: none; border: none; cursor: pointer; color: var(--ink); font-family: inherit; padding: 0; }
 .wordmark span { color: var(--ink-3); font-weight: 400; }
+/* said once, at the top, so nobody has to work out from the gaps that it is unfinished */
+.beta-tag { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--opportunity); border: 1px solid var(--opportunity); border-radius: 4px;
+  padding: 1px 5px; margin-left: 9px; vertical-align: 5px; font-weight: 400; }
+.wm-beta { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-3); border: 1px solid var(--border); border-radius: 4px;
+  padding: 1px 4px; margin-left: 7px; vertical-align: 2px; font-weight: 400; }
 .deeper { margin-left: auto; font: 500 12.5px 'Inter', system-ui, sans-serif; color: var(--ink-2);
   background: var(--surface); border: 1px solid var(--border); border-radius: 100px;
   padding: 4px 13px; cursor: pointer; }
@@ -745,7 +752,7 @@ footer a { color: inherit; }
 
 <header>
   <div class="wrap">
-    <button class="wordmark" data-view="ask" id="home">Open Inequality Atlas</button>
+    <button class="wordmark" data-view="ask" id="home">Open Inequality Atlas<span class="wm-beta">beta</span></button>
     <button class="deeper" id="deeper" aria-expanded="false">about &rsaquo;</button>
     <div class="top-links">
       <button class="theme-toggle" id="theme" aria-label="Toggle dark mode" title="Light / dark">&#9681;</button>
@@ -756,7 +763,8 @@ footer a { color: inherit; }
       <button class="tab" data-view="why">Why</button>
       <button class="tab" data-view="wealth">Wealth</button>
       <button class="tab" data-view="income">Income</button>
-      <button class="tab" data-view="wellbeing">Wellbeing</button>
+      <button class="tab" data-view="opportunity">Opportunity</button>
+      <button class="tab" data-view="wellbeing">Health</button>
       <button class="tab" data-view="db">Database</button>
       <a class="tab tab-out" href="https://conway1521.github.io/applied/" target="_blank" rel="noopener">Author &nearr;</a>
     </div>
@@ -848,30 +856,31 @@ footer a { color: inherit; }
   <div id="view-wealth" class="wrap db" hidden>
     <h1>Wealth</h1>
     <p class="sub">
-      Wealth concentrates harder than income. The same country often has a wealth
-      Gini twenty points above its income Gini, and the gap between the two has
-      widened. This is the series the atlas is built on, harmonized from five
-      sources with each row tagged for comparability.
+      What people own is split roughly twice as unevenly as what they earn, in 148 of the 151
+      countries where both can be measured. This is the series the atlas is built on, harmonised
+      from five sources with every row tagged for comparability.
     </p>
     <div class="grid3">
       <div class="block">
-        <h2>Wealth Gini</h2>
-        <p>WID series, per-adult equal-split basis, negative net wealth zeroed.
+        <h2>Who holds it</h2>
+        <p>The share of all household net wealth held by the top 1% and by the bottom half,
+        from WID, per adult with wealth split equally within the couple.
         <span id="cov-wealth"></span></p>
-        <p class="try" data-qs="least equal;most unequal in Europe;Sweden over time"></p>
+        <p class="try" data-qs="where is wealth most concentrated?;does my country own as unevenly as it earns?;how has inequality changed over time?"></p>
       </div>
       <div class="block">
-        <h2>Distribution shares</h2>
-        <p>Top 1%, top 10%, and bottom 50% shares of household net wealth. Draw
-        the Lorenz curve for any country to see the concentration directly.</p>
-        <p class="try" data-qs="Lorenz curve for the United States;top 1% share;bottom 50% share"></p>
+        <h2>The whole curve</h2>
+        <p>A Lorenz curve draws the distribution rather than summarising it, for one country
+        or up to five at once. The wealth Gini is here too, for anyone who wants the single
+        number, with the warning that at 0.83 it barely moves.</p>
+        <p class="try" data-qs="Lorenz curve for the United Kingdom;how much more do the richest hold than the poorest?"></p>
       </div>
       <div class="block">
-        <h2>Against everyday life</h2>
-        <p>Take an everyday measure and see it against how concentrated wealth
-        is and how unequal income is. Two scatters, side by side, both
-        correlations shown.</p>
-        <p class="try" data-qs="life expectancy and inequality;poverty and inequality"></p>
+        <h2>Houses</h2>
+        <p>For most people who own anything, what they own is where they live. Real house
+        prices held against what people earn, after inflation. Two countries so far: the
+        international series sits behind sources we have not been able to reach.</p>
+        <p class="try" data-qs="have houses pulled away from pay?"></p>
       </div>
     </div>
   </div>
@@ -879,62 +888,102 @@ footer a { color: inherit; }
   <div id="view-income" class="wrap db" hidden>
     <h1>Income</h1>
     <p class="sub">
-      Income inequality rose through the 1980s and 1990s in many rich economies,
-      then flattened. Wealth kept concentrating. Ask for the divergence in any
-      country to see both on one chart.
+      The figure almost every report quotes. It describes a pay slip, and it is not the same
+      as what anybody owns: rank countries by the income share of the top 1% and by their
+      wealth share and you get two different tables.
     </p>
     <div class="grid3">
       <div class="block">
-        <h2>Income Gini</h2>
-        <p>World Bank Poverty and Inequality Platform, national survey rows:
-        income where surveys measure it, consumption where they measure that
-        instead. <span id="cov-income"></span></p>
-        <p class="try" data-qs="wealth vs income in the US;wealth vs income in France;least equal on income"></p>
+        <h2>Shares, not just a Gini</h2>
+        <p>The top 1%, the middle 40% and the bottom half of pretax national income, from WID
+        on the same equal-split basis as the wealth series. That is what makes an income share
+        and a wealth share comparable here. <span id="cov-income"></span></p>
+        <p class="try" data-qs="does my country own as unevenly as it earns?;are wealth and income pulling apart here?"></p>
       </div>
       <div class="block">
-        <h2>Median income and GDP</h2>
-        <p>Median daily income from the same surveys, and GDP per person as the
-        backdrop. <span id="cov-median"></span></p>
-        <p class="try" data-qs="highest median income;GDP per person against inequality;median income in Brazil over time"></p>
+        <h2>The middle</h2>
+        <p>Everyone between the median and the top tenth. In the United States that group took
+        44.4% of national income in 1990 and 40.6% in 2021.</p>
+        <p class="try" data-qs="how has inequality changed over time?;when did this country change most?"></p>
       </div>
       <div class="block">
-        <h2>Wealth against income</h2>
-        <p>Ask one, then the other, without losing your place: the chain keeps
-        the country and switches the measure. PIP via OWID, CC BY 4.0; sparse
-        surveys draw point by point.</p>
-        <p class="try" data-qs="France;income inequality;wealth inequality against income inequality"></p>
+        <h2>Where the growth went</h2>
+        <p>Output per person against the income of the person in the middle. Not like for like,
+        and the chart says so: national accounts on one line, household surveys on the other.
+        <span id="cov-median"></span></p>
+        <p class="try" data-qs="did the growth reach the typical person?;did it move differently from comparable countries?"></p>
       </div>
     </div>
   </div>
 
   <div id="view-wellbeing" class="wrap db" hidden>
-    <h1>Wellbeing</h1>
+    <h1>Health</h1>
     <p class="sub">
-      How long people live, how satisfied they say they are, what their
-      economies emit. Each shown against how concentrated wealth is and how
-      unequal income is, side by side, both correlations left to stand.
+      Closed as a face of the cube, on purpose. Life expectancy across countries is a national
+      average, which cannot show the gap between rich and poor inside one, and no source
+      publishes that gap in a form that compares across borders. Rather than fill the face with
+      an average we have left it shut and said why.
     </p>
     <div class="grid3">
       <div class="block">
-        <h2>Life expectancy</h2>
-        <p>At birth, both sexes. UN World Population Prospects with Clio Infra
-        and Riley backfill, via Our World in Data.
-        <span id="cov-life"></span></p>
-        <p class="try" data-qs="life expectancy in France;highest life expectancy;least equal"></p>
+        <h2>Where the gap is visible</h2>
+        <p>In the United States, by income quarter, across 595 commuting zones. A man in the
+        poorest quarter lives 8.7 years less than one in the richest quarter of the same place,
+        5.6 years for women. No zone has no gap.</p>
+        <p class="try" data-qs="how much longer do the rich live here?"></p>
       </div>
       <div class="block">
-        <h2>Poverty and emissions</h2>
-        <p>Share below $2.15 a day, and territorial CO2 per person in tonnes,
-        both via Our World in Data. <span id="cov-poverty"></span> <span id="cov-co2"></span></p>
-        <p class="try" data-qs="most poverty;poverty against inequality;highest CO2 per person"></p>
+        <h2>What is still held</h2>
+        <p>National life expectancy, life satisfaction, poverty and emissions, all as things to
+        hold inequality up against rather than as inequalities themselves. The correlation is
+        weak across countries and the chart says so.</p>
+        <p class="try" data-qs="does life expectancy track inequality?;how do wealth, income and life expectancy sit together?"></p>
       </div>
       <div class="block">
-        <h2>Life satisfaction</h2>
-        <p>The Cantril ladder, 0 to 10, from the Gallup World Poll behind the
-        World Happiness Report. <span id="cov-sat"></span></p>
-        <p class="try" data-qs="life satisfaction against inequality;happiest countries;life satisfaction in France over time"></p>
+        <h2>What would open it</h2>
+        <p>Life expectancy by income group, published the same way in more than one country.
+        The WHO has child deaths by wealth quintile for poorer countries and the OECD has life
+        expectancy by education for richer ones. They were built differently and do not join.</p>
       </div>
     </div>
+  </div>
+
+  <div id="view-opportunity" class="wrap db" hidden>
+    <h1>Opportunity <span class="beta-tag">beta</span></h1>
+    <p class="sub">
+      One country, one generation of children, and the deepest thing in the atlas. Everywhere
+      else measures inequality between countries or across a whole population. Here you can
+      watch it pass from one person to the next, because the United States is the only place
+      that publishes data fine enough to follow.
+    </p>
+    <div class="grid3">
+      <div class="block">
+        <h2>Where children climb</h2>
+        <p>The income percentile a child whose parents were in the bottom quarter reaches by
+        their mid thirties, across 741 commuting zones. From the 23rd to the 67th depending
+        on where they grew up.</p>
+        <p class="try" data-qs="if you grow up poor here, what do you earn later?"></p>
+      </div>
+      <div class="block">
+        <h2>Who they grow up around</h2>
+        <p>How many of a poor child's friends are better off predicts climbing better than
+        anything else here, at 0.72 across 3018 counties. Two things have to happen first:
+        better-off people have to be around, and people have to actually mix. Those are nearly
+        independent, so a place can fail at either.</p>
+        <p class="try" data-qs="does knowing better-off people help you climb?;are they not here, or here and not mixing?"></p>
+      </div>
+      <div class="block">
+        <h2>What it costs them</h2>
+        <p>Credit score, debt, whether they ever carry a mortgage, and how long they live, all
+        by what their parents earned. Same towns, different starts.</p>
+        <p class="try" data-qs="does credit depend on your parents' income?;do the four faces agree inside one country?"></p>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:26px">
+      It is marked beta because it is one country and one cohort of children, born in the early
+      1980s, with no run of years behind it. You can see that children do not climb where nobody
+      mixes. You cannot see whether that is getting worse.
+    </p>
   </div>
 
   <div id="view-why" class="wrap db" hidden>
@@ -1061,10 +1110,13 @@ footer a { color: inherit; }
   <div id="view-db" class="wrap db" hidden>
     <h1>The database</h1>
     <p class="sub">
-      Five source families in one long panel: WID, the ECB household survey (HFCS),
-      the Luxembourg Wealth Study, the US Survey of Consumer Finances, and the Fed's
-      Distributional Financial Accounts. 10,783 rows with a non-null Gini, ISO3 keys,
-      1800 to 2025 in the release files.
+      The wealth series is five source families in one long panel: WID, the ECB household
+      survey (HFCS), the Luxembourg Wealth Study, the US Survey of Consumer Finances, and the
+      Fed's Distributional Financial Accounts. 10,783 rows with a non-null Gini, ISO3 keys,
+      1800 to 2025 in the release files. Around it sit WID income shares for 154 countries,
+      World Bank survey measures for 165, real house prices for two, and the United States at
+      commuting zone and county resolution for mobility, debt, life expectancy by income and
+      social capital. Every build script in the repo names its source and what it drops.
     </p>
 
     <div class="grid3">
@@ -5484,7 +5536,7 @@ function showNotice(html) {
 }
 function hideNotice() { document.getElementById('notice').hidden = true; }
 
-const VIEWS = ['ask', 'why', 'wealth', 'income', 'wellbeing', 'db'];
+const VIEWS = ['ask', 'why', 'wealth', 'income', 'opportunity', 'wellbeing', 'db'];
 
 /* ── US county tier: the same ask cube, at county resolution ───────── */
 let US_COUNTY = null, US_STATE = null, US_NAMES = null, US_MANIFEST = null;
@@ -6171,10 +6223,25 @@ function boot() {
   DATA_READY = true;
   updateChips();
   document.querySelectorAll('.try').forEach(v => {
+    // a question offered on a reference page has to work from that page, whichever face
+    // the cube happens to be showing. the opportunity ones read a different layer, so
+    // the chip turns the cube to it first instead of dead-ending on "could not read that".
+    // which face a question belongs to is a property of the question, not of the page
+    // it is offered on: the health page offers the US life expectancy reading, which
+    // lives in the opportunity layer, and from any other face it would answer something
+    // else without saying so.
+    const oppQs = new Set(QUESTIONS.filter(g => g.facet === 'opportunity').flatMap(g => g.qs));
+    const faceFor = q => oppQs.has(q) ? 'opportunity' : null;
     v.innerHTML = v.dataset.qs.split(';')
       .map(q => `<button type="button" class="chip">${q}</button>`).join('');
     v.querySelectorAll('.chip').forEach(b =>
-      b.addEventListener('click', () => { setHelp(false); setView('ask'); ask(b.textContent); }));
+      b.addEventListener('click', () => {
+        setHelp(false); setView('ask');
+        const wants = faceFor(b.textContent);
+        if (wants && curFacet !== wants) chooseFacet(wants);
+        else if (!wants && curFacet === 'opportunity') chooseFacet('wealth');
+        ask(b.textContent);
+      }));
   });
   document.getElementById('helpbtn').addEventListener('click', () =>
     setHelp(document.getElementById('help').hidden));
