@@ -1079,10 +1079,37 @@ footer a { color: inherit; }
       borrowed less to buy a house. It is mostly that they never bought one.
     </p>
     <p class="sub">
-      That is one country and one generation of children, and it is marked as such throughout the
-      atlas. It is also the only place here where you can watch inequality being passed from one
-      person to the next rather than measured across a population, which is why it is worth the
-      space. Open the <strong>opportunity</strong> face to go through it.
+      Whether they climb at all turns out to depend most on who they grew up around. How many of a
+      poor child's friends are better off predicts where they end up better than anything else in
+      this atlas: 0.72 across three thousand counties, against 0.49 for the county's own income gap.
+      Two things have to happen before that friendship exists. Better-off people have to be there,
+      and once they are, people have to actually mix. Those two barely move together, so a place
+      can fail at either, and a single number cannot tell you which.
+    </p>
+
+    <h2 class="why-step">One more thing, which is the whole argument again</h2>
+    <p class="sub">
+      The United States is the only country that measures all four of these at the same fine
+      geography. That makes it the only place we can ask whether they agree with each other. Held
+      against each other across three thousand counties, mostly they do not.
+    </p>
+    <div class="chart-card">
+      <div class="chart-title" id="why-faces-title">Do the faces agree, inside one country?</div>
+      <div id="why-faces" style="width:100%;height:400px"></div>
+      <p class="chart-src" id="why-faces-src"></p>
+    </div>
+    <p class="sub">
+      The bottom row is the one to read. The gap between how long rich and poor people live is tied
+      to none of the rest of it. A county can share out its income evenly, have children who climb,
+      and still bury its poor a decade early. That is this page's argument arriving a second time,
+      at a scale a thousand times finer: these are different inequalities, they do not move
+      together, and which one you happen to measure decides what you conclude.
+    </p>
+    <p class="sub">
+      All of that is one country and one generation of children, and it is marked beta throughout.
+      It is also the only place here where you can watch inequality passing from one person to the
+      next rather than being measured across a population, which is why it is worth the space.
+      <button type="button" class="claim-link" id="why-to-opp">go through it</button>
     </p>
 
     <div class="grid3">
@@ -5878,7 +5905,50 @@ function initUS() {
 const WHY_ISO = 'USA';
 // syncChartTheme lives in drawChart, which the Why page never goes through: without
 // this call these two draw with the light grid baked in, blazing white over a dark page
-function drawWhy() { syncChartTheme(); drawWhyOwn(); drawWhyPay(); drawWhyHouse(); }
+function drawWhy() { syncChartTheme(); drawWhyOwn(); drawWhyPay(); drawWhyHouse(); drawWhyFaces(); }
+
+// The closing figure: the page's own argument, arriving a second time at county scale.
+// It reuses the reading the opportunity layer already computes rather than keeping a
+// second copy of the rules, so the two can never disagree about what the numbers are.
+function drawWhyFaces() {
+  const el = document.getElementById('why-faces');
+  if (!el || !window.Plotly || !US_COUNTY || !US_COUNTY.us_mobility) return;
+  const saved = chain.slice();
+  let f = null;
+  try { f = oppAnswer('do the four faces agree inside one country?', true); } catch (e) { f = null; }
+  chain.length = 0; chain.push(...saved);
+  if (!f || !f.opp || f.opp.kind !== 'faces') return;
+  const o = f.opp;
+  const lab = o.cols.map(c => c.lab);
+  Plotly.react(el, [{
+    type: 'heatmap', x: lab, y: lab, z: o.grid,
+    zmin: -1, zmax: 1, xgap: 3, ygap: 3,
+    colorscale: [[0, metricColor('life_exp')], [0.5, cssVar('--surface', '#ffffff')], [1, metricColor('wealth_top1')]],
+    colorbar: { thickness: 9, len: 0.6, tickfont: { size: 9 },
+      tickvals: [-1, 0, 1], ticktext: ['opposite', 'unrelated', 'together'] },
+    hovertemplate: '%{y} and %{x}<br>r = %{z:.2f}<extra></extra>', hoverongaps: false,
+  }], Object.assign({}, BASE_LAYOUT, {
+    margin: { t: 12, r: 12, b: 96, l: 136 },
+    annotations: o.grid.flatMap((row, i) => row.map((v, j) => ({
+      x: lab[j], y: lab[i], text: v == null ? '' : v.toFixed(2), showarrow: false,
+      font: { size: 11.5, color: v == null ? 'rgba(0,0,0,0)'
+        : Math.abs(v) > 0.55 ? '#ffffff' : cssVar('--ink', '#0a0a0a') },
+    }))),
+    xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { type: 'category', autorange: true,
+      tickangle: -35, tickfont: { size: 10.5 }, gridcolor: 'rgba(0,0,0,0)' }),
+    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category', autorange: 'reversed',
+      tickfont: { size: 10.5 }, gridcolor: 'rgba(0,0,0,0)' }),
+  }), CFG);
+  const src = document.getElementById('why-faces-src');
+  if (src) src.textContent =
+    `Every pair held against each other across US counties. Blue means they rise together, rose ` +
+    `means one rises as the other falls, pale means they have nothing to do with each other. ` +
+    `Between ${Math.min(...o.ns.flat().filter(Boolean)).toLocaleString('en-US')} and ` +
+    `${Math.max(...o.ns.flat()).toLocaleString('en-US')} counties carry each pair; the life gap is ` +
+    `published for the fewest. Correlations across places, not mechanisms inside any of them: these ` +
+    `counties differ in a hundred other ways at once. Sources: Opportunity Insights, the Social ` +
+    `Capital Atlas, the Health Inequality Project, and the American Community Survey.`;
+}
 
 // Step one: the poorest half's share of everything owned, which fell nearly everywhere.
 // One line per country and no median across them, because a median would hide the range
@@ -6308,6 +6378,13 @@ function boot() {
   document.querySelectorAll('.sendbtn').forEach(el => el.addEventListener('click', sendCell));
   const cw = document.getElementById('claim-why');
   if (cw) cw.addEventListener('click', () => { setView('why'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  // the why page ends by handing the reader to the layer it has just been describing
+  const wto = document.getElementById('why-to-opp');
+  if (wto) wto.addEventListener('click', () => {
+    setView('ask');
+    if (curFacet !== 'opportunity') chooseFacet('opportunity');
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+  });
   document.getElementById('clear').addEventListener('click', resetAll);
   // click the measure inside the facet row to swap it
   const vfacet = document.getElementById('v-facet');
