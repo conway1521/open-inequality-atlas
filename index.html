@@ -807,7 +807,7 @@ footer a { color: inherit; }
       <form class="askbox" id="ask-form">
         <input id="q" type="text" autocomplete="off" spellcheck="false" role="combobox"
                aria-expanded="false" aria-controls="help" aria-autocomplete="list"
-               placeholder="how unequal is France?" aria-label="Ask the atlas, or edit the question you asked">
+               placeholder="how many times more does one person at the top own?" aria-label="Ask the atlas, or edit the question you asked">
         <span class="qsteps">
           <button type="button" id="q-up" aria-label="previous question">&#9650;</button>
           <button type="button" id="q-dn" aria-label="next question">&#9660;</button>
@@ -3673,11 +3673,10 @@ const PROMPT_SETS = {
     'how many times more does one person at the top earn?',
     'what does the person in the middle live on a day?',
     'what happened to the middle here?',
-    'how unequal is Brazil?',
     'did the growth reach the typical person?',
+    'how many times more does one person at the top own?',
     'where is income most unequal?',
     'how has Brazil changed over time?',
-    'does poverty follow inequality?',
     'who breaks the pattern?',
     'what about among rich countries?',
   ],
@@ -6742,8 +6741,11 @@ function fillCoverage() {
     const el = document.getElementById(elId);
     if (el && isos.length) el.textContent = `${isos.length} countries, ${lo} to ${hi}.`;
   };
-  cov('wealth_gini', 'cov-wealth');
-  cov('income_gini', 'cov-income');
+  // each span reports the measure the block beside it actually describes: the wealth
+  // block is about the top 1% and bottom 50% shares, and the income block about the WID
+  // income shares, not the survey Gini that happens to share the word income
+  cov('wealth_top1', 'cov-wealth');
+  cov('income_top1', 'cov-income');
   cov('median_income', 'cov-median');
   cov('life_exp', 'cov-life');
   cov('co2_pc', 'cov-co2');
