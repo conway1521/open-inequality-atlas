@@ -938,16 +938,20 @@ footer a { color: inherit; }
     <div class="grid3">
       <div class="block">
         <h2>Where the gap is visible</h2>
-        <p>In the United States, by income quarter, across 595 commuting zones. A man in the
-        poorest quarter lives 8.7 years less than one in the richest quarter of the same place,
-        5.6 years for women. No zone has no gap.</p>
+        <p>In the United States, by income quarter, across 595 commuting zones. A man of forty in
+        the poorest quarter lives 8.7 years less than one in the richest quarter of the same
+        place, 5.6 years for women. No zone has no gap. These are measured from age forty rather
+        than from birth, so they are not the figures quoted for a whole country, which run
+        lower.</p>
         <p class="try" data-qs="how much longer do the rich live here?"></p>
       </div>
       <div class="block">
         <h2>What is still held</h2>
         <p>National life expectancy, life satisfaction, poverty and emissions, all as things to
         hold inequality up against rather than as inequalities themselves. The correlation is
-        weak across countries and the chart says so.</p>
+        weak across countries and the chart says so. The poverty figure is the $2.15 a day line,
+        which reads under one per cent across nearly every rich country and so says almost
+        nothing about one.</p>
         <p class="try" data-qs="does life expectancy track inequality?;how do wealth, income and life expectancy sit together?"></p>
       </div>
       <div class="block">
@@ -985,9 +989,12 @@ footer a { color: inherit; }
       </div>
       <div class="block">
         <h2>What it costs them</h2>
-        <p>Credit score, debt, whether they ever carry a mortgage, and how long they live, all
-        by what their parents earned. Same towns, different starts.</p>
-        <p class="try" data-qs="does credit depend on your parents' income?;do the four faces agree inside one country?"></p>
+        <p>Same town, different starts. By their mid thirties the children of the poorest quarter
+        carry a credit score of 650 against 711, and 55% of them have been ninety days behind on
+        a payment against 33%. The richer children score higher in all 741 zones. The mortgage
+        line is the one to sit with: $47,700 against $92,700, which at those sizes is counting
+        who holds a mortgage at all rather than how big one is.</p>
+        <p class="try" data-qs="does credit depend on your parents' income?;who owns a home, by their parents' income?;who falls behind on payments, by their parents' income?;do the four faces agree inside one country?"></p>
       </div>
     </div>
     <p class="sub" style="margin-top:26px">
@@ -1195,8 +1202,9 @@ footer a { color: inherit; }
     <p class="sub">
       The wealth series is five source families in one long panel: WID, the ECB household
       survey (HFCS), the Luxembourg Wealth Study, the US Survey of Consumer Finances, and the
-      Fed's Distributional Financial Accounts. 10,783 rows with a non-null Gini, ISO3 keys,
-      1800 to 2025 in the release files. Around it sit WID income shares for 154 countries,
+      Fed's Distributional Financial Accounts. The release files carry 10,783 rows with a
+      non-null Gini on ISO3 keys, 1800 to 2025. What this page ships is the slice it can draw:
+      7,455 rows, 213 countries, 1990 to 2024. Around it sit WID income shares for 154 countries,
       World Bank survey measures for 165, real house prices for two, and the United States at
       commuting zone and county resolution for mobility, debt, life expectancy by income and
       social capital. Every build script in the repo names its source and what it drops.
@@ -1212,9 +1220,14 @@ footer a { color: inherit; }
       </div>
       <div class="block">
         <h2>What the ask tab reads</h2>
-        <p>The WID Gini series (1990 to 2024, per-adult equal-split, negative
-        wealth zeroed), latest distribution shares by country, and the US
-        long-run series back to 1989.</p>
+        <p>The WID wealth series, 1990 to 2024, per adult with a couple's holdings
+        split equally. The Gini zeroes negative net wealth; the top 1% and bottom
+        50% shares do not, which is how a share reaches minus 10.9% in Sweden. Then
+        the latest shares by country, WID income shares, the World Bank survey
+        measures, and the US county and commuting-zone files. It does not read the
+        US long-run series: that path was removed because it put the United States
+        on the Fed's distributional accounts while everywhere else was on WID, and
+        the two differ by five points on the same idea in the same year.</p>
       </div>
       <div class="block">
         <h2>Method</h2>
@@ -1279,7 +1292,7 @@ footer a { color: inherit; }
 'use strict';
 
 /* ── data stores ───────────────────────────────────────────────────── */
-let LATEST = null, US = null;
+let LATEST = null;
 let BY_ISO = {};            // iso -> wealth snapshot row + name
 const SERIES = {};          // metric -> iso -> [{year, v}]
 
@@ -1507,9 +1520,9 @@ const META = {
     lineSrc: 'Source: Maddison Project Database 2023, via the Global Carbon Budget dataset at Our World in Data. GDP per person in international dollars at 2011 prices, a different base year and a different accounting basis from the 2017 purchasing power dollars the daily income figures use.',
     poolSrc: 'Source: Maddison Project Database 2023 via OWID. GDP per person, 2011 international dollars, latest year per country.',
   },
-  top1_wealth_share: { label: 'top 1% share', topic: 'wealth', snap: true, us: 'top1_share', fmt: pc, fmtD: pc },
-  top10_wealth_share: { label: 'top 10% share', topic: 'wealth', snap: true, us: 'top10_share', fmt: pc, fmtD: pc },
-  bottom50_wealth_share: { label: 'bottom 50% share', topic: 'wealth', snap: true, us: 'bottom50_share', fmt: pc, fmtD: pc },
+  top1_wealth_share: { label: 'top 1% share', topic: 'wealth', snap: true, fmt: pc, fmtD: pc },
+  top10_wealth_share: { label: 'top 10% share', topic: 'wealth', snap: true, fmt: pc, fmtD: pc },
+  bottom50_wealth_share: { label: 'bottom 50% share', topic: 'wealth', snap: true, fmt: pc, fmtD: pc },
 };
 
 // how each series came to exist. this is stated on every chart that draws it.
@@ -2117,17 +2130,6 @@ function pairedPoints(xMetric, yMetric, region, year) {
   out.far = far.length;
   out.atYear = year || null;
   return out;
-}
-// the wealth-concentration series for a country: the US gets the DFA top-1% share (the sharper gauge), others the WID wealth Gini
-function wealthConc(iso) {
-  if (iso === 'USA' && US) {
-    const s = US.filter(r => r.top1_share != null).map(r => ({ year: r.year, v: r.top1_share }));
-    if (s.length) return { series: s, label: 'top 1% wealth share', fmt: pc };
-  }
-  // the WID top 1% share, the same concentration measure the rest of the atlas now leads with
-  if (SERIES.wealth_top1 && SERIES.wealth_top1[iso] && SERIES.wealth_top1[iso].length)
-    return { series: seriesOf('wealth_top1', iso), label: 'top 1% wealth share', fmt: pc };
-  return { series: seriesOf('wealth_gini', iso), label: 'wealth Gini', fmt: g2 };
 }
 
 // robust line: Theil-Sen slope (median pairwise) + median intercept. Outliers can't define their own baseline.
@@ -3096,26 +3098,11 @@ function buildAnswer(p, q) {
     f.text = t;
   }
 
-  else if (p.kind === 'divergence') {
-    const iso = p.iso;
-    const w = wealthConc(iso), inc = seriesOf('income_gini', iso);
-    if (!w.series.length || inc.length < 2) {
-      const alt = iso === 'USA' ? '' : ' Try the United States, where both series are long.';
-      showNotice(`Not enough overlapping wealth and income data for ${esc(BY_ISO[iso] ? BY_ISO[iso].name : iso)}.${alt}`);
-      return null;
-    }
-    const wFirst = w.series[0], wEnd = w.series[w.series.length - 1];
-    const iFirst = inc[0], iEnd = inc[inc.length - 1];
-    // shared indexing origin: the first income year at or after wealth starts (income is the sparser series)
-    const base = (inc.find(d => d.year >= wFirst.year) || iFirst).year;
-    const wPct = Math.round((wEnd.v / wFirst.v - 1) * 100), iPct = Math.round((iEnd.v / iFirst.v - 1) * 100);
-    ctx.metric = SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini'; ctx.lastIso = iso; f.isos = [iso];
-    f.mode = 'divergence'; f.diverge = { iso, w, inc, base };
-    f.text = `<strong>${esc(BY_ISO[iso] ? BY_ISO[iso].name : iso)}</strong>: ${w.label} rose from ` +
-      `<strong>${w.fmt(wFirst.v)}</strong> in ${wFirst.year} to <strong>${w.fmt(wEnd.v)}</strong> ` +
-      `(${wPct >= 0 ? '+' : ''}${wPct}%); income Gini went <strong>${g2(iFirst.v)}</strong> in ${iFirst.year} ` +
-      `to <strong>${g2(iEnd.v)}</strong> (${iPct >= 0 ? '+' : ''}${iPct}%).`;
-  }
+  // There is no second divergence branch. One stood here reading the Fed's
+  // distributional accounts for the United States and WID for everyone else, which put
+  // the US top 1% at 30.6 per cent against WID's 35.1 for the same year and the same
+  // idea. It sat unreachable behind the branch above, and is gone rather than left to
+  // be found and used.
 
   else if (p.kind === 'path') {
     const mx = META[p.x], my = META[p.y];
@@ -3508,12 +3495,10 @@ function buildAnswer(p, q) {
     ctx.metric = p.metric;
     const m = META[p.metric];
     const isos = p.isos.length ? p.isos : (ctx.lastIso ? [ctx.lastIso] : []);
-    if (m.us && (!isos.length || (isos.length === 1 && isos[0] === 'USA')) && US) {
-      const first = US[0], last = US.filter(r => r[m.us] != null).slice(-1)[0];
-      f.mode = 'us'; f.metric = p.metric; f.isos = ['USA']; ctx.lastIso = 'USA';
-      f.text = `<strong>US ${m.label}</strong>: <strong>${pc(last[m.us])}</strong> in ${last.year}, ` +
-        `from <strong>${pc(first[m.us])}</strong> in ${first.year}.`;
-    } else if (m.series && isos.length) {
+    // A United States branch stood here, reading the Fed's distributional accounts while
+    // every other country read WID. Nothing could reach it: the parser never produces the
+    // metric keys it tested for. It is gone rather than left as a second basis to fall into.
+    if (m.series && isos.length) {
       const iso = isos[0];
       const lv = latestValOf(p.metric, iso); if (!lv) return miss();
       const rk = rankOf(iso, p.metric);
@@ -3532,14 +3517,6 @@ function buildAnswer(p, q) {
     } else return miss();
   }
 
-  else if (p.kind === 'us_shares') {
-    ctx.metric = p.metric;
-    const m = META[p.metric];
-    const first = US[0], last = US.filter(r => r[m.us] != null).slice(-1)[0];
-    f.mode = 'us'; f.metric = p.metric; f.isos = ['USA']; ctx.lastIso = 'USA';
-    f.text = `<strong>US ${m.label}</strong>: <strong>${pc(last[m.us])}</strong> in ${last.year}, ` +
-      `from <strong>${pc(first[m.us])}</strong> in ${first.year}.`;
-  }
 
   return floorNote(f);
 
@@ -4467,7 +4444,7 @@ const FORM_DEF = {
   rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
   tiers: 'by tier', break: 'who breaks the pattern',
 };
-const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'us_shares', 'among'];
+const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'among'];
 // a typed question that names a measure turns the cube to that measure's face, so the
 // answer is computed on what was asked and not on whichever face happened to be up
 function adoptMetric(m) {
@@ -5392,33 +5369,6 @@ function drawChart() {
     }
   }
 
-  else if (mode === 'us') {
-    const focus = chain.slice().reverse().find(f => f.mode === 'us').metric;
-    const specs = [
-      ['top1_share', 'Top 1%', SLOTS[0]],
-      ['top10_share', 'Top 10%', SLOTS[1]],
-      ['bottom50_share', 'Bottom 50%', SLOTS[2]],
-    ];
-    const traces = specs.map(([key, name, color]) => {
-      const dim = focus && META[focus] && META[focus].us !== key;
-      return {
-        type: 'scatter', mode: 'lines', name,
-        x: US.filter(r => r[key] != null).map(r => r.year),
-        y: US.filter(r => r[key] != null).map(r => r[key] * 100),
-        line: { color, width: dim ? 1.2 : 2.2 },
-        opacity: dim ? 0.35 : 1,
-        hovertemplate: name + ': %{y:.1f}%<extra></extra>',
-      };
-    });
-    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
-      showlegend: true,
-      legend: { orientation: 'h', y: 1.08, font: { size: 11 } },
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { ticksuffix: '%', rangemode: 'tozero' }),
-      hovermode: 'x unified',
-    }), CFG);
-    title.textContent = 'US wealth shares, 1989 to 2025';
-    src.textContent = 'Source: Fed Distributional Financial Accounts, with SCF anchors. Share of total household net wealth.';
-  }
 
   else if (mode === 'scatter') {
     const sc = chain.slice().reverse().find(f => f.mode === 'scatter').scatter;
@@ -5870,35 +5820,9 @@ function drawChart() {
       provenance([pa.x, pa.y]);
   }
 
-  else if (mode === 'ratio_unused') {
-    const rt = chain.slice().reverse().find(f => f.mode === 'ratio').ratio;
-    let rows = rt.rows.slice(0, 12);
-    if (rt.highlight && !rows.some(r => r.geo_id === rt.highlight)) {
-      const h = rt.rows.find(r => r.geo_id === rt.highlight);
-      if (h) rows = rows.slice(0, 11).concat([h]);
-    }
-    rows = rows.slice().reverse();
-    const ramp = shadesOf(metricColor('wealth_top1'), rows.length);
-    Plotly.react(el, [{
-      type: 'bar', orientation: 'h',
-      y: rows.map(r => r.geo_name), x: rows.map(r => r.val),
-      marker: { color: rows.map((r, i) => r.geo_id === rt.highlight ? hlFill(rt.key) : ramp[i]),
-        line: { color: rows.map(r => r.geo_id === rt.highlight ? hlEdge() : 'rgba(0,0,0,0)'),
-                width: rows.map(r => r.geo_id === rt.highlight ? 2 : 0) } },
-      text: rows.map(r => r.val.toFixed(1) + 'x'),
-      textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
-      hovertemplate: '%{y}: %{text} the bottom half<extra></extra>',
-    }], Object.assign({}, BASE_LAYOUT, {
-      margin: { t: 8, r: 60, b: 38, l: 150 },
-      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: 'times what the poorest half hold', font: { size: 12 } } }),
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category' }),
-      bargap: 0.36,
-    }), CFG);
-    title.textContent = 'The richest tenth against the poorest half';
-    src.textContent = 'Top 10% share of household net wealth divided by the bottom 50% share, latest year per country. ' +
-      'A multiple, not an index: 10x means the top tenth hold ten times what the bottom half hold together. ' +
-      provenance(['wealth_top1']);
-  }
+  // The parked stacked-bar version of the ratio chart stood here. The live one above
+  // draws the three-way split, which carries the same reading and also shows the
+  // countries whose poorest half owes.
 
   else if (mode === 'turn') {
     const tn = chain.slice().reverse().find(f => f.mode === 'turn').turn;
@@ -6350,341 +6274,11 @@ function hideNotice() { document.getElementById('notice').hidden = true; }
 const VIEWS = ['ask', 'why', 'wealth', 'income', 'opportunity', 'wellbeing', 'db'];
 
 /* ── US county tier: the same ask cube, at county resolution ───────── */
-let US_COUNTY = null, US_STATE = null, US_NAMES = null, US_MANIFEST = null;
-const US_ABBR = { '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT','10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL','18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD','25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE','32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND','39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV','55':'WI','56':'WY','72':'PR' };
-const usLabel = { us_mobility:'upward mobility', us_econ_conn:'economic connectedness', us_cohesion:'cohesion', us_volunteering:'volunteering', us_homeownership:'homeownership', us_house_value:'home value', us_income_gini:'income Gini', us_median_income:'median income', us_poverty:'poverty', us_single_parent:'single-parent share', us_college:'college share', us_life_exp:'the age a forty-year-old reaches', us_le_gap:'the rich-poor gap in years lived after forty', us_credit_score:'credit score', us_debt_card:'credit-card debt', us_debt_mortgage:'mortgage debt', us_debt_auto:'auto debt', us_debt_student:'student debt', us_delinquency:'delinquency' };
-const usd0v = v => '$' + Math.round(v).toLocaleString('en-US');
-const pctv = v => (v * 100).toFixed(0) + '%';
-const usFmt = { us_mobility:v=>v.toFixed(2), us_econ_conn:v=>v.toFixed(2), us_cohesion:v=>v.toFixed(2), us_volunteering:pctv, us_homeownership:pctv, us_house_value:usd0v, us_income_gini:v=>v.toFixed(2), us_median_income:usd0v, us_poverty:pctv, us_single_parent:pctv, us_college:pctv, us_life_exp:v=>'age '+v.toFixed(1), us_le_gap:v=>v.toFixed(1)+' yrs', us_credit_score:v=>''+Math.round(v), us_debt_card:usd0v, us_debt_mortgage:usd0v, us_debt_auto:usd0v, us_debt_student:usd0v, us_delinquency:v=>(v*100).toFixed(1)+'%' };
-const usFmtOf = m => usFmt[m] || (v => '' + v);
-const usWorse = {};   // higher_is_worse per metric, from manifest
-function usAvail() { return US_COUNTY ? Object.keys(US_COUNTY).filter(k => usLabel[k] && Object.keys(US_COUNTY[k]).length) : []; }
+let US_COUNTY = null, US_NAMES = null;   // the county layer the opportunity face reads
 
-let US_INDEX = [];
-function usBuildIndex() {
-  US_INDEX = [];
-  for (const f in US_NAMES) US_INDEX.push({ norm: norm(US_NAMES[f]), fips: f });
-  US_INDEX.sort((a, b) => b.norm.length - a.norm.length);
-}
-function usFind(text) {
-  let t = ' ' + norm(text) + ' ';
-  const found = [];
-  for (const { norm: n, fips } of US_INDEX) {
-    if (n.length < 4) continue;
-    const needle = ' ' + n + ' ', at = t.indexOf(needle);
-    if (at !== -1) { if (!found.includes(fips)) found.push(fips); t = t.slice(0, at) + ' '.repeat(needle.length) + t.slice(at + needle.length); }
-  }
-  return { fips: found, residual: t };
-}
-
-const US_KEYWORDS = [
-  [/\bupward mobility\b|\bmobility\b|\bmove up\b|\bclimb\b/, 'us_mobility'],
-  [/\beconomic connect\w*\b|\bconnectedness\b|\bconnection\b|\bfriends?\b/, 'us_econ_conn'],
-  [/\bcohesion\b|\bclustering\b/, 'us_cohesion'],
-  [/\bvolunteer\w*\b/, 'us_volunteering'],
-  [/\bhomeowner\w*\b|\bhome ?ownership\b/, 'us_homeownership'],
-  [/\bhome values?\b|\bhouse values?\b|\bhousing\b|\bhome prices?\b|\bproperty values?\b/, 'us_house_value'],
-  [/\bthe rich[- ]poor\b|\blife gap\b|\bhealth gap\b|\brich live\w*\b|\blongevity gap\b/, 'us_le_gap'],
-  [/\blife expectancy\b|\blongevity\b|\blive longer\b/, 'us_life_exp'],
-  [/\bcredit[- ]?card debt\b|\bcard debt\b/, 'us_debt_card'],
-  [/\bcredit scores?\b|\bcredit\b/, 'us_credit_score'],
-  [/\bmortgage\w*\b/, 'us_debt_mortgage'],
-  [/\bauto loans?\b|\bcar loans?\b|\bauto debt\b/, 'us_debt_auto'],
-  [/\bstudent (loans?|debt)\b/, 'us_debt_student'],
-  [/\bdelinquen\w*\b|\bbehind on\b/, 'us_delinquency'],
-  [/\bmedian income\b/, 'us_median_income'],
-  [/\bpoverty\b|\bpoorest\b|\bpoor\b/, 'us_poverty'],
-  [/\bsingle[- ]parent\w*\b/, 'us_single_parent'],
-  [/\bcollege\b|\bdegrees?\b/, 'us_college'],
-  [/\bincome inequality\b|\bincome gini\b|\binequality\b|\bunequal\b|\bgini\b/, 'us_income_gini'],
-];
-function usDetect(r) {
-  const a = usAvail(), out = [];
-  for (const [re, id] of US_KEYWORDS) if (re.test(r) && a.includes(id) && !out.includes(id)) out.push(id);
-  return out;
-}
-function usLensDefault() { return usAvail().includes('us_house_value') ? 'us_house_value' : 'us_income_gini'; }
-
-const usHasName = f => US_NAMES[f] && !US_NAMES[f].startsWith(f);
-function usRanked(metric, dir) {
-  const m = US_COUNTY[metric] || {};
-  return Object.keys(m).filter(usHasName).map(f => ({ fips: f, v: m[f] }))
-    .sort((a, b) => dir === 'low' ? a.v - b.v : b.v - a.v);
-}
-function usPaired(x, y) {
-  const X = US_COUNTY[x] || {}, Y = US_COUNTY[y] || {}, out = [];
-  for (const f in X) if (Y[f] != null && X[f] != null && usHasName(f)) out.push({ fips: f, x: X[f], y: Y[f] });
-  return out;
-}
-const usName = f => US_NAMES[f] || f;
-
-const usCtx = { metric: 'us_mobility', lens: 'us_house_value' };
-let usSeq = 0;
-const usChain = [];
-
-function usNotice(html) { const n = document.getElementById('us-notice'); n.innerHTML = html; n.hidden = false; }
-function usHideNotice() { document.getElementById('us-notice').hidden = true; }
-
-function usAsk(q) {
-  usHideNotice();
-  const f = usAnswer(q);
-  if (!f) return;
-  usChain.push(f); usRender();
-  document.getElementById('us-q').value = '';
-}
-function usRemove(id) { const i = usChain.findIndex(f => f.id === id); if (i !== -1) usChain.splice(i, 1); usRender(); }
-
-function usAnswer(q) {
-  const r = norm(q);
-  const mets = usDetect(r);
-  const { fips } = usFind(r);
-  // a measure named but not in the loaded data
-  const namedUnavail = US_KEYWORDS.find(([re, id]) => re.test(r) && !usAvail().includes(id));
-  if (namedUnavail && !mets.length && !fips.length) {
-    usNotice(`${cap(usLabel[namedUnavail[1]])} is not in the loaded county data yet.`);
-    return null;
-  }
-  const most = /\bmost\b|\bhighest\b|\bworst\b|\bbiggest\b|\btop\b/.test(r);
-  const least = /\bleast\b|\blowest\b|\bbest\b|\bsmallest\b|\bfewest\b|\bbottom\b/.test(r);
-  const against = /\bagainst\b|\bvs\b|\bversus\b|\btrack\w*\b|\bpredict\w*\b/.test(r);
-  const tiers = /\btiers?\b|\bbands?\b|\bterciles?\b|\bthirds?\b/.test(r);
-  const brk = /\bbreaks? the (pattern|trend)\b|\boutliers?\b|\boff the (trend|line|pattern)\b|\bexceptions?\b|\bbeat\w* (the )?odds\b|\bpunch\w* above\b|\bdefy\w*\b/.test(r);
-  const lens = mets.find(m => m === 'us_income_gini' || m === 'us_house_value') ||
-    (/\bwealth\b|\bhome|\bhous|\bproperty\b/.test(r) ? 'us_house_value' : usCtx.lens);
-  const metric = mets.find(m => m !== lens) || (mets[0] !== lens ? mets[0] : null) || usCtx.metric;
-  const wealthLens = /\bhome values?\b|\bhous\w*\b|\bproperty\b/.test(r) && !/\bincome\b/.test(r);
-  const incomeLens = /\bincome (inequality|gini)\b/.test(r) && !/\bwealth|home|hous|property\b/.test(r);
-  const wantContrast = metric && !fips.length && !brk && !tiers &&
-    (/\bwealth or income\b|\bwhich (matters|explains|is it)\b|\band inequality\b|\bvs\.? income\b/.test(r) ||
-      (against && !wealthLens && !incomeLens));
-  const f = { id: ++usSeq, query: q };
-
-  if (wantContrast) {
-    const y = metric, xw = 'us_house_value', xi = 'us_income_gini';
-    const wPts = usPaired(xw, y), iPts = usPaired(xi, y);
-    const rW = pearson(wPts), rI = pearson(iPts);
-    if ((rW == null && rI == null) || (wPts.length < 12 && iPts.length < 12)) return usMiss();
-    usCtx.metric = y;
-    const parts = [];
-    if (rW != null) parts.push(`housing wealth at r = <strong>${rW.toFixed(2)}</strong>`);
-    if (rI != null) parts.push(`income inequality at r = <strong>${rI.toFixed(2)}</strong>`);
-    f.mode = 'uscontrast'; f.uc = { y, wPts, iPts, rW, rI };
-    f.text = `Across ${Math.max(wPts.length, iPts.length)} counties, ${usLabel[y]} tracks ${parts.join(', ')}.`;
-  }
-  else if (brk) {
-    const y = metric, x = (lens === y ? usLensDefault() : lens);
-    const pts = usPaired(x, y);
-    const fit = theilSen(pts);
-    if (!fit || pts.length < 12) return usMiss();
-    for (const p of pts) p.resid = p.y - (fit.slope * p.x + fit.intercept);
-    const s = pts.slice().sort((a, b) => b.resid - a.resid);
-    const over = s.slice(0, 3), under = s.slice(-3).reverse();
-    usCtx.metric = y; usCtx.lens = x;
-    f.mode = 'usscatter'; f.sc = { x, y, pts, fit, label: [...over, ...under].map(p => p.fips) };
-    const fmt = usFmtOf(y);
-    const say = a => `${esc(usName(a.fips))} <strong>${fmt(Math.abs(a.resid))}</strong> ${a.resid >= 0 ? 'above' : 'below'}`;
-    f.text = `Against ${usLabel[x]}, the counties furthest off the line on ${usLabel[y]}: ` +
-      `${say(over[0])} and ${say(over[1])} what it predicts; ${say(under[0])} and ${say(under[1])}.`;
-  }
-  else if (tiers) {
-    const y = metric, x = (lens === y ? usLensDefault() : lens);
-    const pool = usRanked(x, 'high');
-    if (pool.length < 12) return usMiss();
-    const hi = pool[Math.floor(pool.length / 3)].v, lo = pool[Math.floor(2 * pool.length / 3)].v;
-    const g = { high: [], mid: [], low: [] };
-    for (const f2 in US_COUNTY[x]) {
-      const xv = US_COUNTY[x][f2], yv = (US_COUNTY[y] || {})[f2];
-      if (yv == null) continue;
-      (xv >= hi ? g.high : xv <= lo ? g.low : g.mid).push(yv);
-    }
-    if (!g.high.length || !g.low.length) return usMiss();
-    const mean = a => a.reduce((s2, v) => s2 + v, 0) / a.length;
-    const mh = mean(g.high), mm = mean(g.mid), ml = mean(g.low), fmt = usFmtOf(y);
-    usCtx.metric = y; usCtx.lens = x;
-    f.mode = 'ustiers'; f.tiers = { x, y, rows: [
-      { label: `Top third by ${usLabel[x]}`, v: mh, n: g.high.length },
-      { label: 'Middle third', v: mm, n: g.mid.length },
-      { label: `Bottom third`, v: ml, n: g.low.length } ] };
-    f.text = `Counties in the top third by ${usLabel[x]} average <strong>${fmt(mh)}</strong> on ${usLabel[y]}; ` +
-      `the bottom third <strong>${fmt(ml)}</strong>.`;
-  }
-  else if ((against || wealthLens || incomeLens) && metric) {
-    const y = metric, x = incomeLens ? 'us_income_gini' : (lens === y ? usLensDefault() : lens);
-    const pts = usPaired(x, y);
-    if (pts.length < 12) return usMiss();
-    const rr = pearson(pts);
-    usCtx.metric = y; usCtx.lens = x;
-    f.mode = 'usscatter'; f.sc = { x, y, pts, r: rr, label: [] };
-    f.text = `Across ${pts.length} counties, ${usLabel[y]} ${corrClause(rr, usLabel[x])} (r = ${rr.toFixed(2)}).`;
-  }
-  else if (fips.length) {
-    const only = fips[0], isState = only.length === 2;
-    const store = isState ? US_STATE : US_COUNTY;
-    usCtx.metric = mets[0] || usCtx.metric;
-    const parts = usAvail().filter(m => (store[m] || {})[only] != null)
-      .slice(0, 6).map(m => `${usLabel[m]} <strong>${usFmtOf(m)(store[m][only])}</strong>`);
-    if (!parts.length) return usMiss();
-    f.mode = 'usbars'; f.bar = { key: usCtx.metric, dir: 'high', rows: usRanked(usCtx.metric, 'high').slice(0, 12), highlight: isState ? null : only };
-    f.text = `<strong>${esc(usName(only))}</strong>: ${parts.join(', ')}.`;
-  }
-  else if (most || least || metric) {
-    const key = metric;
-    const worse = usWorse[key];
-    const dir = least ? 'low' : most ? 'high' : (worse ? 'high' : 'high');
-    const pool = usRanked(key, dir);
-    if (!pool.length) return usMiss();
-    const top = pool.slice(0, 12), fmt = usFmtOf(key);
-    usCtx.metric = key;
-    f.mode = 'usbars'; f.bar = { key, dir, rows: top };
-    const three = top.slice(0, 3).map(p => `${esc(usName(p.fips))} <strong>${fmt(p.v)}</strong>`).join(', ');
-    f.text = `${dir === 'high' ? 'Highest' : 'Lowest'} ${usLabel[key]} by county: ${three}.`;
-  }
-  else return usMiss();
-
-  return f;
-  function usMiss() { usNotice('Try a measure ("upward mobility", "the rich-poor life gap", "credit score"), "against home values", "across home-value tiers", "who breaks the pattern", or a state.'); return null; }
-}
-
-/* ── US chips ──────────────────────────────────────────────────────── */
-function usChips() {
-  const el = document.getElementById('us-chips');
-  const av = usAvail();
-  const aspects = ['us_mobility', 'us_le_gap', 'us_life_exp', 'us_econ_conn'].filter(m => av.includes(m));
-  const contrast = m => `${usLabel[m]} and inequality`;
-  let list;
-  if (!usChain.length) {
-    list = aspects.slice(0, 3).map(contrast).concat(['who breaks the pattern']);
-  } else {
-    const last = usChain[usChain.length - 1];
-    const others = aspects.filter(m => m !== usCtx.metric).slice(0, 2).map(contrast);
-    if (last.mode === 'uscontrast') list = ['who breaks the pattern', `${usLabel[usCtx.metric]} across income inequality tiers`, ...others];
-    else if (last.mode === 'usscatter') list = ['who breaks the pattern', `${usLabel[usCtx.metric]} across income inequality tiers`, ...others];
-    else if (last.mode === 'ustiers') list = ['who breaks the pattern', contrast(usCtx.metric), ...others];
-    else list = [contrast(usCtx.metric), ...others, 'who breaks the pattern'];
-  }
-  el.innerHTML = list.map(c => `<button type="button" class="chip">${c}</button>`).join('');
-  el.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => usAsk(b.textContent)));
-}
-
-function usRender() {
-  const sess = document.getElementById('us-session');
-  const list = document.getElementById('us-facts');
-  usChips();
-  if (!usChain.length) { sess.hidden = true; return; }
-  sess.hidden = false;
-  list.innerHTML = usChain.map((f, i) =>
-    `<li><span class="n">${i + 1}</span><span class="t">${f.text}</span>` +
-    `<button class="x" data-id="${f.id}" title="remove">&times;</button></li>`).join('');
-  list.querySelectorAll('.x').forEach(b => b.addEventListener('click', () => usRemove(Number(b.dataset.id))));
-  const el = document.getElementById('us-facets');
-  const lastMode = usChain[usChain.length - 1].mode;
-  el.innerHTML = `<span class="facet-lead">cell</span><span class="facet"><span class="k">measure</span> ${usLabel[usCtx.metric]}</span>` +
-    (lastMode === 'uscontrast' ? `<span class="facet lens"><span class="k">against</span> wealth vs income</span>`
-      : (lastMode === 'usscatter' || lastMode === 'ustiers') ? `<span class="facet lens"><span class="k">against</span> ${usLabel[usCtx.lens]}</span>` : '') +
-    `<span class="facet"><span class="k">geography</span> US counties</span>`;
-  usDrawChart();
-}
-
-function usDrawChart() {
-  const f = usChain[usChain.length - 1];
-  const el = document.getElementById('us-chart');
-  const title = document.getElementById('us-chart-title');
-  const src = document.getElementById('us-chart-src');
-  src.textContent = 'Source: Opportunity Insights (Opportunity Atlas, Social Capital Atlas) and the health tables. County level, latest release.';
-
-  if (f.mode === 'usbars') {
-    let rows = f.bar.rows.slice();
-    if (f.bar.highlight && !rows.some(r => r.fips === f.bar.highlight)) {
-      const own = usRanked(f.bar.key, 'high').find(r => r.fips === f.bar.highlight);
-      if (own) rows = rows.concat([own]);
-    }
-    rows = rows.reverse();
-    const fmt = usFmtOf(f.bar.key);
-    Plotly.react(el, [{
-      type: 'bar', orientation: 'h', y: rows.map(r => usName(r.fips)), x: rows.map(r => r.v),
-      marker: { color: rows.map(r => r.fips === f.bar.highlight ? '#eb6834' : '#2a78d6') },
-      text: rows.map(r => fmt(r.v)), textposition: 'outside',
-      textfont: { size: 11, color: cssVar('--ink-2', '#555555') }, hovertemplate: '%{y}: %{text}<extra></extra>',
-    }], Object.assign({}, BASE_LAYOUT, { margin: { t: 8, r: 80, b: 30, l: 190 }, bargap: 0.35 }), CFG);
-    title.textContent = `${cap(usLabel[f.bar.key])}, ${f.bar.dir === 'high' ? 'highest' : 'lowest'} counties`;
-  }
-  else if (f.mode === 'ustiers') {
-    const rows = f.tiers.rows.slice().reverse(), fmt = usFmtOf(f.tiers.y);
-    Plotly.react(el, [{
-      type: 'bar', orientation: 'h', y: rows.map(r => r.label), x: rows.map(r => r.v),
-      marker: { color: ['#1baf7a', '#c9d3e0', '#eb6834'] },
-      text: rows.map(r => fmt(r.v) + '  ·  ' + r.n), textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
-      hovertemplate: '%{y}: %{text} counties<extra></extra>',
-    }], Object.assign({}, BASE_LAYOUT, { margin: { t: 8, r: 90, b: 30, l: 190 }, bargap: 0.4 }), CFG);
-    title.textContent = `${cap(usLabel[f.tiers.y])} by ${usLabel[f.tiers.x]} tier`;
-  }
-  else if (f.mode === 'usscatter') {
-    const sc = f.sc, fx = usFmtOf(sc.x), fy = usFmtOf(sc.y);
-    const labelSet = new Set(sc.label || []);
-    const bg = sc.pts.filter(p => !labelSet.has(p.fips)), named = sc.pts.filter(p => labelSet.has(p.fips));
-    const mk = a => ({ x: a.map(p => p.x), y: a.map(p => p.y), text: a.map(p => usName(p.fips)),
-      customdata: a.map(p => [fx(p.x), fy(p.y)]) });
-    const traces = [{ type: 'scatter', mode: 'markers', ...mk(bg), marker: { color: '#c9d3e0', size: 5 },
-      hovertemplate: '%{text}<br>' + usLabel[sc.x] + ': %{customdata[0]}<br>' + usLabel[sc.y] + ': %{customdata[1]}<extra></extra>' }];
-    if (sc.fit) {
-      const xs = sc.pts.map(p => p.x), lo = Math.min(...xs), hi = Math.max(...xs);
-      traces.push({ type: 'scatter', mode: 'lines', showlegend: false, hoverinfo: 'skip',
-        x: [lo, hi], y: [sc.fit.slope * lo + sc.fit.intercept, sc.fit.slope * hi + sc.fit.intercept],
-        line: { color: '#98a4b8', width: 1.5, dash: 'dash' } });
-    }
-    if (named.length) traces.push({ type: 'scatter', mode: 'markers+text', ...mk(named),
-      marker: { color: '#eb6834', size: 10, line: { color: '#fff', width: 1.5 , shape: 'spline', smoothing: 0.6 } },
-      textposition: 'top center', textfont: { size: 10, color: cssVar('--ink', '#1a2744') },
-      hovertemplate: '%{text}<br>' + usLabel[sc.x] + ': %{customdata[0]}<br>' + usLabel[sc.y] + ': %{customdata[1]}<extra></extra>' });
-    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
-      margin: { t: 8, r: 12, b: 44, l: 60 },
-      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: usLabel[sc.x], font: { size: 12 } } }),
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: usLabel[sc.y], font: { size: 12 } } }),
-    }), CFG);
-    title.textContent = (sc.fit ? `Who breaks the pattern: ` : '') + `${cap(usLabel[sc.y])} against ${usLabel[sc.x]}, by county`;
-    src.textContent = (sc.fit ? 'Dashed line is a robust (Theil-Sen) fit; labelled counties sit furthest from it. ' : '') + src.textContent;
-  }
-  else if (f.mode === 'uscontrast') {
-    const uc = f.uc, fy = usFmtOf(uc.y);
-    const panel = (pts, xaxis, color) => [{ type: 'scatter', mode: 'markers', xaxis, yaxis: 'y',
-      x: pts.map(p => p.x), y: pts.map(p => p.y), customdata: pts.map(p => usName(p.fips)),
-      marker: { color, size: 4, opacity: 0.45 }, showlegend: false,
-      hovertemplate: '%{customdata}<br>%{x} · ' + usLabel[uc.y] + ' %{y}<extra></extra>' }];
-    const traces = [...panel(uc.wPts, 'x', '#2a78d6'), ...panel(uc.iPts, 'x2', '#98a4b8')];
-    const rTxt = (r, dom) => ({ x: dom, y: 1.06, xref: 'paper', yref: 'paper', xanchor: 'center',
-      text: r == null ? '' : `r = ${r.toFixed(2)}`, showarrow: false, font: { size: 12, color: cssVar('--ink', '#1a2744') } });
-    Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
-      margin: { t: 24, r: 10, b: 42, l: 58 },
-      annotations: [rTxt(uc.rW, 0.23), rTxt(uc.rI, 0.80)],
-      xaxis: { domain: [0, 0.46], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'home value', font: { size: 12 } } },
-      xaxis2: { domain: [0.54, 1], gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'income Gini', font: { size: 12 } } },
-      yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: usLabel[uc.y], font: { size: 12 } } },
-    }), CFG);
-    title.textContent = `${cap(usLabel[uc.y])}, against housing wealth and income inequality`;
-    src.textContent = 'One county per dot, against local home value and against local income Gini. Source: Opportunity Insights, county covariates.';
-  }
-}
-
-function initUS() {
-  // the United States view was removed; its engine stays for the commuting-zone data
-  // the opportunity face reads, but there is no longer anything on the page to wire.
-  if (!document.getElementById('us-form')) return;
-  const loaded = document.getElementById('us-loaded'), empty = document.getElementById('us-empty');
-  if (!US_COUNTY || !usAvail().length) { if (loaded) loaded.hidden = true; if (empty) empty.hidden = false; return; }
-  loaded.hidden = false; empty.hidden = true;
-  if (US_MANIFEST) for (const m of US_MANIFEST.metrics) usWorse[m.id] = m.higher_is_worse;
-  for (const f in US_NAMES) { const p = US_NAMES[f].split(', '); if (p.length === 3) US_NAMES[f] = p[0] + ', ' + p[2]; }
-  usBuildIndex();
-  const av = usAvail();
-  document.getElementById('us-coverage').innerHTML =
-    `${(US_MANIFEST ? US_MANIFEST.counties_total : 3000).toLocaleString('en-US')} counties, ${av.length} measures: ` +
-    av.map(m => usLabel[m]).join(', ') + '.';
-  document.getElementById('us-form').addEventListener('submit', e => {
-    e.preventDefault(); const v = document.getElementById('us-q').value.trim(); if (v) usAsk(v);
-  });
-  document.getElementById('us-clear').addEventListener('click', () => { usChain.length = 0; usCtx.metric = 'us_mobility'; usCtx.lens = usLensDefault(); usRender(); });
-  usChips();
-}
+// The standalone United States page was removed. Its reader, its chart and its own
+// question grammar went with it; the commuting-zone and county data it used is read
+// by the opportunity face instead, through oppAnswer and drawOpp above.
 
 const WHY_ISO = 'USA';
 // syncChartTheme lives in drawChart, which the Why page never goes through: without
@@ -7319,8 +6913,6 @@ function boot() {
   });
   renderTable();
   fillCoverage();
-  initUS();
-
   if (location.hash.length > 1) {
     // a shared link replays its chain, then the URL goes clean so a reload starts blank
     location.hash.slice(1).split('|').slice(0, 12)
@@ -7389,7 +6981,6 @@ const opt = url => loadJson(url).catch(() => ({}));   // modules that may not ex
 Promise.all([
   loadJson('data/wealth_latest.json'),
   loadJson('data/wealth_timeseries.json'),
-  loadJson('data/us_longrun.json'),
   opt('data/geo_names.json'),
   opt('data/income_gini.json'),
   opt('data/life_expectancy.json'),
@@ -7410,9 +7001,9 @@ Promise.all([
   opt('data/us_names.json'),
   opt('data/us_manifest.json'),
   opt('data/us_cz.json'),
-]).then(([latest, ts, us, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50,
+]).then(([latest, ts, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50,
   itop1, itop10, imid40, ibot50, hprice, usCounty, usState, usNames, usManifest, usCz]) => {
-  LATEST = latest; US = us;
+  LATEST = latest;
   // spine is the union of every country any module knows, named from geo_names
   const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
   for (const iso in names) BY_ISO[iso] = { name: names[iso], latest: null };
@@ -7439,7 +7030,7 @@ Promise.all([
   if (imid40 && Object.keys(imid40).length) SERIES.income_middle40 = toSeries(imid40);
   if (ibot50 && Object.keys(ibot50).length) SERIES.income_bottom50 = toSeries(ibot50);
   if (hprice && Object.keys(hprice).length) SERIES.house_price = toSeries(hprice);
-  if (usCounty && Object.keys(usCounty).length) { US_COUNTY = scrubUs(usCounty); US_STATE = scrubUs(usState); US_NAMES = usNames; US_MANIFEST = usManifest; }
+  if (usCounty && Object.keys(usCounty).length) { US_COUNTY = scrubUs(usCounty); US_NAMES = usNames; }
   if (usCz && Object.keys(usCz).length) US_CZ = usCz;
 
   buildIndex();
