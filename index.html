@@ -1389,10 +1389,10 @@ const META = {
     poolSrc: 'Source: Global Carbon Budget via OWID, latest year per country.',
   },
   poverty_rate: {
-    label: 'poverty rate', topic: 'wellbeing', series: true, file: 'data/poverty_rate.json',
+    label: 'extreme poverty', topic: 'wellbeing', series: true, file: 'data/poverty_rate.json',
     higherWorse: true, fmt: pc, fmtD: pc, hover: '%{y:.1%}',
-    lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. Share below $2.15 a day (2017 PPP).',
-    poolSrc: 'Source: World Bank PIP via OWID. Share below the international poverty line, latest survey per country.',
+    lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. The share of people living on less than $2.15 a day in 2017 purchasing power dollars, which is the line for surviving, not the line for getting by. In the richer third of countries the median reading is a quarter of one per cent and eight countries read exactly zero, so this measure says almost nothing about a rich country. A relative line, half of what the middle person has, would say something, and the atlas does not hold one.',
+    poolSrc: 'Source: World Bank PIP via OWID. The share below $2.15 a day in 2017 purchasing power dollars, latest survey per country. This is the survival line: across the richer third of countries the median reading is a quarter of one per cent, so a ranking of rich countries on it is a ranking of rounding.',
   },
   wealth_top1: {
     label: 'wealth concentration', topic: 'wealth', series: true, giniFam: true, concFam: true, file: 'data/wealth_top1.json',
@@ -1454,8 +1454,8 @@ const META = {
   gdp_pc: {
     label: 'GDP per person', topic: 'income', series: true, file: 'data/gdp_pc.json',
     fmt: usd0, fmtD: usd0, hover: '$%{y:,.0f}',
-    lineSrc: 'Source: Maddison and World Bank via the Global Carbon Budget dataset. GDP per person, international dollars.',
-    poolSrc: 'Source: GDP per person via OWID, latest year per country.',
+    lineSrc: 'Source: Maddison Project Database 2023, via the Global Carbon Budget dataset at Our World in Data. GDP per person in international dollars at 2011 prices, a different base year and a different accounting basis from the 2017 purchasing power dollars the daily income figures use.',
+    poolSrc: 'Source: Maddison Project Database 2023 via OWID. GDP per person, 2011 international dollars, latest year per country.',
   },
   top1_wealth_share: { label: 'top 1% share', topic: 'wealth', snap: true, us: 'top1_share', fmt: pc, fmtD: pc },
   top10_wealth_share: { label: 'top 10% share', topic: 'wealth', snap: true, us: 'top10_share', fmt: pc, fmtD: pc },
@@ -1508,6 +1508,24 @@ function fitnessFlag(fit, note) {
   if (!fit || fit.level === 'ok') return '';
   const cls = fit.level === 'refuse' ? 'bad' : 'thin';
   return ` <span class="flag ${cls}">${esc(note)}</span>`;
+}
+// A measure sitting on its floor everywhere in the set being read is not answering the
+// question, and the reading should say so rather than print a confident 0.0%. Extreme
+// poverty is the case the atlas actually has: across the richer third of countries the
+// median reading is a quarter of one per cent.
+function floorNote(f) {
+  if (!f || !f.text) return f;
+  if ((f.metricUsed || ctx.metric) !== 'poverty_rate') return f;
+  const isos = (f.isos || []).filter(i => BY_ISO[i]);
+  const vals = isos.map(i => { const s = seriesOf('poverty_rate', i); return s.length ? s[s.length - 1].v : null; })
+    .filter(v => v != null);
+  if (!vals.length || vals.some(v => v >= 0.01)) return f;
+  f.text += ` <em>This counts people living on under $2.15 a day, which is the line for surviving ` +
+    `rather than the line for getting by. ${isos.length === 1 ? 'Here it runs' : 'For every one of these it runs'} ` +
+    `under one per cent, as it does across nearly every rich country, so what you are reading is the ` +
+    `floor of the measure and not the state of the place. What the person in the middle lives on ` +
+    `carries more.</em>`;
+  return f;
 }
 function provenance(keys) {
   // series that came to exist the same way and run to the same year are named together,
@@ -1694,7 +1712,7 @@ const FACET_MEASURES = {
   wealth: [['wealth_top1', 'top 1% share'], ['wealth_gini', 'wealth Gini'], ['wealth_bottom50', 'bottom 50% share'],
            ['house_price', 'house prices']],
   income: [['income_top1', 'top 1% share'], ['income_middle40', 'the middle 40%'], ['income_gini', 'income Gini'],
-           ['median_income', 'median income'], ['poverty_rate', 'poverty rate']],
+           ['median_income', 'median income'], ['poverty_rate', 'living on under $2.15 a day']],
   health: [['life_exp', 'life expectancy'], ['life_satisfaction', 'life satisfaction']],
 };
 const facetMeasureIdx = { wealth: 0, income: 0, health: 0 };
@@ -2503,26 +2521,58 @@ function buildAnswer(p, q) {
   }
 
   else if (p.kind === 'ratio') {
-    // the top tenth against the bottom half, as a multiple anyone can hold in their head
-    const rows = LATEST
-      .filter(x => x.top10_wealth_share != null && x.bottom50_wealth_share != null && x.bottom50_wealth_share > 0.0005)
+    // The top tenth against the bottom half, as a multiple anyone can hold in their head.
+    // In five countries the poorest half owns less than nothing, so there is no multiple
+    // to quote: you cannot divide by a negative and get a number that means anything.
+    // Those countries are named rather than dropped, because they are the far end of the
+    // same question, not a gap in it.
+    // the same set every other ranking on this page uses: most of the 213 countries are
+    // regional fills rather than measurements, and a middle of the pack taken over those
+    // describes the model, not the world
+    const narrow = rankNarrowed(), rt = narrow ? richThird() : null;
+    const usable = LATEST.filter(x => x.top10_wealth_share != null && x.bottom50_wealth_share != null
+      && (!rt || rt.has(x.geo_id)) && inScope(x.geo_id, null));
+    const rows = usable.filter(x => x.bottom50_wealth_share > 0.0005)
       .map(x => ({ geo_id: x.geo_id, geo_name: x.geo_name, val: x.top10_wealth_share / x.bottom50_wealth_share, year: x.year }))
       .sort((a, b) => b.val - a.val);
+    const owing = usable.filter(x => x.bottom50_wealth_share <= 0.0005)
+      .map(x => ({ geo_id: x.geo_id, geo_name: x.geo_name, v: x.bottom50_wealth_share, year: x.year }))
+      .sort((a, b) => a.v - b.v);
     if (!rows.length) return miss();
     const iso = p.iso || ctx.lastIso || null;
     const hit = iso ? rows.find(x => x.geo_id === iso) : null;
+    const owe = iso ? owing.find(x => x.geo_id === iso) : null;
     const med = rows[Math.floor(rows.length / 2)];
     f.mode = 'ratio';
-    f.ratio = { rows, highlight: hit ? hit.geo_id : null };
-    if (hit) {
+    f.ratio = { rows, owing, highlight: hit ? hit.geo_id : owe ? owe.geo_id : null,
+      inRanking: !!hit };
+    const names = a => a.length === 1 ? esc(theName(a[0].geo_id))
+      : a.slice(0, -1).map(x => esc(theName(x.geo_id))).join(', ') + ' and ' + esc(theName(a[a.length - 1].geo_id));
+    const set = narrow ? `the ${rows.length} countries in the richer third` : `${rows.length} countries`;
+    const tail = owing.length
+      ? ` In ${names(owing)} there is no multiple to give, because the poorest half there owes more ` +
+        `than it owns. ${owing.length === 1 ? 'That country sits' : 'Those sit'} outside both the ranking ` +
+        `and the middle of the pack.`
+      : '';
+    if (owe) {
+      ctx.lastIso = owe.geo_id; f.isos = [owe.geo_id];
+      f.text = `In <strong>${esc(theName(owe.geo_id))}</strong> the question has no answer as a multiple. The ` +
+        `poorest half of adults owns <strong>less than nothing</strong>: their debts come to ` +
+        `${pc(Math.abs(owe.v))} of all the household wealth in the country more than their assets do ` +
+        `(${owe.year}), so the richest tenth hold more than everything there is. Where the poorest half ` +
+        `does own something, the widest gap among ${set} is ${rows[0].val.toFixed(1)} times, in ` +
+        `${esc(theName(rows[0].geo_id))}, and the middle of that pack is ${med.val.toFixed(1)} times.` +
+        (owing.length > 1 ? ` ${owing.length - 1} other ${owing.length === 2 ? 'country is' : 'countries are'} in the same position: ` +
+          names(owing.filter(x => x.geo_id !== owe.geo_id)) + '.' : '');
+    } else if (hit) {
       ctx.lastIso = hit.geo_id; f.isos = [hit.geo_id];
-      f.text = `In <strong>${esc(hit.geo_name)}</strong> the richest tenth hold ` +
+      f.text = `In <strong>${esc(theName(hit.geo_id))}</strong> the richest tenth hold ` +
         `<strong>${hit.val.toFixed(1)} times</strong> what the poorest half hold (${hit.year}). ` +
-        `Across ${rows.length} countries the middle of the pack is ${med.val.toFixed(1)} times.`;
+        `Across ${set} the middle of the pack is ${med.val.toFixed(1)} times.` + tail;
     } else {
       f.text = `The richest tenth hold <strong>${rows[0].val.toFixed(1)} times</strong> what the poorest half hold in ` +
-        `${esc(rows[0].geo_name)}, ${rows[1].val.toFixed(1)} times in ${esc(rows[1].geo_name)}. ` +
-        `Across ${rows.length} countries the middle of the pack is <strong>${med.val.toFixed(1)} times</strong>.`;
+        `${esc(theName(rows[0].geo_id))}, ${rows[1].val.toFixed(1)} times in ${esc(theName(rows[1].geo_id))}. ` +
+        `Across ${set} the middle of the pack is <strong>${med.val.toFixed(1)} times</strong>.` + tail;
     }
   }
 
@@ -3160,7 +3210,7 @@ function buildAnswer(p, q) {
       f.regionKey = reg; f.fromYear = p.year || null; f.toYear = p.until || null; f.metricUsed = key; ctx.lastRegion = reg;
       f.text = `${REGION_LABEL[reg]} median ${m.label} over time: <strong>${m.fmt(from.v)}</strong> in ${from.year} to ` +
         `<strong>${m.fmt(to.v)}</strong> in ${to.year}, ${d >= 0 ? '+' : ''}<strong>${m.fmtD(Math.abs(d))}</strong>.`;
-      return f;
+      return floorNote(f);
     }
     if (!isos.length) { showNotice('Ask about a country first, then "over time".'); return null; }
     f.isos = isos.slice(0, 8); ctx.lastIso = f.isos[f.isos.length - 1];
@@ -3245,7 +3295,7 @@ function buildAnswer(p, q) {
       `from <strong>${pc(first[m.us])}</strong> in ${first.year}.`;
   }
 
-  return f;
+  return floorNote(f);
 
   function barFor(key, highlightIso) {
     const pool = rankedPool(key, 'high', null);
@@ -4357,7 +4407,7 @@ function oppAnswer(q, strict) {
     { k: 'us_econ_conn',   lab: 'who you know',      face: 'opportunity', fmt: v => v.toFixed(2) },
     { k: 'us_income_gini', lab: 'income gap',        face: 'income',      fmt: v => v.toFixed(2) },
     { k: 'us_house_value', lab: 'house value',       face: 'wealth',      fmt: v => '$' + Math.round(v).toLocaleString('en-US') },
-    { k: 'us_le_gap',      lab: 'rich-poor life gap', face: 'health',     fmt: v => v.toFixed(1) + 'y' },
+    { k: 'us_le_gap',      lab: 'rich-poor life gap at 40', face: 'health', fmt: v => v.toFixed(1) + 'y' },
   ];
   if (/\bfaces\b|\bagree\b|\bfour\b|\ball of (them|it)\b|\btogether\b|\bsame places\b|\boverlap\b|\bsame counties\b|\bone country\b/.test(r)) {
     if (!US_COUNTY || !US_COUNTY.us_mobility) { showNotice('The county layer is not loaded.'); return null; }
@@ -4490,11 +4540,15 @@ function oppAnswer(q, strict) {
     const withMob = pts.filter(p => p.mob != null);
     const rr = pearson(withMob.map(p => ({ x: p.m1, y: p.mob })));
     f.opp = { kind: 'life', pts, gm, gf };
-    f.text = `Across <strong>${pts.length}</strong> US commuting zones, a man in the poorest quarter of ` +
-      `households lives <strong>${gm.toFixed(1)} years</strong> less than one in the richest quarter of ` +
-      `the same zone. For women it is <strong>${gf.toFixed(1)} years</strong>. ` +
-      `Where you live matters about as much: a poor man's life expectancy runs from ` +
-      `<strong>${lo.m1.toFixed(1)}</strong> in ${esc(lo.name)} to <strong>${hi.m1.toFixed(1)}</strong> ` +
+    // These are ages reached, not years remaining: the source measures from forty, so a
+    // value of 76 means a forty-year-old is expected to reach seventy-six. Saying "lives
+    // to 76" keeps that straight; saying "life expectancy is 76" would not, because the
+    // country figures elsewhere on this page are measured from birth.
+    f.text = `Across <strong>${pts.length}</strong> US commuting zones, a man of forty in the poorest ` +
+      `quarter of households lives <strong>${gm.toFixed(1)} years</strong> less than one in the richest ` +
+      `quarter of the same zone. For women it is <strong>${gf.toFixed(1)} years</strong>. ` +
+      `Where you live matters about as much: a poor man of forty lives to ` +
+      `<strong>${lo.m1.toFixed(1)}</strong> in ${esc(lo.name)} and to <strong>${hi.m1.toFixed(1)}</strong> ` +
       `in ${esc(hi.name)}, a spread of ${(hi.m1 - lo.m1).toFixed(1)} years for the same income group.` +
       (rr != null ? ` <em>Poor men live longer in the zones where poor children climb furthest ` +
         `(r = ${rr.toFixed(2)} against upward mobility, ${withMob.length} zones).</em>` : '');
@@ -4575,7 +4629,8 @@ function drawOpp(f) {
       `published for the fewest. This is the atlas's own claim tested at a second scale: the four ` +
       `faces disagree between countries, and they disagree between counties inside one of them. ` +
       `Sources: Opportunity Insights, the Social Capital Atlas, the Health Inequality Project, ` +
-      `and the American Community Survey.`;
+      `and the American Community Survey.` +
+      o.cols.map(c => droppedNote(c.k)).join('');
   } else if (o.kind === 'pair') {
     const sx = o.x.k === 'us_mobility', sy = o.y.k === 'us_mobility';
     Plotly.react(el, [{
@@ -4597,7 +4652,8 @@ function drawOpp(f) {
       `These are two different faces of the cube measured in the same places, which is only possible ` +
       `in this one country. A correlation across counties, not a mechanism inside any of them. ` +
       `Sources: Opportunity Insights, the Social Capital Atlas, the Health Inequality Project, ` +
-      `and the American Community Survey.`;
+      `and the American Community Survey.` +
+      droppedNote(o.x.k) + droppedNote(o.y.k);
   } else if (o.kind === 'conn') {
     Plotly.react(el, [{
       type: 'scatter', mode: 'markers',
@@ -4689,10 +4745,13 @@ function drawOpp(f) {
     }), CFG);
     title.textContent = 'How long the rich and the poor live, by commuting zone';
     src.textContent =
-      `Each dot is one commuting zone, plotted by how long its poorest quarter lives against how ` +
-      `long its richest quarter lives. On the dashed line they would live the same length of time; ` +
-      `nowhere does. Life expectancy at 40, race-adjusted, so zones are compared on something other ` +
-      `than who lives in them. Median gap ${o.gm.toFixed(1)} years for men and ${o.gf.toFixed(1)} for ` +
+      `Each dot is one commuting zone, plotted by the age its poorest quarter reaches against the ` +
+      `age its richest quarter reaches. On the dashed line they would live the same length of time; ` +
+      `nowhere does. Both axes are life expectancy measured from age forty, so 76 means a ` +
+      `forty-year-old is expected to reach seventy-six, and these numbers are not the ones you see ` +
+      `quoted for a whole country, which are measured from birth and run lower. Race-adjusted, so ` +
+      `zones are compared on something other than who lives in them. ` +
+      `Median gap ${o.gm.toFixed(1)} years for men and ${o.gf.toFixed(1)} for ` +
       `women. Source: Chetty et al, the Health Inequality Project, deaths 2001 to 2014. This is one ` +
       `country: no source publishes the same gap in a form that compares across borders.`;
   } else if (o.kind === 'scatter') {
@@ -5183,8 +5242,11 @@ function drawChart() {
         `uses: same direction, smaller gap. Markers show where a survey landed; the line between them is ` +
         `drawn, not measured. Two countries hold this so far. ` + provenance(['house_price', 'median_income'])
       : `Both indexed to ${rc.base} = 100, so the gap between them is the answer. ` +
-      `These are not like for like: output per person comes from national accounts, the median from household surveys, ` +
-      `and the two are built on different definitions. Read the shape of the gap, not the exact percentages. ` +
+      `These are not like for like. Output per person is the Maddison Project series in international ` +
+      `dollars at 2011 prices, built from national accounts; the median is a household survey in 2017 ` +
+      `purchasing power dollars. Different base years, different definitions, different collectors. ` +
+      `Indexing is what lets them share an axis at all, and it is why the shape of the gap is the ` +
+      `reading and the exact percentages are not. ` +
       `Markers show where a survey actually landed; the line between them is drawn, not measured. ` +
       provenance(['gdp_pc', 'median_income']);
   }
@@ -5286,37 +5348,55 @@ function drawChart() {
 
   else if (mode === 'ratio') {
     const rt = chain.slice().reverse().find(f => f.mode === 'ratio').ratio;
-    let rows = rt.rows.slice(0, 12);
-    if (rt.highlight && !rows.some(r => r.geo_id === rt.highlight)) {
+    // The countries where the poorest half owes more than it owns are always drawn, not
+    // only when one of them is the country asked about. They are the far end of this
+    // scale, and a picture that stops where the scale turns negative hides the end of it.
+    const owing = (rt.owing || []).slice();
+    let top = rt.rows.slice(0, Math.max(6, 12 - owing.length));
+    if (rt.highlight && !top.some(r => r.geo_id === rt.highlight)) {
       const h = rt.rows.find(r => r.geo_id === rt.highlight);
-      if (h) rows = rows.slice(0, 11).concat([h]);
+      if (h) top = top.slice(0, -1).concat([h]);
     }
-    rows = rows.slice().reverse();
-    // the whole population, split three ways: the picture of the fact, not the fact restated
+    // most concentrated at the top of the picture, the countries in debt below them
+    const rows = top.concat(owing).slice().reverse();
     const byIso = {}; for (const L of LATEST) byIso[L.geo_id] = L;
+    // no clamp: a bottom half that owes draws to the left of zero, which is what it means
     const band = (pick, name, colour) => ({
       type: 'bar', orientation: 'h', name,
       y: rows.map(r => r.geo_name),
-      x: rows.map(r => { const L = byIso[r.geo_id]; return L ? Math.max(0, pick(L)) * 100 : 0; }),
-      marker: { color: colour },
+      x: rows.map(r => { const L = byIso[r.geo_id]; return L ? pick(L) * 100 : 0; }),
+      marker: { color: colour,
+        // the country asked about is outlined, so it is findable without a second colour
+        line: { color: rows.map(r => r.geo_id === rt.highlight ? hlEdge() : 'rgba(0,0,0,0)'),
+                width: rows.map(r => r.geo_id === rt.highlight ? 1.5 : 0) } },
       hovertemplate: '%{y} &middot; ' + name + ': %{x:.1f}%<extra></extra>',
     });
+    const lowest = Math.min(0, ...rows.map(r => {
+      const L = byIso[r.geo_id]; return L ? L.bottom50_wealth_share * 100 : 0; }));
     Plotly.react(el, [
       band(L => L.bottom50_wealth_share, 'the poorest half', shade(metricColor('wealth_top1'), -0.55)),
       band(L => 1 - L.top10_wealth_share - L.bottom50_wealth_share, 'the middle 40%', shade(metricColor('wealth_top1'), -0.15)),
       band(L => L.top10_wealth_share, 'the richest tenth', shade(metricColor('wealth_top1'), 0.35)),
     ], Object.assign({}, BASE_LAYOUT, {
-      barmode: 'stack', showlegend: true,
+      barmode: 'relative', showlegend: true,
       legend: { orientation: 'h', y: 1.16, font: { size: 11 } },
       margin: { t: 24, r: 20, b: 38, l: 150 },
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: 'share of all household wealth', font: { size: 12 } },
-        ticksuffix: '%', range: [0, 100], autorange: false }),
+        ticksuffix: '%', range: [Math.min(-2, lowest - 2), 100], autorange: false, zeroline: true,
+        zerolinecolor: cssVar('--axis', '#eaeaea'), zerolinewidth: 1 }),
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category' }),
       bargap: 0.34,
     }), CFG);
     title.textContent = 'How the wealth of a country is split';
     src.textContent = 'Each bar is one country\'s household wealth, split into the poorest half, the middle 40% and the richest tenth. ' +
-      'The multiple in the sentence is the last band divided by the first. ' + provenance(['wealth_top1']);
+      'The multiple in the sentence is the last band divided by the first. ' +
+      (owing.length
+        ? `The last ${owing.length === 1 ? 'bar crosses' : owing.length + ' bars cross'} to the left of zero: ` +
+          `in ${owing.length === 1 ? 'that country' : 'those countries'} the poorest half owes more than it owns, ` +
+          `so its share of the total is negative and the tenth above it holds more than all the wealth there is. ` +
+          `A multiple cannot be quoted for ${owing.length === 1 ? 'it' : 'them'}. `
+        : '') +
+      provenance(['wealth_top1']);
   }
 
   else if (mode === 'path') {
@@ -5836,10 +5916,10 @@ const VIEWS = ['ask', 'why', 'wealth', 'income', 'opportunity', 'wellbeing', 'db
 /* ── US county tier: the same ask cube, at county resolution ───────── */
 let US_COUNTY = null, US_STATE = null, US_NAMES = null, US_MANIFEST = null;
 const US_ABBR = { '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT','10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL','18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD','25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE','32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND','39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV','55':'WI','56':'WY','72':'PR' };
-const usLabel = { us_mobility:'upward mobility', us_econ_conn:'economic connectedness', us_cohesion:'cohesion', us_volunteering:'volunteering', us_homeownership:'homeownership', us_house_value:'home value', us_income_gini:'income Gini', us_median_income:'median income', us_poverty:'poverty', us_single_parent:'single-parent share', us_college:'college share', us_life_exp:'life expectancy', us_le_gap:'the rich-poor life gap', us_credit_score:'credit score', us_debt_card:'credit-card debt', us_debt_mortgage:'mortgage debt', us_debt_auto:'auto debt', us_debt_student:'student debt', us_delinquency:'delinquency' };
+const usLabel = { us_mobility:'upward mobility', us_econ_conn:'economic connectedness', us_cohesion:'cohesion', us_volunteering:'volunteering', us_homeownership:'homeownership', us_house_value:'home value', us_income_gini:'income Gini', us_median_income:'median income', us_poverty:'poverty', us_single_parent:'single-parent share', us_college:'college share', us_life_exp:'the age a forty-year-old reaches', us_le_gap:'the rich-poor gap in years lived after forty', us_credit_score:'credit score', us_debt_card:'credit-card debt', us_debt_mortgage:'mortgage debt', us_debt_auto:'auto debt', us_debt_student:'student debt', us_delinquency:'delinquency' };
 const usd0v = v => '$' + Math.round(v).toLocaleString('en-US');
 const pctv = v => (v * 100).toFixed(0) + '%';
-const usFmt = { us_mobility:v=>v.toFixed(2), us_econ_conn:v=>v.toFixed(2), us_cohesion:v=>v.toFixed(2), us_volunteering:pctv, us_homeownership:pctv, us_house_value:usd0v, us_income_gini:v=>v.toFixed(2), us_median_income:usd0v, us_poverty:pctv, us_single_parent:pctv, us_college:pctv, us_life_exp:v=>v.toFixed(1)+' yrs', us_le_gap:v=>v.toFixed(1)+' yrs', us_credit_score:v=>''+Math.round(v), us_debt_card:usd0v, us_debt_mortgage:usd0v, us_debt_auto:usd0v, us_debt_student:usd0v, us_delinquency:v=>(v*100).toFixed(1)+'%' };
+const usFmt = { us_mobility:v=>v.toFixed(2), us_econ_conn:v=>v.toFixed(2), us_cohesion:v=>v.toFixed(2), us_volunteering:pctv, us_homeownership:pctv, us_house_value:usd0v, us_income_gini:v=>v.toFixed(2), us_median_income:usd0v, us_poverty:pctv, us_single_parent:pctv, us_college:pctv, us_life_exp:v=>'age '+v.toFixed(1), us_le_gap:v=>v.toFixed(1)+' yrs', us_credit_score:v=>''+Math.round(v), us_debt_card:usd0v, us_debt_mortgage:usd0v, us_debt_auto:usd0v, us_debt_student:usd0v, us_delinquency:v=>(v*100).toFixed(1)+'%' };
 const usFmtOf = m => usFmt[m] || (v => '' + v);
 const usWorse = {};   // higher_is_worse per metric, from manifest
 function usAvail() { return US_COUNTY ? Object.keys(US_COUNTY).filter(k => usLabel[k] && Object.keys(US_COUNTY[k]).length) : []; }
@@ -6711,6 +6791,47 @@ function toSeries(dict) {
   for (const iso in dict) out[iso] = dict[iso].map(([year, v]) => ({ year, v }));
   return out;
 }
+// Values a measure cannot take, dropped on the way in rather than drawn. Two of the
+// 3036 county Ginis are above 1, which no Gini can be, and one county carries a median
+// house value of zero where the census reported nothing. Both would otherwise land at
+// the end of a ranking and be read as the answer. This runs at load so that re-exporting
+// the source files cannot quietly put them back.
+const US_BOUNDS = {
+  us_income_gini:  [0.10, 1.00],
+  us_house_value:  [1000, Infinity],
+  us_mobility:     [0, 1],
+  us_econ_conn:    [0, 2],
+  us_exposure:     [0, 2],
+  us_cohesion:     [0, 1],
+  us_volunteering: [0, 1],
+  us_life_exp:     [50, 110],
+};
+const US_DROPPED = {};
+function scrubUs(store) {
+  if (!store) return store;
+  for (const key in US_BOUNDS) {
+    const block = store[key];
+    if (!block) continue;
+    const [lo, hi] = US_BOUNDS[key];
+    let n = 0;
+    for (const id in block) {
+      const v = block[id];
+      if (typeof v !== 'number' || !isFinite(v) || v < lo || v > hi) { delete block[id]; n++; }
+    }
+    if (n) US_DROPPED[key] = (US_DROPPED[key] || 0) + n;
+  }
+  return store;
+}
+// what was dropped, said out loud on any chart that reads that measure
+function droppedNote(key) {
+  const n = US_DROPPED[key];
+  if (!n) return '';
+  const [lo, hi] = US_BOUNDS[key];
+  const what = hi === Infinity ? `below ${lo}` : lo === 0.10 ? 'outside the range a Gini can take'
+    : `outside ${lo} to ${hi}`;
+  return ` ${n} ${n === 1 ? 'place carries a value' : 'places carry values'} ${what}, ` +
+    `which cannot be right, so ${n === 1 ? 'it is' : 'they are'} left out of this.`;
+}
 
 // the cube, the theme and the tabs come alive on the first frame; the numbers follow
 bootShell();
@@ -6769,7 +6890,7 @@ Promise.all([
   if (imid40 && Object.keys(imid40).length) SERIES.income_middle40 = toSeries(imid40);
   if (ibot50 && Object.keys(ibot50).length) SERIES.income_bottom50 = toSeries(ibot50);
   if (hprice && Object.keys(hprice).length) SERIES.house_price = toSeries(hprice);
-  if (usCounty && Object.keys(usCounty).length) { US_COUNTY = usCounty; US_STATE = usState; US_NAMES = usNames; US_MANIFEST = usManifest; }
+  if (usCounty && Object.keys(usCounty).length) { US_COUNTY = scrubUs(usCounty); US_STATE = scrubUs(usState); US_NAMES = usNames; US_MANIFEST = usManifest; }
   if (usCz && Object.keys(usCz).length) US_CZ = usCz;
 
   buildIndex();
