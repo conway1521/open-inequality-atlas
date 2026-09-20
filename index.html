@@ -4355,22 +4355,24 @@ function setStage(next) {
   requestAnimationFrame(syncDeck);
 }
 // kinds the cell has no coordinates for: keep the words, run them verbatim on send
+// `reads` is what the pill says the reading is looking at, since these do not use the
+// face's own measure and saying they do was a lie the reader could see.
 const VIEW_DEF = {
-  reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
-  houses: { label: 'houses against pay', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
-  ratio:  { label: 'top tenth against bottom half', uses: ['place', 'among'], ignores: ['facet', 'against', 'when'] },
+  reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1, reads: 'output and pay' },
+  houses: { label: 'houses against pay', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1, reads: 'houses and pay' },
+  ratio:  { label: 'richest tenth, poorest half', uses: ['place', 'among'], ignores: ['facet', 'against', 'when'], reads: 'wealth shares' },
   // These five bring their own measures, so the facet and the "against" fold have nothing
   // to do. The years do: a reading of the whole record and a reading since 2000 are
   // different answers, and the reader should be able to ask for either.
-  owns:   { label: 'what the poorest half owns', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'wealth_bottom50' },
-  wmultiple: { label: 'the owning gap against the earning gap', uses: ['place', 'among'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
-  multiple: { label: 'one person against one person', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'income_top1' },
-  basket: { label: 'what the middle lives on', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'median_income' },
-  three:  { label: 'the country in three parts', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'income_middle40' },
-  triple: { label: 'wealth, income and how long people live', uses: ['place'], ignores: ['facet', 'against', 'among', 'when'] },
-  tables: { label: 'the two league tables', uses: ['place'], ignores: ['facet', 'against', 'when'] },
+  owns:   { label: 'what the bottom half owns', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'wealth_bottom50', reads: 'wealth shares' },
+  wmultiple: { label: 'owning against earning', uses: ['place', 'among'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1, reads: 'wealth and income' },
+  multiple: { label: 'one person against one', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'income_top1', reads: 'income shares' },
+  basket: { label: 'what the middle lives on', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'median_income', reads: 'median income' },
+  three:  { label: 'the country in three parts', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'income_middle40', reads: 'three income shares' },
+  triple: { label: 'all three faces at once', uses: ['place'], ignores: ['facet', 'against', 'among', 'when'], reads: 'all three faces' },
+  tables: { label: 'the two league tables', uses: ['place'], ignores: ['facet', 'against', 'when'], reads: 'two rankings' },
   turn:   { label: 'the sharpest years here', uses: ['place'], ignores: ['against', 'among', 'when'], needsPlace: 1, oneOnly: 1 },
-  peers:  { label: 'against comparable countries', uses: ['place', 'when'], ignores: ['against', 'among'], needsPlace: 1, oneOnly: 1 },
+  peers:  { label: 'against similar countries', uses: ['place', 'when'], ignores: ['against', 'among'], needsPlace: 1, oneOnly: 1 },
 };
 // ── what this cell can and cannot take ──────────────────────────────
 // One place for every rule about which options fit which cell. The drawer greys out
@@ -5168,6 +5170,15 @@ function updateCell() {
   setSlot('place', place, 'add');
   setSlot('scope', ctx.pool ? esc(ctx.pool.label) : ctx.region ? REGION_LABEL[ctx.region] : null, 'all');
   setSlot('form', cell.view ? VIEW_DEF[cell.view].label : (FORM_DEF[cell.form] || null), 'as is');
+  // A view brings its own measures. Leaving the facet pill on "top 1% share" while the
+  // chart draws a median told the reader the wrong thing about what they were looking at,
+  // so the pill names what the reading actually uses.
+  const vf = document.getElementById('v-facet');
+  if (vf) {
+    const own = cell.view && VIEW_DEF[cell.view] && VIEW_DEF[cell.view].reads;
+    const label = own || facetMeasureLabel(curFacet) || (FACETS[curFacet] || {}).sub || '';
+    vf.innerHTML = `${esc(curFacet)}<span class="fmeasure">${esc(label)}</span>`;
+  }
   // a view supplies its own measures, so the folds it ignores are shown as not in play
   const ign = cell.view ? VIEW_DEF[cell.view].ignores : [];
   ['facet', 'place', 'scope', 'time', 'against'].forEach(d => {
