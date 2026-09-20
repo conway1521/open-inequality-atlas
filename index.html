@@ -1594,6 +1594,85 @@ function rankedPool(metric, dir, region, year) {
 // "in the United Kingdom", not "in United Kingdom": the names that take an article
 const THE = new Set(['GBR', 'USA', 'NLD', 'PHL', 'ARE', 'CZE', 'DOM', 'BHS', 'MDV', 'COD', 'COG', 'CAF', 'GMB', 'COM', 'SYC', 'SLB', 'MHL']);
 function theName(iso) { const n = BY_ISO[iso] ? BY_ISO[iso].name : iso; return (THE.has(iso) ? 'the ' : '') + n; }
+// A multiple built on a one-per-cent share carries no fourth digit worth printing, so it
+// is rounded to two figures once it is past a hundred and the sentence says which way to
+// read it.
+// The years the reader asked for, applied to a series. A window that leaves fewer than
+// two readings is refused by name rather than quietly widened back out, because a
+// reading that silently ignores the years you set is worse than one that will not run.
+function windowed(arr, since, until) {
+  if (!since && !until) return arr;
+  return arr.filter(d => (!since || d.year >= since) && (!until || d.year <= until));
+}
+function windowNote(since, until) {
+  if (since && until) return ` between ${since} and ${until}`;
+  if (since) return ` from ${since} on`;
+  if (until) return ` up to ${until}`;
+  return '';
+}
+function tooNarrow(iso, since, until, what) {
+  showNotice(`${cap(theName(iso))} carries fewer than two readings of ${what}` +
+    windowNote(since, until) + '. Widen the years, or clear them to read the whole record.');
+  return null;
+}
+function roughly(v) {
+  if (v == null) return 'n/a';
+  if (v < 100) return v.toFixed(0);
+  const p = Math.pow(10, Math.floor(Math.log10(v)) - 1);
+  return Math.round(v / p) * p >= 1000
+    ? (Math.round(v / p) * p).toLocaleString('en-US') : String(Math.round(v / p) * p);
+}
+// Shares belong to groups of wildly different sizes, so dividing one share by another
+// says nothing about a person. Divide each by the fraction of adults it covers first and
+// both become incomes, or holdings, for one person. Returns null on the side whose bottom
+// half owes more than it owns, because there is nothing there to divide by.
+function multiplePair(iso) {
+  const pick = k => { const s = seriesOf(k, iso); return s.length ? s[s.length - 1] : null; };
+  const w1 = pick('wealth_top1'), wbS = seriesOf('wealth_bottom50', iso);
+  const i1 = pick('income_top1'), ibS = seriesOf('income_bottom50', iso);
+  const atYear = (arr, y) => { const q = arr.filter(d => d.year <= y); return q.length ? q[q.length - 1] : null; };
+  const wb = w1 ? atYear(wbS, w1.year) : null;
+  const ib = i1 ? atYear(ibS, i1.year) : null;
+  if (!w1 && !i1) return null;
+  const per = (top, bot) => (top != null && bot != null && bot > 0) ? (top / 0.01) / (bot / 0.50) : null;
+  return {
+    iso,
+    w1: w1 ? w1.v : null, wb: wb ? wb.v : null, wYear: w1 ? w1.year : null,
+    i1: i1 ? i1.v : null, ib: ib ? ib.v : null, iYear: i1 ? i1.year : null,
+    wm: per(w1 && w1.v, wb && wb.v), im: per(i1 && i1.v, ib && ib.v),
+  };
+}
+// The set a country is being measured against, named the way the reader chose it. A
+// reading that says "richer countries" while the fold says Europe is describing a set
+// nobody asked for.
+function setLabel(n) {
+  if (ctx.region) return `the ${n} countries in ${REGION_LABEL[ctx.region]}`;
+  if (ctx.pool) return `the ${n} ${ctx.pool.label}`;
+  if (rankNarrowed()) return `the ${n} countries in the richer third`;
+  return `${n} countries`;
+}
+// the same two divisions done for every country in the set the rest of the page ranks on
+const sweepCache = {};
+function multipleSweep() {
+  const key = (rankNarrowed() ? 'rich' : 'all') + '|' + (ctx.region || '');
+  if (sweepCache[key]) return sweepCache[key];
+  const rt = rankNarrowed() ? richThird() : null;
+  const both = [], owing = [];
+  for (const iso in BY_ISO) {
+    if (rt && !rt.has(iso)) continue;
+    if (!inScope(iso, null)) continue;
+    const p = multiplePair(iso);
+    if (!p || p.im == null) continue;
+    if (p.wm == null) { if (p.wb != null) owing.push(p); continue; }
+    both.push(p);
+  }
+  const ratios = both.map(p => p.wm / p.im).sort((a, b) => a - b);
+  return (sweepCache[key] = {
+    both, owing,
+    wider: both.filter(p => p.wm > p.im).length,
+    medRatio: ratios.length ? ratios[Math.floor(ratios.length / 2)] : 0,
+  });
+}
 function ordinal(n) {
   const t = n % 100, u = n % 10;
   const suf = (t >= 11 && t <= 13) ? 'th' : u === 1 ? 'st' : u === 2 ? 'nd' : u === 3 ? 'rd' : 'th';
@@ -1743,18 +1822,34 @@ function parse(raw) {
   const metric = metrics.length ? metrics[0] : null;
   if (metrics.includes('PENDING')) return { kind: 'pending' };
 
-  // ── the income face: three readings that say what the shares mean for a person ──
+  // ── the per-face readings: what a share means for one person, rather than a block ──
   // These sit ahead of the general readings because they answer the same words more
-  // concretely. MULTIPLE before RATIO, which also claims "how many times".
-  // MULTIPLE: the shares divided by how many people are in each, so they are people
-  if (/\bone person\b|\bsomeone at the top\b|\bper[- ]person\b|\bhow many times more\b|\bfor every\b.*\bpound|\bfor every\b.*\bdollar/.test(r))
-    return { kind: 'multiple', isos, iso: isos[0] || null };
+  // concretely, and ahead of RATIO, which also claims "how many times".
+  // a run of years named in the question carries into these the same way it does anywhere
+  const winFrom = r.match(/\b(?:after|since|from|post|following)\s+((?:19|20)\d{2})\b/);
+  const win = {
+    since: winFrom ? +winFrom[1] : (years.length > 1 ? Math.min(...years) : null),
+    until: years.length > 1 ? Math.max(...years) : null,
+  };
+  // OWNS: what half a country holds, against what one per cent of it holds
+  if (/\bowns? nothing\b|\bown nothing\b|\bowns? anything\b|\b(poorest|bottom) half own\w*\b|\bwho owns\b|\bowns? the country\b|\bhalf of us own\b/.test(r))
+    return Object.assign({ kind: 'owns', isos, iso: isos[0] || null }, win);
+  // the two divisions side by side. an owning word sends "how many times" to wealth;
+  // without one it is about pay, which is the MULTIPLE below.
+  const perPerson = /\bone person\b|\bsomeone at the top\b|\bper[- ]person\b|\bhow many times more\b|\bfor every\b.*\bpound|\bfor every\b.*\bdollar/.test(r);
+  if (perPerson && /\bowns?\b|\bowning\b|\bwealth\b|\bholds?\b|\bassets?\b|\bhave\b/.test(r))
+    return { kind: 'wmultiple', isos, iso: isos[0] || null };
+  if (/\bowning gap\b|\bearning gap\b|\bown against .*earn\b|\bwealth gap .*(income|pay|earn)\w* gap\b/.test(r))
+    return { kind: 'wmultiple', isos, iso: isos[0] || null };
+  // MULTIPLE: the same division on income, the shares turned into people
+  if (perPerson)
+    return Object.assign({ kind: 'multiple', isos, iso: isos[0] || null }, win);
   // BASKET: the middle income in dollars that buy the same goods everywhere
   if (/\blives? on\b|\bliving on\b|\ba day\b|\bbasket of goods\b|\bpurchasing power\b|\bsame money buy\b|\bgo further\b/.test(r))
-    return { kind: 'basket', isos, iso: isos[0] || null };
+    return Object.assign({ kind: 'basket', isos, iso: isos[0] || null }, win);
   // THREE: the top tenth, the forty in the middle, and the bottom half, summing to 100
   if (/\bthree parts\b|\bmiddle 40\b|\bmiddle forty\b|\bmiddle class\b|\bhappened to the middle\b|\bhollow\w*\b|\bsplit three ways\b|\bcut into three\b|\bsqueez\w*\b/.test(r))
-    return { kind: 'three', isos, iso: isos[0] || null };
+    return Object.assign({ kind: 'three', isos, iso: isos[0] || null }, win);
 
   // REACH: did the country's growth arrive at the median, or somewhere else
   if (/\breach(ed)? me\b|\breach the median\b|\bgot the growth\b|\bwho got\b|\btypical (income|person|wage)\b|\bgrowth actually\b/.test(r))
@@ -2045,7 +2140,11 @@ function resetCell() { cell.places = []; cell.scope = null; cell.span = null; ce
 // the outer years the current reading could possibly run between: one country's own
 // span if a place is set, otherwise the widest span the measure carries anywhere
 function spanBounds(metric) {
-  const key = metric || facetIneqDefault();
+  // a reading that brings its own measure is bounded by that measure's years, not by
+  // whichever measure the face happens to be showing: the median runs 1969 to 2017 in
+  // Britain while the income shares run 1980 to 2021, and the slider has to say which
+  const own = cell.view && VIEW_DEF[cell.view] && VIEW_DEF[cell.view].spanOf;
+  const key = metric || own || facetIneqDefault();
   if (cell.place) {
     const ys = seriesYears(cell.place, key);
     if (ys.length) return { lo: ys[0], hi: ys[ys.length - 1] };
@@ -2073,7 +2172,7 @@ function syncCellFromFact(f) {
     : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
   cell.view = ['reach', 'ratio', 'triple', 'tables', 'turn', 'peers', 'houses',
-    'multiple', 'basket', 'three'].includes(f.kind) ? f.kind : null;
+    'multiple', 'basket', 'three', 'owns', 'wmultiple'].includes(f.kind) ? f.kind : null;
   cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
     : ctx.region ? ('r:' + ctx.region) : null;
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
@@ -2114,17 +2213,13 @@ function runCell() {
     runParse({ kind: 'ratio', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
       'the richest tenth against the poorest half'); return;
   }
-  if (cell.view === 'multiple') {
-    runParse({ kind: 'multiple', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
-      'one person at the top against one at the bottom'); return;
-  }
-  if (cell.view === 'basket') {
-    runParse({ kind: 'basket', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
-      'what the person in the middle lives on'); return;
-  }
-  if (cell.view === 'three') {
-    runParse({ kind: 'three', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
-      'the country in three parts'); return;
+  // the five readings that bring their own measures but take the reader's years
+  if (['owns', 'wmultiple', 'multiple', 'basket', 'three'].includes(cell.view)) {
+    const win = VIEW_DEF[cell.view].window && cell.span === 'run'
+      ? { since: cell.since || null, until: cell.until || null } : {};
+    runParse(Object.assign({ kind: cell.view, isos: cell.place ? [cell.place] : [],
+      iso: cell.place || null }, win), VIEW_DEF[cell.view].label);
+    return;
   }
   const F = cell.form;
   if (F === 'lorenz' && cell.place) {
@@ -2392,18 +2487,103 @@ function buildAnswer(p, q) {
       ` <em>The median rests on ${ms.length} survey${ms.length === 1 ? '' : 's'} between ${ms[0].year} and ${ms[ms.length - 1].year}.</em>`;
   }
 
+  else if (p.kind === 'owns') {
+    // What half a country owns, against what one per cent of it owns. Both are shares of
+    // the same total on the same WID basis, so they belong on one axis in levels.
+    const iso = p.iso || ctx.lastIso || (focusIsos()[0] || null);
+    if (!iso || !BY_ISO[iso]) { showNotice('This reads one country. Name a place first.'); return null; }
+    const B = windowed(seriesOf('wealth_bottom50', iso), p.since, p.until);
+    const T = windowed(seriesOf('wealth_top1', iso), p.since, p.until);
+    if (B.length < 2 || T.length < 2) return tooNarrow(iso, p.since, p.until, 'its wealth shares');
+    const lo = Math.max(B[0].year, T[0].year);
+    const b = B.filter(d => d.year >= lo), t = T.filter(d => d.year >= lo);
+    if (b.length < 2 || t.length < 2) return tooNarrow(iso, p.since, p.until, 'its wealth shares');
+    const hi = Math.min(b[b.length - 1].year, t[t.length - 1].year);
+    const at = (arr, y) => { const q = arr.filter(d => d.year <= y); return q.length ? q[q.length - 1].v : arr[0].v; };
+    const b0 = b[0].v, b1 = at(b, hi), t1 = at(t, hi);
+    ctx.metric = 'wealth_bottom50'; ctx.lastIso = iso; f.isos = [iso];
+    f.mode = 'owns'; f.owns = { iso, b, t, lo, hi };
+    const now = b1 < 0
+      ? `Half the adults in <strong>${esc(theName(iso))}</strong> own <strong>less than nothing</strong>. ` +
+        `Their debts come to ${pc(Math.abs(b1))} of all the household wealth in the country more than ` +
+        `their assets do (${hi}). `
+      : `Half the adults in <strong>${esc(theName(iso))}</strong> own <strong>${pc(b1)}</strong> of ` +
+        `everything owned there (${hi}). `;
+    const then = b0 <= 0
+      ? `In ${lo} that same half was already in debt, by ${pc(Math.abs(b0))}. `
+      : `In ${lo} they owned <strong>${pc(b0)}</strong>` +
+        (b1 > 0 && b1 < b0 * 0.9 ? `, so their share has fallen by ${Math.round((1 - b1 / b0) * 100)}%. `
+          : b1 > b0 * 1.1 ? `, so their share has risen by ${Math.round((b1 / b0 - 1) * 100)}%. ` : '. ');
+    const top = `The richest 1% hold <strong>${pc(t1)}</strong>` +
+      (b1 > 0 ? `, which is ${(t1 / b1).toFixed(1)} times what fifty times as many people hold between them.`
+        : `, and there is no share left for the half below to be measured against.`);
+    f.text = now + then + top +
+      ` <em>Two shares of one total, so they can be read straight against each other: household net ` +
+      `wealth, per adult, with a couple's holdings split equally between them. A share can go ` +
+      `negative because debts count.</em>`;
+  }
+
+  else if (p.kind === 'wmultiple') {
+    // The same division done twice: what one person at the top owns against one at the
+    // bottom, and what one earns against the other. The distance between those two
+    // numbers is the argument this atlas exists to make, so both are given together.
+    const iso = p.iso || ctx.lastIso || (focusIsos()[0] || null);
+    if (!iso || !BY_ISO[iso]) { showNotice('This reads one country. Name a place first.'); return null; }
+    const pair = multiplePair(iso);
+    if (!pair || (pair.wm == null && pair.im == null)) return miss();
+    const all = multipleSweep();
+    ctx.metric = 'wealth_top1'; ctx.lastIso = iso; f.isos = [iso];
+    f.mode = 'wmultiple'; f.wmultiple = { iso, pair, all };
+    const here = esc(theName(iso));
+    let lead;
+    if (pair.wm != null && pair.im != null) {
+      lead = `In <strong>${here}</strong>, one person in the top 1% owns ` +
+        `<strong>${roughly(pair.wm)} times</strong> what one person in the poorest half owns ` +
+        `(${pair.wYear}), and earns <strong>${roughly(pair.im)} times</strong> as much (${pair.iYear}). ` +
+        `The gap in what people own is <strong>${(pair.wm / pair.im).toFixed(0)} times</strong> the gap ` +
+        `in what they earn.`;
+    } else if (pair.im != null) {
+      lead = `In <strong>${here}</strong>, one person in the top 1% earns ` +
+        `<strong>${roughly(pair.im)} times</strong> what one person in the poorest half earns ` +
+        `(${pair.iYear}). There is no matching figure for what they own, because the poorest half ` +
+        `there <strong>owes more than it owns</strong> (${pair.wYear}) and there is nothing to divide by. ` +
+        `That is the far end of this question rather than a gap in it.`;
+    } else {
+      lead = `In <strong>${here}</strong>, one person in the top 1% owns ` +
+        `<strong>${roughly(pair.wm)} times</strong> what one person in the poorest half owns ` +
+        `(${pair.wYear}). The atlas holds no income shares for it, so the gap in earning cannot be ` +
+        `set beside that.`;
+    }
+    const across = all.both.length
+      ? ` Of ${setLabel(all.both.length)} where both can be worked out, the gap in owning is ` +
+        `wider than the gap in earning in ` +
+        (all.wider === all.both.length ? `every one` : `${all.wider} of them`) +
+        `, and the middle of that set is ${all.medRatio.toFixed(0)} times wider.`
+      : '';
+    // a multiple built by dividing by a share of one per cent moves a long way on a small
+    // revision, and the reading says how far rather than printing four digits
+    const shaky = pair.wm != null && pair.wb > 0 && pair.wb < 0.02
+      ? ` <em>Read the size of it, not the digits: the poorest half here holds ${pc(pair.wb)}, and ` +
+        `moving that by a tenth of a point would put the multiple at ` +
+        `${roughly((pair.w1 / 0.01) / ((pair.wb + 0.001) / 0.50))} or ` +
+        `${roughly((pair.w1 / 0.01) / ((pair.wb - 0.001) / 0.50))}.</em>`
+      : '';
+    f.text = lead + across + shaky;
+  }
+
   else if (p.kind === 'multiple') {
     // Shares are per group, and the groups are wildly different sizes, so a share says
     // nothing about a person. Divide each by how many people are in it and you get the
     // thing anyone can picture: what one person at the top takes against one at the bottom.
     const iso = p.iso || ctx.lastIso || (focusIsos()[0] || null);
     if (!iso || !BY_ISO[iso]) { showNotice('This reads one country. Name a place first.'); return null; }
-    const T = seriesOf('income_top1', iso), B = seriesOf('income_bottom50', iso);
-    if (T.length < 3 || B.length < 3) return miss();
+    const T = windowed(seriesOf('income_top1', iso), p.since, p.until);
+    const B = windowed(seriesOf('income_bottom50', iso), p.since, p.until);
+    if (T.length < 2 || B.length < 2) return tooNarrow(iso, p.since, p.until, 'its income shares');
     const bm = new Map(B.map(d => [d.year, d.v]));
     const pts = [];
     for (const d of T) { const b = bm.get(d.year); if (b) pts.push({ year: d.year, v: (d.v / 0.01) / (b / 0.50) }); }
-    if (pts.length < 3) return miss();
+    if (pts.length < 2) return tooNarrow(iso, p.since, p.until, 'both income shares in the same year');
     // the year to measure against is the narrowest the country ever got, which the series
     // picks for itself. anchoring on a round year instead would be a choice nobody made.
     const last = pts[pts.length - 1];
@@ -2411,11 +2591,16 @@ function buildAnswer(p, q) {
     ctx.metric = 'income_top1'; ctx.lastIso = iso; f.isos = [iso];
     f.mode = 'multiple'; f.multiple = { iso, pts, then, last };
     const near = Math.abs(last.year - then.year) <= 2;
+    // "ever" is only true of the whole record. Once the reader clips the years, the
+    // narrowest point is the narrowest in what they asked for, and the sentence says so.
+    const clipped = !!(p.since || p.until);
+    const span = clipped ? 'over the years you have set' : 'ever';
     f.text = `In <strong>${esc(theName(iso))}</strong>, one person in the top 1% takes ` +
       `<strong>${last.v.toFixed(0)} times</strong> what one person in the bottom half takes (${last.year}). ` +
       (near
-        ? `That is as close together as the two have ever been here, over ${pts.length} years of readings. `
-        : `The closest they have ever been was ${then.year}, at <strong>${then.v.toFixed(0)} times</strong>, ` +
+        ? `That is as close together as the two got ${clipped ? span : 'here at any point'}, ` +
+          `over ${pts.length} years of readings. `
+        : `The closest they came ${span} was ${then.year}, at <strong>${then.v.toFixed(0)} times</strong>, ` +
           `and the gap is ${(last.v / then.v).toFixed(1)} times wider now than it was then. `) +
       `<em>Each group's share of national income divided by how many people are in it, so a share of ` +
       `a block becomes an income for a person. Pretax, before any tax and before any benefit.</em>`;
@@ -2426,8 +2611,8 @@ function buildAnswer(p, q) {
     // dollars, so a day in Warsaw and a day in Chicago are priced the same way.
     const iso = p.iso || ctx.lastIso || (focusIsos()[0] || null);
     if (!iso || !BY_ISO[iso]) { showNotice('This reads one country. Name a place first.'); return null; }
-    const m = seriesOf('median_income', iso);
-    if (m.length < 2) return miss();
+    const m = windowed(seriesOf('median_income', iso), p.since, p.until);
+    if (m.length < 2) return tooNarrow(iso, p.since, p.until, 'a median income');
     const a = m[0], z = m[m.length - 1];
     // the ranking is taken at this country's own latest year, not against whatever each
     // other country last happened to report: a 2019 median against a 2012 one is not a rank
@@ -2455,8 +2640,10 @@ function buildAnswer(p, q) {
     // a country divided into the top tenth, the middle forty per cent, and the bottom half.
     const iso = p.iso || ctx.lastIso || (focusIsos()[0] || null);
     if (!iso || !BY_ISO[iso]) { showNotice('This reads one country. Name a place first.'); return null; }
-    const T = seriesOf('income_top10', iso), M = seriesOf('income_middle40', iso), B = seriesOf('income_bottom50', iso);
-    if (T.length < 3 || M.length < 3 || B.length < 3) return miss();
+    const T = windowed(seriesOf('income_top10', iso), p.since, p.until);
+    const M = windowed(seriesOf('income_middle40', iso), p.since, p.until);
+    const B = windowed(seriesOf('income_bottom50', iso), p.since, p.until);
+    if (T.length < 2 || M.length < 2 || B.length < 2) return tooNarrow(iso, p.since, p.until, 'all three income shares');
     const lo = Math.max(T[0].year, M[0].year, B[0].year);
     const t = T.filter(d => d.year >= lo), mm = M.filter(d => d.year >= lo), b = B.filter(d => d.year >= lo);
     const hi = Math.min(t[t.length - 1].year, mm[mm.length - 1].year, b[b.length - 1].year);
@@ -2470,9 +2657,15 @@ function buildAnswer(p, q) {
     const mv = arr => sg((at(arr, hi) - at(arr, from)) * 100);
     ctx.metric = 'income_middle40'; ctx.lastIso = iso; f.isos = [iso];
     f.mode = 'three'; f.three = { iso, t, m: mm, b, lo, hi, from, peak: pk };
+    // the same care as above: with the years clipped, "the most it has ever held" becomes
+    // "the most it held in what you asked for", and "where the record opens" becomes
+    // "where you started it"
+    const clipped = !!(p.since || p.until);
     f.text = `<strong>${cap(esc(theName(iso)))}</strong> cut into three. From ${from}, ` +
-      (from === lo ? `where this record opens` :
-        `the year the middle forty per cent held the most of national income it has ever held here`) +
+      (from === lo
+        ? (clipped ? `where you have started the run` : `where this record opens`)
+        : `the year the middle forty per cent held the most of national income it held ` +
+          (clipped ? `anywhere in this stretch` : `at any point here`)) +
       `, to ${hi}: the ` +
       `middle went from <strong>${pc(at(mm, from))}</strong> to <strong>${pc(at(mm, hi))}</strong>, ` +
       `${mv(mm)}. The top tenth went from <strong>${pc(at(t, from))}</strong> to ` +
@@ -2480,8 +2673,11 @@ function buildAnswer(p, q) {
       `<strong>${pc(at(b, from))}</strong> to <strong>${pc(at(b, hi))}</strong>, ${mv(b)}. ` +
       `<em>The three are the whole country and add to a hundred at every point, so a point one group ` +
       `gains is a point another loses. ` +
-      (from === lo ? `${cap(theName(iso))} carries no reading before ${lo}, so what came earlier is ` +
-          `outside the atlas rather than flat.`
+      (clipped
+        ? `The years are the ones you set; clear them to read the whole record, which runs further ` +
+          `back in most countries than this.`
+        : from === lo ? `${cap(theName(iso))} carries no reading before ${lo}, so what came earlier is ` +
+            `outside the atlas rather than flat.`
         : `The record opens in ${lo} and the chart draws all of it. Reading ${lo} straight against ` +
           `${hi} would set a fall and a rise against each other and report that nothing happened.`) +
       `</em>`;
@@ -2529,7 +2725,7 @@ function buildAnswer(p, q) {
     // the same set every other ranking on this page uses: most of the 213 countries are
     // regional fills rather than measurements, and a middle of the pack taken over those
     // describes the model, not the world
-    const narrow = rankNarrowed(), rt = narrow ? richThird() : null;
+    const rt = rankNarrowed() ? richThird() : null;
     const usable = LATEST.filter(x => x.top10_wealth_share != null && x.bottom50_wealth_share != null
       && (!rt || rt.has(x.geo_id)) && inScope(x.geo_id, null));
     const rows = usable.filter(x => x.bottom50_wealth_share > 0.0005)
@@ -2548,7 +2744,7 @@ function buildAnswer(p, q) {
       inRanking: !!hit };
     const names = a => a.length === 1 ? esc(theName(a[0].geo_id))
       : a.slice(0, -1).map(x => esc(theName(x.geo_id))).join(', ') + ' and ' + esc(theName(a[a.length - 1].geo_id));
-    const set = narrow ? `the ${rows.length} countries in the richer third` : `${rows.length} countries`;
+    const set = setLabel(rows.length);
     const tail = owing.length
       ? ` In ${names(owing)} there is no multiple to give, because the poorest half there owes more ` +
         `than it owns. ${owing.length === 1 ? 'That country sits' : 'Those sit'} outside both the ranking ` +
@@ -3421,16 +3617,18 @@ const INTERACTIONS = { link: 'link', extend: 'extend' };
 // ten distinct things the accordion and chat can do; each cycles through the box, fillable
 const PROMPT_SETS = {
   default: [
+    'how many times more does one person at the top own?',
+    'what does the poorest half own?',
     'does my country own as unevenly as it earns?',
+    'how much more do the richest hold than the poorest?',
+    'have houses pulled away from pay?',
     'are wealth and income pulling apart here?',
-    'how unequal is France?',
-    'when did this country change most?',
     'where is wealth most concentrated?',
+    'when did this country change most?',
     'did it move differently from comparable countries?',
     'how has France changed over time?',
     'does life expectancy track inequality?',
     'what about among rich countries?',
-    'how much more do the richest hold than the poorest?',
   ],
   income: [
     'how many times more does one person at the top earn?',
@@ -3460,20 +3658,30 @@ const PROMPT_SETS = {
 // express. Each question serves a claim in FOUNDATION.md section 3 and has to pass
 // the five tests in section 10. The comment on each line says which claim it serves.
 const QUESTIONS = [
-  { k: 'the two are not one thing', qs: [
-    'does my country own as unevenly as it earns?',      // claim 2, the strongest
-    'are wealth and income pulling apart here?',          // claim 1, one country
-    'how much more do the richest hold than the poorest?' // claim 1, as a multiple
+  // Questions about how the faces sit against each other. They belong to no single face,
+  // and they carry the argument the atlas exists to make.
+  { k: 'the faces against each other', qs: [
+    'does my country own as unevenly as it earns?',       // claim 2, the strongest
+    'are wealth and income pulling apart here?',          // claim 1, inside one country
+    'does life expectancy track inequality?',             // claim 4, drawn weak on purpose
+    'how do wealth, income and life expectancy sit together?',
   ] },
-  { k: 'where a country stands', qs: [
-    'where is wealth most concentrated?',
+  // The grammar, asked of whichever face is up, so a face you have just turned to can
+  // still be read without leaving the question set behind.
+  { k: 'any face, any country', qs: [
     'how has inequality changed over time?',
-  ] },
-  { k: 'what moved, and against what', qs: [
-    'have houses pulled away from pay?',                  // the mechanism, two countries so far
     'when did this country change most?',                 // claim 3, turn picks the years
     'did it move differently from comparable countries?', // the peer contrast
-    'did the growth reach the typical person?',           // claim 3
+  ] },
+  // The wealth face: what half a country holds, and what one person at the top holds
+  // against one at the bottom, set beside the same division done on pay. That second one
+  // is the atlas's own argument, computed live rather than asserted.
+  { k: '', facet: 'wealth', qs: [
+    'how many times more does one person at the top own?',
+    'what does the poorest half own?',
+    'how much more do the richest hold than the poorest?',
+    'have houses pulled away from pay?',
+    'where is wealth most concentrated?',
   ] },
   // The income face asks what a share means for a person rather than for a block: what
   // one of them takes against one of the others, what the money buys, and which of the
@@ -3483,10 +3691,6 @@ const QUESTIONS = [
     'what does the person in the middle live on a day?',
     'what happened to the middle here?',
     'did the growth reach the typical person?',
-  ] },
-  { k: 'what it sits with', qs: [
-    'does life expectancy track inequality?',             // claim 4, drawn weak on purpose
-    'how do wealth, income and life expectancy sit together?',
   ] },
   { k: '', facet: 'opportunity', qs: [
     'do the four faces agree inside one country?',
@@ -4084,7 +4288,10 @@ function setStage(next) {
   const q = document.getElementById('q');
   if (next === 'compose') { if (q && stageFocus) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
   else setHelp(false);
-  if (next !== 'result') closeDrawer();
+  // The folds close once there is an answer. They stay open while you are composing,
+  // because picking three countries in a row is one gesture, but an answer you have to
+  // scroll past a fold to read is not an answer.
+  closeDrawer();
   render();
   if (next === 'chain' && from === 'compose') {
     requestAnimationFrame(morphRibbon);
@@ -4097,10 +4304,15 @@ function setStage(next) {
 const VIEW_DEF = {
   reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
   houses: { label: 'houses against pay', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
-  ratio:  { label: 'top tenth against bottom half', uses: ['place'], ignores: ['facet', 'against', 'when'] },
-  multiple: { label: 'one person against one person', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
-  basket: { label: 'what the middle lives on', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
-  three:  { label: 'the country in three parts', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
+  ratio:  { label: 'top tenth against bottom half', uses: ['place', 'among'], ignores: ['facet', 'against', 'when'] },
+  // These five bring their own measures, so the facet and the "against" fold have nothing
+  // to do. The years do: a reading of the whole record and a reading since 2000 are
+  // different answers, and the reader should be able to ask for either.
+  owns:   { label: 'what the poorest half owns', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'wealth_bottom50' },
+  wmultiple: { label: 'the owning gap against the earning gap', uses: ['place', 'among'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
+  multiple: { label: 'one person against one person', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'income_top1' },
+  basket: { label: 'what the middle lives on', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'median_income' },
+  three:  { label: 'the country in three parts', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'income_middle40' },
   triple: { label: 'wealth, income and how long people live', uses: ['place'], ignores: ['facet', 'against', 'among', 'when'] },
   tables: { label: 'the two league tables', uses: ['place'], ignores: ['facet', 'against', 'when'] },
   turn:   { label: 'the sharpest years here', uses: ['place'], ignores: ['against', 'among', 'when'], needsPlace: 1, oneOnly: 1 },
@@ -4133,9 +4345,12 @@ function whyNot(dim, val) {
       // the three income readings each name the series they cannot do without, rather
       // than failing at send with a notice that says nothing about which one is short
       if (cell.place) {
-        const need = val === 'multiple' ? [['income_top1', 'the top 1% share'], ['income_bottom50', 'the bottom 50% share']]
+        const need = val === 'multiple' ? [['income_top1', 'the top 1% income share'], ['income_bottom50', 'the bottom 50% income share']]
           : val === 'basket' ? [['median_income', 'a median income']]
           : val === 'three' ? [['income_top10', 'the top 10% share'], ['income_middle40', 'the middle 40% share'], ['income_bottom50', 'the bottom 50% share']]
+          : val === 'owns' ? [['wealth_top1', 'the top 1% wealth share'], ['wealth_bottom50', 'the bottom 50% wealth share']]
+          : val === 'wmultiple' ? [['wealth_top1', 'the top 1% wealth share'], ['wealth_bottom50', 'the bottom 50% wealth share'],
+                                   ['income_top1', 'the top 1% income share'], ['income_bottom50', 'the bottom 50% income share']]
           : null;
         if (need) {
           const short = need.filter(([k]) => seriesOf(k, cell.place).length < 2);
@@ -4166,13 +4381,20 @@ function whyNot(dim, val) {
   if (dim === 'time') {
     if (cell.view && (VIEW_DEF[cell.view].ignores || []).includes('when'))
       return `${cap(VIEW_DEF[cell.view].label)} sets its own years.`;
+    // these read a run and clip it; a single year would leave them nothing to compare
+    if (cell.view && VIEW_DEF[cell.view].window && val === 'moment')
+      return `${cap(VIEW_DEF[cell.view].label)} reads a change, so it needs a run of years rather than one.`;
     if (cell.form === 'lorenz') return 'A Lorenz curve is drawn at one moment, the latest one there is.';
     return null;
   }
   if (dim === 'scope') {
     if (cell.view && (VIEW_DEF[cell.view].ignores || []).includes('among'))
       return `${cap(VIEW_DEF[cell.view].label)} reads one country, so the set it sits in makes no difference.`;
-    if (cell.place && val) return 'A country is already named, so narrowing the set changes nothing. Clear the place first.';
+    // a reading that puts one country against a pack takes both: the place picks the
+    // country and the set picks the pack it is being measured against
+    const usesSet = cell.view && (VIEW_DEF[cell.view].uses || []).includes('among');
+    if (cell.place && val && !usesSet)
+      return 'A country is already named, so narrowing the set changes nothing. Clear the place first.';
     return null;
   }
   if (dim === 'place') {
@@ -4251,9 +4473,13 @@ function previewQuestion(q) {
   else if (p.kind === 'reach') cell.view = 'reach';
   else if (p.kind === 'houses') cell.view = 'houses';
   else if (p.kind === 'ratio') cell.view = 'ratio';
-  else if (p.kind === 'multiple') cell.view = 'multiple';
-  else if (p.kind === 'basket') cell.view = 'basket';
-  else if (p.kind === 'three') cell.view = 'three';
+  else if (['owns', 'wmultiple', 'multiple', 'basket', 'three'].includes(p.kind)) {
+    cell.view = p.kind;
+    // a window named in the question shows in the fold, so it can be widened by hand
+    if (VIEW_DEF[p.kind].window && (p.since || p.until)) {
+      cell.span = 'run'; cell.since = p.since || null; cell.until = p.until || null;
+    }
+  }
   else if (p.kind === 'triple') cell.view = 'triple';
   else if (p.kind === 'tables') cell.view = 'tables';
   else if (p.kind === 'turn') { cell.view = 'turn'; if (p.iso) cell.place = p.iso; }
@@ -4313,8 +4539,11 @@ function sendCell() {
     if (rib && !rib.classList.contains('expanded')) toggleRib('place');
     return;
   }
+  hideNotice();
   runCell();
-  if (chain.length) setStage('result'); else showNotice('Nothing to show for that yet.');
+  // a reading that refused has already said why; do not paper over it with a shrug
+  if (chain.length) setStage('result');
+  else if (document.getElementById('notice').hidden) showNotice('Nothing to show for that yet.');
 }
 function syncDeck() {
   const deck = document.getElementById('deck');
@@ -4823,7 +5052,7 @@ function setSlot(id, value, hint, color) {
   } else { rib.classList.remove('filled'); rib.classList.add('empty'); v.textContent = hint; rib.style.removeProperty('--rc'); }
 }
 const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence',
-  'reach', 'houses', 'multiple', 'basket', 'three'];
+  'reach', 'houses', 'multiple', 'basket', 'three', 'owns', 'wmultiple'];
 // the accordion reads the cell, the single source of truth, so it always matches the edits
 function updateCell() {
   if (keepOpen) { reopenAfter = keepOpen; } else closeDrawer();
@@ -4947,6 +5176,19 @@ const ERAS = [
   { a: 2020, b: 2021, k: 'pandemic' },
 ];
 // bands behind the lines, labelled once at the top, clipped to the years on screen
+// A log axis counting multiples. Plotly's own log ticks land on bare powers of ten and
+// leave most of this range unlabelled, so the ticks are named here in the unit the reader
+// is reading: 10x, 50x, 1,000x.
+function logMult(lo, hi, label) {
+  const stops = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+    .filter(v => v >= lo && v <= hi);
+  return {
+    type: 'log', range: [Math.log10(lo), Math.log10(hi)], autorange: false,
+    tickmode: 'array', tickvals: stops,
+    ticktext: stops.map(v => v.toLocaleString('en-US') + 'x'),
+    title: { text: label, font: { size: 11 } },
+  };
+}
 function eraShapes(lo, hi) {
   // plain rgba: Plotly writes this straight into an SVG fill, where color-mix does not land
   return ERAS.filter(e => e.b >= lo && e.a <= hi).map(e => ({
@@ -5249,6 +5491,93 @@ function drawChart() {
       `reading and the exact percentages are not. ` +
       `Markers show where a survey actually landed; the line between them is drawn, not measured. ` +
       provenance(['gdp_pc', 'median_income']);
+  }
+
+  else if (mode === 'owns') {
+    const ow = chain.slice().reverse().find(f => f.mode === 'owns').owns;
+    const zero = ow.b.some(d => d.v < 0);
+    Plotly.react(el, [
+      { type: 'scatter', mode: 'lines', name: 'the richest 1%',
+        x: ow.t.map(d => d.year), y: ow.t.map(d => d.v),
+        line: { color: shade(metricColor('wealth_top1'), 0.30), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        hovertemplate: 'the richest 1% hold %{y:.1%}, %{x}<extra></extra>' },
+      { type: 'scatter', mode: 'lines', name: 'the poorest half',
+        x: ow.b.map(d => d.year), y: ow.b.map(d => d.v),
+        line: { color: shade(metricColor('wealth_top1'), -0.34), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        hovertemplate: 'the poorest half hold %{y:.1%}, %{x}<extra></extra>' },
+    ], Object.assign({}, BASE_LAYOUT, {
+      showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
+      margin: { t: 14, r: 16, b: 40, l: 56 },
+      shapes: eraShapes(ow.lo, ow.hi), annotations: eraLabels(ow.lo, ow.hi),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { tickformat: '.0%',
+        zeroline: zero, zerolinecolor: cssVar('--ink-2', '#555555'), zerolinewidth: 1,
+        title: { text: 'share of all household wealth', font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = `${cap(theName(ow.iso))}: what one per cent owns and what half of it owns, ${ow.lo} to ${ow.hi}`;
+    src.textContent =
+      `Two shares of one total, drawn as levels rather than indexed, so the distance between the ` +
+      `lines is the reading. The upper line covers one per cent of adults and the lower line covers ` +
+      `fifty per cent of them, which is why the distance understates what it looks like: to compare ` +
+      `people rather than groups, ask for one person against one person. ` +
+      (zero ? 'The lower line crosses zero because debts count against assets: below that mark the ' +
+        'poorest half owes more than it owns. ' : '') +
+      provenance(['wealth_top1', 'wealth_bottom50']);
+  }
+
+  else if (mode === 'wmultiple') {
+    const wm = chain.slice().reverse().find(f => f.mode === 'wmultiple').wmultiple;
+    const pts = wm.all.both;
+    const lo = Math.min(...pts.map(p => Math.min(p.im, p.wm))) * 0.8;
+    const hi = Math.max(...pts.map(p => Math.max(p.im, p.wm))) * 1.25;
+    const here = pts.find(p => p.iso === wm.iso);
+    Plotly.react(el, [
+      { type: 'scatter', mode: 'lines', name: 'the two gaps equal', showlegend: false,
+        x: [lo, hi], y: [lo, hi], line: { color: cssVar('--axis', '#cbd5e1'), width: 1, dash: 'dash' },
+        hoverinfo: 'skip' },
+      { type: 'scatter', mode: 'markers', showlegend: false,
+        x: pts.map(p => p.im), y: pts.map(p => p.wm), text: pts.map(p => BY_ISO[p.iso].name),
+        marker: { color: metricColor('wealth_top1'), size: 7, opacity: 0.45 },
+        hovertemplate: '%{text}<br>earning gap %{x:.0f}x<br>owning gap %{y:.0f}x<extra></extra>' },
+    ].concat(here ? [{ type: 'scatter', mode: 'markers+text', showlegend: false,
+        x: [here.im], y: [here.wm], text: [BY_ISO[here.iso].name], textposition: 'top center',
+        textfont: { size: 11 },
+        marker: { size: 12, color: hlFill('wealth_top1'), line: { color: hlEdge(), width: 2 } },
+        hovertemplate: '%{text}<br>earning gap %{x:.0f}x<br>owning gap %{y:.0f}x<extra></extra>' }] : []),
+      Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 16, r: 18, b: 48, l: 62 },
+      // a country whose poorest half owes cannot be plotted here at all, and a reader
+      // looking for it should be told that on the picture rather than only underneath it
+      annotations: here ? [] : [{
+        xref: 'paper', yref: 'paper', x: 0.5, y: 0.06, showarrow: false,
+        text: `${esc(theName(wm.iso))} is not on this chart: the poorest half there owes more than it owns, ` +
+          `so the gap in owning has no value to plot`,
+        font: { size: 11, color: cssVar('--ink-2', '#555555') },
+        bgcolor: cssVar('--card', '#ffffff'), borderpad: 4,
+      }],
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, logMult(lo, hi,
+        'the gap in earning, times')),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, logMult(lo, hi,
+        'the gap in owning, times')),
+    }), CFG);
+    title.textContent = 'The gap in owning against the gap in earning, one dot per country';
+    src.textContent =
+      `Each dot is one country. Across, what one person in the top 1% earns against one person in the ` +
+      `poorest half. Up, what one of them owns against one of them. On the dashed line the two gaps ` +
+      `would be the same size; ` +
+      (wm.all.wider === wm.all.both.length ? 'every country sits above it'
+        : `${wm.all.wider} of the ${wm.all.both.length} sit above it`) +
+      `. Both axes count in multiples and both run ` +
+      `on a logarithmic scale, because the owning gap is an order of magnitude larger and a straight ` +
+      `scale would flatten every country into the corner. ` +
+      (wm.all.owing.length
+        ? `${wm.all.owing.length} more ${wm.all.owing.length === 1 ? 'country is' : 'countries are'} ` +
+          `missing from this picture entirely: ` +
+          wm.all.owing.map(p => BY_ISO[p.iso].name).join(', ') +
+          `, where the poorest half owes more than it owns and the owning gap has no value. `
+        : '') +
+      `Wealth and income shares stop in different years, so each country is drawn at its own latest ` +
+      `reading of each. ` +
+      provenance(['wealth_top1', 'wealth_bottom50', 'income_top1', 'income_bottom50']);
   }
 
   else if (mode === 'multiple') {
