@@ -67,10 +67,41 @@ Graded. A claim may only be stated in the app at the strength it earns here.
 
 ### Claim 1: they are not one thing. STRONG.
 
-Wealth concentration runs roughly twice income concentration, in every rich
-country, in every year we hold. The top 1 per cent of Americans took 19.0 per cent
-of national income in 2021 and held 36.3 per cent of national wealth. This is not
-a trend, it is a structural fact, and it is stable enough to state flatly.
+Two versions of this, and the app leads with the second.
+
+**On shares.** Wealth concentration runs roughly twice income concentration. The
+top 1 per cent of Americans took 19.0 per cent of national income in 2021 and held
+36.3 per cent of national wealth. Across the 51 countries of the richer third where
+both are held, the wealth share is the larger in all 51, with a median ratio of 1.9
+and a range of 1.1 to 3.4.
+
+**Per person, which is the stronger form.** A share belongs to a group, and the top
+1 per cent is a fiftieth the size of the bottom half, so two shares cannot be set
+against each other as they stand. Divide each by the fraction of adults it covers
+and both become a figure for one person. Do that on wealth and on income and the
+gap in owning exceeds the gap in earning in **146 of the 146 countries** where both
+can be worked out, with a median of 6 times wider. In 5 more the poorest half owes
+more than it owns, so the division has no value at all: the same pattern carried
+past the point the arithmetic survives.
+
+Unanimity across 146 countries is not 146 independent measurements. Most of these
+wealth figures are modelled by WID from the smaller set with tax records, so the
+count is partly the model's verdict. Two things make it worth stating anyway: the
+direction is the same in all 48 of the richer-third countries, where the underlying
+data is best, and the claim is about a level rather than a change, which is what
+survives modelling.
+
+A multiple built by dividing by a one-per-cent share is fragile. The United States
+reads about 1,800 times, and a tenth of a point on the bottom half's 1.0 per cent
+share moves that to 1,600 or 2,000. **State the size, never the digits.** The app
+rounds to two figures above a hundred and says what a revision would do.
+
+Three claims sit near this one and are weaker. The bottom half's share of wealth
+*falling* is a steady majority and not a rule: 33 of the 54 richer-third countries
+since 1995, landing between 31 and 34 whichever of 1990, 1995 and 2000 you start
+from. The bottom half owning *less than a tenth* of its country is near-universal,
+211 of 213, the exceptions being Canada and Malta. The bottom half owning less than
+the top 1 per cent is universal, 213 of 213.
 
 ### Claim 2: the league tables disagree. STRONG. This is the atlas's best finding.
 
@@ -411,6 +442,58 @@ Gary listener would come.
 Item 6 is the cheapest and it improves everything else. Item 4 is the one that
 turns the atlas from a demonstration that the numbers disagree into an explanation
 of why.
+
+### 9a. Known defects in what we already hold
+
+Every column was checked against the sentence that quotes it. These are what came
+out, with the ones still open marked.
+
+**Fixed, and the fix is in the app.**
+
+- County life expectancy is measured from age forty, not from birth. The page called
+  it life expectancy and printed 83.0 beside country figures that run 77 to 79. It
+  now says an age reached, and the source line says why the two are not the same
+  number.
+- GDP per person is the Maddison Project series in 2011 international dollars. The
+  median is a survey in 2017 purchasing power dollars. The growth chart puts them on
+  one axis and never said they were different money.
+- Two of the 3,036 county Ginis are above 1, which no Gini can be, and one county
+  carries a median house value of zero. Dropped at load, with the count said out
+  loud, so a re-export of the source files cannot put them back silently.
+- The poverty rate is the $2.15 line. Across the richer third the median reading is
+  a quarter of one per cent and eight countries read exactly zero. Any answer that
+  lands on that floor now says so.
+- The top-tenth-against-the-poorest-half reading was dropping Sweden, Ireland,
+  Greece and Poland without a word, because you cannot divide by a negative. They
+  are named now and their bars cross to the left of zero.
+- `us_longrun.json` contained bare `NaN`, which is not JSON. The loader was patching
+  it with a regex on every load.
+
+**Open, and needing something we cannot get from here.**
+
+- `mean_net_wealth` in `wealth_gini_atlas_v0.4.0.csv` is labelled `EUR_PPP` for
+  every row and is actually local currency: Iran 7.9bn, Lebanon 2.3bn, Sweden 3.16M
+  SEK. Fixing it needs World Bank `PA.NUS.PPP`, which this environment cannot reach.
+  This is a defect in the upstream pipeline, not in the app.
+- `us_income_gini` comes from a county covariates file no longer in the repo, so its
+  exact definition cannot be traced. A median of 0.37 fits Opportunity Insights'
+  `gini99`, the Gini excluding the top one per cent; the two impossible values above
+  1 fit a Gini computed over incomes including capital losses. It is labelled
+  "income gap" in the app rather than "income Gini" because that is what can be
+  defended. Re-exporting the source file with its header would settle it.
+- Relative poverty, a line at half the median, would say something about a rich
+  country where the $2.15 line says nothing. The PIP files in the mirror we can
+  reach are zero bytes.
+- The OECD housing export covers 2021-Q3 to 2026-Q2 on measure `RHP`, and the BIS
+  export is a single "advanced economies" aggregate. Neither is usable. House prices
+  remain two countries.
+
+**Checked and correct, recorded so nobody checks twice.** The three income shares
+sum to one in all 4,428 country-years. The top 1 per cent sits inside the top 10 per
+cent everywhere. House prices are 2015 = 100 in both countries. The commuting-zone
+credit, mortgage and delinquency columns are not topcoded. Negative bottom-50 wealth
+shares are real, not sign errors: eight countries have been below zero at some point
+and five are there now.
 
 ## 10. Checking a new question
 

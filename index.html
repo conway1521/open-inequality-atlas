@@ -776,9 +776,9 @@ footer a { color: inherit; }
   <div id="view-ask" class="wrap stage-compose">
     <section class="ask">
       <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality</h1>
-      <p class="claim">Wealth and income get treated as one story. In nearly every country the gap
-        in what people own is about twice the gap in what they earn, and in some countries the two
-        are pulling apart while in others they are closing.
+      <p class="claim">Wealth and income get treated as one story. Count per person rather than per
+        group and the gap in what people own is wider than the gap in what they earn in every
+        country where both have been measured, and about six times wider in the middle of them.
         <button type="button" class="claim-link" id="claim-why">see it</button></p>
     </section>
 
@@ -856,31 +856,36 @@ footer a { color: inherit; }
   <div id="view-wealth" class="wrap db" hidden>
     <h1>Wealth</h1>
     <p class="sub">
-      What people own is split roughly twice as unevenly as what they earn, in 148 of the 151
-      countries where both can be measured. This is the series the atlas is built on, harmonised
-      from five sources with every row tagged for comparability.
+      Divide each group's share by the people in it and the gap in what one person owns is wider
+      than the gap in what one person earns, in every one of the 146 countries where both can be
+      worked out. The middle of that set is six times wider. In five more the poorest half owes
+      more than it owns, which is the same pattern past the point where a multiple still works.
     </p>
     <div class="grid3">
       <div class="block">
-        <h2>Who holds it</h2>
-        <p>The share of all household net wealth held by the top 1% and by the bottom half,
-        from WID, per adult with wealth split equally within the couple.
-        <span id="cov-wealth"></span></p>
-        <p class="try" data-qs="where is wealth most concentrated?;does my country own as unevenly as it earns?;how has inequality changed over time?"></p>
+        <h2>One person against one person</h2>
+        <p>The gap in owning set beside the gap in earning, for the same country. In the United
+        States one person in the top 1% owns about 1,800 times what one in the poorest half owns
+        and earns 69 times as much. Most of these wealth figures are modelled from the smaller
+        set of countries with tax records, so read the direction, which is unanimous, before the
+        digits. <span id="cov-wealth"></span></p>
+        <p class="try" data-qs="how many times more does one person at the top own?;does my country own as unevenly as it earns?"></p>
       </div>
       <div class="block">
-        <h2>The whole curve</h2>
-        <p>A Lorenz curve draws the distribution rather than summarising it, for one country
-        or up to five at once. The wealth Gini is here too, for anyone who wants the single
-        number, with the warning that at 0.83 it barely moves.</p>
-        <p class="try" data-qs="Lorenz curve for the United Kingdom;how much more do the richest hold than the poorest?"></p>
+        <h2>What half a country owns</h2>
+        <p>The poorest half of British adults held 13.1% of everything owned there in 1990 and
+        holds 4.6% now. In Sweden the same line crosses zero around 2000: debts there come to
+        10.9% of all household wealth more than assets do. A share can go negative, and four
+        European countries are below the line.</p>
+        <p class="try" data-qs="what does the poorest half own?;how much more do the richest hold than the poorest?;Lorenz curve for the United Kingdom"></p>
       </div>
       <div class="block">
         <h2>Houses</h2>
-        <p>For most people who own anything, what they own is where they live. Real house
-        prices held against what people earn, after inflation. Two countries so far: the
+        <p>For most people who own anything, what they own is where they live. Real house prices
+        held against what people earn, after inflation. British houses rose 280% between 1969 and
+        2017 while the typical household's income rose 223%. Two countries so far: the
         international series sits behind sources we have not been able to reach.</p>
-        <p class="try" data-qs="have houses pulled away from pay?"></p>
+        <p class="try" data-qs="have houses pulled away from pay?;where is wealth most concentrated?"></p>
       </div>
     </div>
   </div>
@@ -996,23 +1001,67 @@ footer a { color: inherit; }
     <h1>Why</h1>
 
     <p class="sub">
-      Almost everything written about inequality is about pay. It is the figure governments
-      publish, so it is the figure that gets quoted, and when a country is called fair or unfair
-      pay is nearly always what is meant. Ownership is a different thing and it is measured far
-      less often. This page is about what happens when you look at it instead.
+      Almost everything written about inequality is about pay. Ownership is a different thing, it
+      is measured far less often, and where both have been measured it is the wider gap in every
+      country. This page is what happens when you look at that one instead.
     </p>
 
-    <h2 class="why-step">The bottom half of your country owns less than it used to</h2>
+    <h2 class="why-step">Half your country owns almost nothing</h2>
     <p class="sub">
-      Take the poorest half of a country and add up everything they own, after debts. In the
-      United Kingdom that came to 6.2% of the country's wealth in 1995 and 4.6% by 2024. In Italy
-      it went from 10.2% to 2.5%. In Sweden it went from 5.8% to minus 10.9%, which means the
-      poorest half of Sweden now owes more than it owns.
+      Take the poorest half of a country and add up everything they own, after debts are
+      subtracted. In the United Kingdom that comes to 4.6% of everything owned there. In the
+      United States it is 1.0%. In Italy, 2.5%. In Sweden it is minus 10.9%, because the poorest
+      half of Sweden owes more than it owns.
     </p>
     <p class="sub">
-      This is the most consistent thing in the whole atlas. The bottom half's share fell in 18 of
-      the 25 rich countries we hold, and unlike most findings about inequality it does not change
-      depending on which year you start counting from.
+      This is not a British problem or an American one. Of the <span id="wn-all">213</span>
+      countries the atlas holds, the poorest half owns less than a tenth of the national wealth in
+      <span id="wn-thin">211</span> of them. The only exceptions are
+      <span id="wn-fat">Canada and Malta</span>. In <span id="wn-owing">5</span> the poorest half
+      owns less than nothing at all. And in every single country, half the population owns less
+      than the top one per cent does, though there are fifty times as many of them.
+    </p>
+
+    <h2 class="why-step">The gap in owning dwarfs the gap in earning</h2>
+    <p class="sub">
+      Shares belong to groups, and these groups are wildly different sizes, so a share on its own
+      says nothing about a person. Divide each by the people in it and both become something you
+      can picture: what one person at the top has against what one person at the bottom has.
+    </p>
+    <p class="sub">
+      Do that twice, once on wealth and once on income, and the two numbers are not close. In the
+      United States one person in the top 1% owns about 1,800 times what one in the poorest half
+      owns, and earns 69 times as much. In Britain it is 230 times against 33. Of the
+      <span id="wn-gap-both">146</span> countries where both can be worked out, the gap in owning
+      is wider than the gap in earning in <span id="wn-gap-wider">every one of them</span>, and the
+      middle of that set is <span id="wn-gap-med">6</span> times wider. A further
+      <span id="wn-gap-owing">5</span> are off the chart entirely, because you cannot divide by a
+      half that owes.
+    </p>
+    <div class="chart-card">
+      <div class="chart-title" id="why-gaps-title">The gap in owning against the gap in earning</div>
+      <div id="why-gaps" style="width:100%;height:400px"></div>
+      <p class="chart-src" id="why-gaps-src"></p>
+    </div>
+    <p class="sub">
+      That is the reason this atlas exists. Pay is the figure governments publish, so pay is the
+      figure that gets quoted, and when a country is called fair or unfair pay is nearly always
+      what is meant. It is the narrower of the two gaps everywhere anyone has measured both.
+    </p>
+
+    <h2 class="why-step">It has got worse in most places, not all</h2>
+    <p class="sub">
+      In Britain the poorest half held 6.2% in 1995 and holds 4.6% now. Italy went from 10.2% to
+      2.5%, Sweden from 5.8% to below zero. But this is where the honest answer is a majority
+      rather than a rule: across the <span id="wn-rich">54</span> countries in the richer third
+      the share fell in <span id="wn-fell">33</span> and rose in <span id="wn-rose">21</span>.
+      Denmark went from below zero to 4%, the Netherlands from 5.4% to 9.8%.
+    </p>
+    <p class="sub">
+      What the count does not do is wobble. It lands between
+      <span id="wn-fell-span">31 and 34</span> whether you start in 1990, 1995 or 2000, which is
+      more than most findings about inequality survive. A steady majority, then, and the level
+      above is the stronger claim.
     </p>
     <div class="chart-card">
       <div class="chart-title" id="why-own-title">What the bottom half owns</div>
@@ -1087,7 +1136,8 @@ footer a { color: inherit; }
     <p class="sub">
       Whether they climb at all turns out to depend most on who they grew up around. How many of a
       poor child's friends are better off predicts where they end up better than anything else in
-      this atlas: 0.72 across three thousand counties, against 0.49 for the county's own income gap.
+      this atlas: 0.72 across three thousand counties, against 0.50 for the county's own income gap,
+      which runs the other way because a wider gap goes with a shorter climb.
       Two things have to happen before that friendship exists. Better-off people have to be there,
       and once they are, people have to actually mix. Those two barely move together, so a place
       can fail at either, and a single number cannot tell you which.
@@ -3643,13 +3693,15 @@ const PROMPT_SETS = {
     'what about among rich countries?',
   ],
   opportunity: [
-    'where do children climb highest?',
-    'do the four faces agree inside one country?',
+    'if you grow up poor here, what do you earn later?',
     'does knowing better-off people help you climb?',
     'are they not here, or here and not mixing?',
+    "does credit depend on your parents' income?",
+    "who owns a home, by their parents' income?",
+    "who falls behind on payments, by their parents' income?",
+    'do the four faces agree inside one country?',
     'does the income gap track climbing?',
-    "how does credit differ by parents' income?",
-    "how do mortgages differ by parents' income?",
+    'how much longer do the rich live here?',
     'does mobility follow income?',
   ],
 };
@@ -3699,6 +3751,8 @@ const QUESTIONS = [
     'are they not here, or here and not mixing?',
     'does the income gap track climbing?',
     "does credit depend on your parents' income?",
+    "who owns a home, by their parents' income?",
+    "who falls behind on payments, by their parents' income?",
     'how much longer do the rich live here?'] },
 ];
 let promptIdx = 0;
@@ -4608,7 +4662,7 @@ function initCube() {
 /* ── opportunity: the commuting-zone layer (Opportunity Insights) ──── */
 let US_CZ = null;
 const OPP_FIN = [
-  { re: /\bmortgages?\b|\bhome ?loans?\b|\bhousing\b/, key: 'mort', label: 'mortgage balance', fmt: usd0 },
+  { re: /\bmortgages?\b|\bhome ?loans?\b|\bhousing\b|\bowns? a home\b|\bhome ?owner\w*\b|\bon the ladder\b/, key: 'mort', label: 'mortgage balance', fmt: usd0 },
   { re: /\bdelinqu\w*|\bbehind on\b|\bmiss\w* payment/, key: 'delq', label: 'delinquency rate', fmt: v => (v * 100).toFixed(0) + '%' },
   { re: /\bcredit\b|\bscore\b/, key: 'cr', label: 'credit score', fmt: v => '' + Math.round(v) },
 ];
@@ -4623,9 +4677,25 @@ function oppAnswer(q, strict) {
     const pts = zones.filter(z => z[g.key + '25'] != null && z[g.key + '75'] != null)
       .map(z => ({ name: z.name, x: z[g.key + '25'], y: z[g.key + '75'] }));
     const m25 = czMed(z => z[g.key + '25']), m75 = czMed(z => z[g.key + '75']);
-    f.opp = { kind: 'gap', label: g.label, fmt: g.fmt, pts };
-    f.text = `In the average commuting zone, children whose parents were in the bottom quarter reach a ${g.label} of ` +
-      `<strong>${g.fmt(m25)}</strong>. Children whose parents were in the top quarter reach <strong>${g.fmt(m75)}</strong>.`;
+    const ahead = pts.filter(z => (g.key === 'delq' ? z.y < z.x : z.y > z.x)).length;
+    f.opp = { kind: 'gap', label: g.label, fmt: g.fmt, pts, m25, m75, ahead };
+    // Each of the three is a different kind of number and none of them reads as
+    // "reaches a value of X", which is what one shared sentence was making them say.
+    const lead = `In the middle commuting zone of ${pts.length}, `;
+    f.text = g.key === 'cr'
+      ? lead + `children whose parents were in the poorest quarter have a credit score of ` +
+        `<strong>${g.fmt(m25)}</strong> by their mid thirties. Children of the richest quarter have ` +
+        `<strong>${g.fmt(m75)}</strong>. The richer children score higher in ${ahead} of the ${pts.length} zones.`
+      : g.key === 'delq'
+      ? lead + `<strong>${g.fmt(m25)}</strong> of children whose parents were in the poorest quarter have ` +
+        `fallen ninety days behind on a payment by their mid thirties, against <strong>${g.fmt(m75)}</strong> ` +
+        `of children of the richest quarter. The poorer children are further behind in ${ahead} of the ` +
+        `${pts.length} zones.`
+      : lead + `children whose parents were in the poorest quarter carry <strong>${g.fmt(m25)}</strong> of ` +
+        `mortgage debt by their mid thirties, against <strong>${g.fmt(m75)}</strong> for children of the ` +
+        `richest quarter. <em>Read that as who holds a mortgage at all rather than how large one is: a ` +
+        `mortgage in the United States runs well over a hundred thousand dollars, so an average of ` +
+        `${g.fmt(m25)} across a whole group is mostly counting how many of them have one.</em>`;
     return f;
   }
   // The whole point of the cube, asked inside one country. The US is the only place
@@ -4662,9 +4732,11 @@ function oppAnswer(q, strict) {
     f.opp = { kind: 'faces', cols, grid, ns };
     f.text = `The United States is the only country where all four faces are measured at the same ` +
       `fine geography, so it is the only place the atlas can ask whether they agree. Across roughly ` +
-      `three thousand counties, mostly they do not. Where a poor child climbs furthest is tied to who ` +
-      `they grow up around (<strong>${at('us_mobility', 'us_econ_conn').toFixed(2)}</strong>) and, more ` +
-      `weakly, to how evenly income is spread (<strong>${at('us_mobility', 'us_income_gini').toFixed(2)}</strong>). ` +
+      `three thousand counties, mostly they do not. A poor child climbs furthest where they grow up ` +
+      `around better-off people (<strong>${at('us_mobility', 'us_econ_conn').toFixed(2)}</strong>), and ` +
+      `climbs less far where the local income gap is wide ` +
+      `(<strong>${at('us_mobility', 'us_income_gini').toFixed(2)}</strong>, the minus sign meaning a ` +
+      `wider gap goes with a shorter climb). ` +
       (worst != null ? `The rich-poor gap in how long people live is tied to <strong>none of it</strong>: ` +
         `its strongest link to anything else here is ${worst.toFixed(2)}. A county can share out its ` +
         `income evenly and still bury its poor a decade early.` : '');
@@ -4691,9 +4763,15 @@ function oppAnswer(q, strict) {
       if (pts.length > 100) {
         const rr = pearson(pts);
         f.opp = { kind: 'pair', x: X, y: Y, pts, r: rr };
+        // a negative correlation is two things moving apart, and calling that "moving
+        // together closely" says the opposite of what the number says
         const strength = Math.abs(rr) > 0.5 ? 'closely' : Math.abs(rr) > 0.25 ? 'loosely' : 'barely';
-        f.text = `Across <strong>${pts.length}</strong> US counties, ${X.lab} and ${Y.lab} move together ` +
-          `<strong>${strength}</strong>: r = <strong>${rr.toFixed(2)}</strong>. ` +
+        const how = Math.abs(rr) < 0.15 ? `have little to do with each other`
+          : rr < 0 ? `pull against each other <strong>${strength}</strong>: where one is high the other ` +
+              `tends to be low`
+          : `move together <strong>${strength}</strong>`;
+        f.text = `Across <strong>${pts.length}</strong> US counties, ${X.lab} and ${Y.lab} ${how}. ` +
+          `r = <strong>${rr.toFixed(2)}</strong>. ` +
           `<em>Two of the atlas's faces, measured in the same places, which is something it cannot do ` +
           `anywhere outside this one country.</em>`;
         return f;
@@ -4822,7 +4900,18 @@ function drawOpp(f) {
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: 'parents in the top quarter', type: 'linear', autorange: true }),
     }), CFG);
     title.textContent = `${cap(o.label)} by parents' income, across commuting zones`;
-    src.textContent = 'Each dot is a commuting zone. The line marks the same outcome for both. Source: Opportunity Insights.';
+    src.textContent =
+      `Each dot is one of ${o.pts.length} commuting zones, placed by how children from the poorest ` +
+      `quarter of families there turned out against how children from the richest quarter did. On the ` +
+      `dashed line the two groups come out the same. Everyone counted here was born between 1978 and ` +
+      `1983 and was in their late thirties when this was measured in 2020, so it is one cohort at one ` +
+      `moment and not a trend. Estimates are shrunk toward the national mean, which pulls small zones ` +
+      `in and makes the spread here narrower than the raw spread. ` +
+      (o.label === 'mortgage balance'
+        ? `The balance is an average across everyone in the group, so a zone reading low is telling you ` +
+          `that few of them hold a mortgage rather than that their mortgages are small. `
+        : '') +
+      `Source: Chetty et al, the Opportunity Atlas, linked tax and credit-bureau records.`;
   } else if (o.kind === 'faces') {
     // a correlation matrix, which is the only honest way to show "do these agree":
     // a scatter can carry two, and the claim is about all of them at once
@@ -5003,7 +5092,14 @@ function drawOpp(f) {
         yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category', autorange: true }),
       }), CFG);
     title.textContent = 'Upward mobility, highest and lowest commuting zones';
-    src.textContent = 'The income percentile a child from a low-income family reaches by adulthood. Source: Opportunity Insights.';
+    src.textContent =
+      'Where a child born to parents at the 25th percentile of the national income distribution ends ' +
+      'up themselves, as a percentile of their own generation. 50 would mean landing in the middle of ' +
+      'the country; nowhere reaches it on average. Everyone counted was born between 1978 and 1983 and ' +
+      'was measured in their mid thirties, so this is one cohort at one moment rather than a trend, ' +
+      'and it describes where children raised in a zone ended up rather than what the zone does to ' +
+      'anyone arriving now. Estimates are shrunk toward the national mean, which pulls the small zones ' +
+      'in. Source: Chetty, Hendren, Kline and Saez, the Opportunity Atlas, from linked tax records.';
   }
 }
 
@@ -5528,7 +5624,7 @@ function drawChart() {
     const wm = chain.slice().reverse().find(f => f.mode === 'wmultiple').wmultiple;
     const pts = wm.all.both;
     const lo = Math.min(...pts.map(p => Math.min(p.im, p.wm))) * 0.8;
-    const hi = Math.max(...pts.map(p => Math.max(p.im, p.wm))) * 1.25;
+    const hi = Math.max(...pts.map(p => Math.max(p.im, p.wm))) * 1.9;   // room for the label above the top dot
     const here = pts.find(p => p.iso === wm.iso);
     Plotly.react(el, [
       { type: 'scatter', mode: 'lines', name: 'the two gaps equal', showlegend: false,
@@ -6582,7 +6678,64 @@ function initUS() {
 const WHY_ISO = 'USA';
 // syncChartTheme lives in drawChart, which the Why page never goes through: without
 // this call these two draw with the light grid baked in, blazing white over a dark page
-function drawWhy() { syncChartTheme(); drawWhyOwn(); drawWhyPay(); drawWhyHouse(); drawWhyFaces(); }
+function drawWhy() { syncChartTheme(); fillWhyNumbers(); drawWhyOwn(); drawWhyGaps(); drawWhyPay(); drawWhyHouse(); drawWhyFaces(); }
+
+// Every count on the Why page is worked out here and written into the prose, because a
+// number typed into the page once is a number that goes quietly wrong the next time the
+// data is rebuilt. This page used to say the bottom half's share fell in 18 of 25 rich
+// countries. It falls in 34 of 54, which is a majority and not a pattern, and the page
+// now says which.
+function whyNumbers() {
+  const wb = SERIES.wealth_bottom50 || {}, w1 = SERIES.wealth_top1 || {};
+  const at = (s, y) => { const q = (s || []).filter(d => d.year <= y); return q.length ? q[q.length - 1].v : null; };
+  const all = Object.keys(wb).filter(i => BY_ISO[i] && wb[i].length && w1[i] && w1[i].length);
+  const last = k => s => s[s.length - 1].v;
+  const thin = all.filter(i => wb[i][wb[i].length - 1].v < 0.10);
+  const under = all.filter(i => wb[i][wb[i].length - 1].v < w1[i][w1[i].length - 1].v);
+  const owing = all.filter(i => wb[i][wb[i].length - 1].v <= 0);
+  const rt = richThird();
+  const rich = all.filter(i => rt.has(i) && at(wb[i], 1995) != null);
+  const fell = y => rich.filter(i => wb[i][wb[i].length - 1].v < at(wb[i], y));
+  const sweep = multipleSweepAll();
+  return {
+    all: all.length, thin: thin.length, under: under.length, owing: owing.length,
+    fat: all.filter(i => wb[i][wb[i].length - 1].v >= 0.10).map(i => BY_ISO[i].name).sort(),
+    rich: rich.length, fell95: fell(1995).length, fell90: fell(1990).length, fell00: fell(2000).length,
+    gapBoth: sweep.both.length, gapWider: sweep.wider, gapMed: sweep.medRatio, gapOwing: sweep.owing.length,
+  };
+}
+// the same two divisions as the wealth face, over every country rather than a chosen set
+function multipleSweepAll() {
+  if (multipleSweepAll.cache) return multipleSweepAll.cache;
+  const both = [], owing = [];
+  for (const iso in BY_ISO) {
+    const p = multiplePair(iso);
+    if (!p || p.im == null) continue;
+    if (p.wm == null) { if (p.wb != null) owing.push(p); continue; }
+    both.push(p);
+  }
+  const ratios = both.map(p => p.wm / p.im).sort((a, b) => a - b);
+  return (multipleSweepAll.cache = { both, owing, wider: both.filter(p => p.wm > p.im).length,
+    medRatio: ratios.length ? ratios[Math.floor(ratios.length / 2)] : 0 });
+}
+function fillWhyNumbers() {
+  if (!DATA_READY) return;
+  const n = whyNumbers();
+  const put = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  put('wn-all', n.all);
+  put('wn-thin', n.thin);
+  put('wn-under', n.under);
+  put('wn-owing', n.owing);
+  put('wn-fat', n.fat.join(' and '));
+  put('wn-gap-both', n.gapBoth);
+  put('wn-gap-wider', n.gapWider === n.gapBoth ? 'every one of them' : `${n.gapWider} of them`);
+  put('wn-gap-med', n.gapMed.toFixed(0));
+  put('wn-gap-owing', n.gapOwing);
+  put('wn-rich', n.rich);
+  put('wn-fell', n.fell95);
+  put('wn-fell-span', `${Math.min(n.fell90, n.fell95, n.fell00)} and ${Math.max(n.fell90, n.fell95, n.fell00)}`);
+  put('wn-rose', n.rich - n.fell95);
+}
 
 // The closing figure: the page's own argument, arriving a second time at county scale.
 // It reuses the reading the opportunity layer already computes rather than keeping a
@@ -6666,9 +6819,65 @@ function drawWhyOwn() {
     `on thin data for most countries, and starting there invents falls that are revisions rather ` +
     `than history. ` +
     `Five countries are drawn because a line each is readable and an average across them ` +
-    `would hide how differently they moved. Across the 25 rich countries the atlas holds, ` +
-    `this share fell in 18, and it fell in 18 whether you start counting in 1990, 1995 or 2000. ` +
+    `would hide how differently they moved. ` + (() => {
+      const n = whyNumbers();
+      return `Across the ${n.rich} countries in the richer third, this share fell in ${n.fell95} of ` +
+        `them and rose in ${n.rich - n.fell95}. That count barely moves with the starting year: ` +
+        `it lands between ${Math.min(n.fell90, n.fell95, n.fell00)} and ` +
+        `${Math.max(n.fell90, n.fell95, n.fell00)} whether you begin in 1990, 1995 or 2000. ` +
+        `A majority, then, and a steady one, but not something that happened everywhere. `;
+    })() +
     provenance(['wealth_bottom50']);
+}
+
+// Step two, and the strongest thing the atlas holds: the same division done on owning and
+// on earning, one dot per country. Every country sits above the line.
+function drawWhyGaps() {
+  const el = document.getElementById('why-gaps');
+  if (!el || !window.Plotly || !SERIES.wealth_bottom50 || !SERIES.income_bottom50) return;
+  const s = multipleSweepAll();
+  const pts = s.both;
+  if (pts.length < 20) return;
+  const lo = Math.min(...pts.map(p => Math.min(p.im, p.wm))) * 0.8;
+  // headroom, not padding: the topmost dot carries a label above it and a tight range
+  // clips the label rather than the dot, which looks like a bug rather than a scale
+  const hi = Math.max(...pts.map(p => Math.max(p.im, p.wm))) * 1.9;
+  const mark = ['GBR', 'USA', 'FRA'].map(i => pts.find(p => p.iso === i)).filter(Boolean);
+  // named countries sit close together, so their labels are pushed to opposite sides
+  const SIDE = { GBR: 'bottom center', USA: 'top center', FRA: 'middle left' };
+  Plotly.react(el, [
+    { type: 'scatter', mode: 'lines', showlegend: false, x: [lo, hi], y: [lo, hi],
+      line: { color: cssVar('--axis', '#cbd5e1'), width: 1, dash: 'dash' }, hoverinfo: 'skip' },
+    { type: 'scatter', mode: 'markers', showlegend: false,
+      x: pts.map(p => p.im), y: pts.map(p => p.wm), text: pts.map(p => BY_ISO[p.iso].name),
+      marker: { color: metricColor('wealth_top1'), size: 7, opacity: 0.4 },
+      hovertemplate: '%{text}<br>earning gap %{x:.0f}x<br>owning gap %{y:.0f}x<extra></extra>' },
+    { type: 'scatter', mode: 'markers+text', showlegend: false,
+      x: mark.map(p => p.im), y: mark.map(p => p.wm), text: mark.map(p => BY_ISO[p.iso].name),
+      textposition: mark.map(p => SIDE[p.iso] || 'top center'), textfont: { size: 11 },
+      marker: { size: 11, color: hlFill('wealth_top1'), line: { color: hlEdge(), width: 2 } },
+      hovertemplate: '%{text}<br>earning gap %{x:.0f}x<br>owning gap %{y:.0f}x<extra></extra>' },
+  ], Object.assign({}, BASE_LAYOUT, {
+    margin: { t: 16, r: 18, b: 48, l: 64 },
+    xaxis: Object.assign({}, BASE_LAYOUT.xaxis, logMult(lo, hi, 'the gap in earning, times')),
+    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, logMult(lo, hi, 'the gap in owning, times')),
+  }), CFG);
+  const t = document.getElementById('why-gaps-title');
+  if (t) t.textContent = 'The gap in owning against the gap in earning';
+  const src = document.getElementById('why-gaps-src');
+  if (src) src.textContent =
+    `One dot per country. Across, what one person in the top 1% earns against one person in the ` +
+    `poorest half. Up, what one of them owns against one of them. Each share is divided by the ` +
+    `fraction of adults it covers first, which is what turns a share of a block into an income or ` +
+    `a holding for a person. On the dashed line the two gaps would be the same size; ` +
+    (s.wider === pts.length ? 'no country is on it or below it' : `${s.wider} of ${pts.length} sit above it`) +
+    `. ${s.owing.length} further ${s.owing.length === 1 ? 'country is' : 'countries are'} left out ` +
+    `because the poorest half there owes more than it owns, which has no value as a multiple and ` +
+    `is the same pattern carried past the point the arithmetic survives. Both scales are ` +
+    `logarithmic: the owning gap is an order of magnitude larger, and on a straight scale every ` +
+    `country would sit in one corner. Wealth and income shares stop in different years, so each ` +
+    `country is drawn at its own latest reading of each. ` +
+    provenance(['wealth_top1', 'wealth_bottom50', 'income_top1', 'income_bottom50']);
 }
 
 // Step two: earning against owning, for the same people. A dot per country, so the
