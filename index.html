@@ -1656,7 +1656,19 @@ function rankedPool(metric, dir, region, year) {
 // 1st, 2nd, 3rd, 11th: a rank reads as a position, not as a bare number
 // "in the United Kingdom", not "in United Kingdom": the names that take an article
 const THE = new Set(['GBR', 'USA', 'NLD', 'PHL', 'ARE', 'CZE', 'DOM', 'BHS', 'MDV', 'COD', 'COG', 'CAF', 'GMB', 'COM', 'SYC', 'SLB', 'MHL']);
-function theName(iso) { const n = BY_ISO[iso] ? BY_ISO[iso].name : iso; return (THE.has(iso) ? 'the ' : '') + n; }
+// Six names arrive inverted or parenthesised from the source file, which is right for a
+// table and wrong in a sentence: "the Congo, Democratic Republic lives on $1.46 a day".
+// The table keeps the source spelling; only prose uses these.
+const SAYS = {
+  COD: 'the Democratic Republic of Congo', PRK: 'North Korea',
+  MAF: 'the French side of Saint Martin', SXM: 'the Dutch side of Sint Maarten',
+  BES: 'Bonaire, Sint Eustatius and Saba', SHN: 'Saint Helena',
+};
+function theName(iso) {
+  if (SAYS[iso]) return SAYS[iso];
+  const n = BY_ISO[iso] ? BY_ISO[iso].name : iso;
+  return (THE.has(iso) ? 'the ' : '') + n;
+}
 // A multiple built on a one-per-cent share carries no fourth digit worth printing, so it
 // is rounded to two figures once it is past a hundred and the sentence says which way to
 // read it.
@@ -2646,13 +2658,13 @@ function buildAnswer(p, q) {
     // "ever" is only true of the whole record. Once the reader clips the years, the
     // narrowest point is the narrowest in what they asked for, and the sentence says so.
     const clipped = !!(p.since || p.until);
-    const span = clipped ? 'over the years you have set' : 'ever';
+    const span = clipped ? 'came over the years you have set' : 'have ever come';
     f.text = `In <strong>${esc(theName(iso))}</strong>, one person in the top 1% takes ` +
       `<strong>${last.v.toFixed(0)} times</strong> what one person in the bottom half takes (${last.year}). ` +
       (near
-        ? `That is as close together as the two got ${clipped ? span : 'here at any point'}, ` +
-          `over ${pts.length} years of readings. `
-        : `The closest they came ${span} was ${then.year}, at <strong>${then.v.toFixed(0)} times</strong>, ` +
+        ? `That is as close together as the two got ${clipped ? 'over the years you have set' : 'at any point here'}, ` +
+          `across ${pts.length} readings. `
+        : `The closest they ${span} was ${then.year}, at <strong>${then.v.toFixed(0)} times</strong>, ` +
           `and the gap is ${(last.v / then.v).toFixed(1)} times wider now than it was then. `) +
       `<em>Each group's share of national income divided by how many people are in it, so a share of ` +
       `a block becomes an income for a person. Pretax, before any tax and before any benefit.</em>`;
@@ -2716,8 +2728,8 @@ function buildAnswer(p, q) {
     f.text = `<strong>${cap(esc(theName(iso)))}</strong> cut into three. From ${from}, ` +
       (from === lo
         ? (clipped ? `where you have started the run` : `where this record opens`)
-        : `the year the middle forty per cent held the most of national income it held ` +
-          (clipped ? `anywhere in this stretch` : `at any point here`)) +
+        : `the year the middle forty per cent held its largest share of national income ` +
+          (clipped ? `anywhere in this stretch` : `on record here`)) +
       `, to ${hi}: the ` +
       `middle went from <strong>${pc(at(mm, from))}</strong> to <strong>${pc(at(mm, hi))}</strong>, ` +
       `${mv(mm)}. The top tenth went from <strong>${pc(at(t, from))}</strong> to ` +
