@@ -890,28 +890,34 @@ footer a { color: inherit; }
     <p class="sub">
       The figure almost every report quotes. It describes a pay slip, and it is not the same
       as what anybody owns: rank countries by the income share of the top 1% and by their
-      wealth share and you get two different tables.
+      wealth share and you get two different tables. The three readings below turn a share
+      into something a person can picture.
     </p>
     <div class="grid3">
       <div class="block">
-        <h2>Shares, not just a Gini</h2>
-        <p>The top 1%, the middle 40% and the bottom half of pretax national income, from WID
-        on the same equal-split basis as the wealth series. That is what makes an income share
-        and a wealth share comparable here. <span id="cov-income"></span></p>
-        <p class="try" data-qs="does my country own as unevenly as it earns?;are wealth and income pulling apart here?"></p>
+        <h2>One person against one person</h2>
+        <p>A share belongs to a group, and the top 1% is a fiftieth the size of the bottom half,
+        so the two shares cannot be set against each other as they stand. Divide each by the
+        people in it and they become incomes. In the United States one person at the top takes
+        69 times one at the bottom, against 25 times in 1974, the closest the two have come.
+        <span id="cov-income"></span></p>
+        <p class="try" data-qs="how many times more does one person at the top earn?;does my country own as unevenly as it earns?"></p>
       </div>
       <div class="block">
-        <h2>The middle</h2>
-        <p>Everyone between the median and the top tenth. In the United States that group took
-        44.4% of national income in 1990 and 40.6% in 2021.</p>
-        <p class="try" data-qs="how has inequality changed over time?;when did this country change most?"></p>
-      </div>
-      <div class="block">
-        <h2>Where the growth went</h2>
-        <p>Output per person against the income of the person in the middle. Not like for like,
-        and the chart says so: national accounts on one line, household surveys on the other.
+        <h2>What the money buys</h2>
+        <p>The income of the person in the middle, priced so the same basket of goods costs the
+        same number of dollars in every country. That is $45 a day in the United Kingdom and $65
+        in the United States, against $14 and $41 when each country's record opens.
         <span id="cov-median"></span></p>
-        <p class="try" data-qs="did the growth reach the typical person?;did it move differently from comparable countries?"></p>
+        <p class="try" data-qs="what does the person in the middle live on a day?;did the growth reach the typical person?"></p>
+      </div>
+      <div class="block">
+        <h2>Which part of the country</h2>
+        <p>The richest tenth, the forty per cent under them and the poorer half add to the whole
+        country, so whatever one gains another loses. The American middle held 48.9% of national
+        income in 1945 and holds 40.6% now. Over the same years the top tenth gained 10.3 points
+        and the poorer half lost 2.0, so the middle's loss and the bottom's went the same way.</p>
+        <p class="try" data-qs="what happened to the middle here?;when did this country change most?"></p>
       </div>
     </div>
   </div>
@@ -1719,6 +1725,19 @@ function parse(raw) {
   const metric = metrics.length ? metrics[0] : null;
   if (metrics.includes('PENDING')) return { kind: 'pending' };
 
+  // ── the income face: three readings that say what the shares mean for a person ──
+  // These sit ahead of the general readings because they answer the same words more
+  // concretely. MULTIPLE before RATIO, which also claims "how many times".
+  // MULTIPLE: the shares divided by how many people are in each, so they are people
+  if (/\bone person\b|\bsomeone at the top\b|\bper[- ]person\b|\bhow many times more\b|\bfor every\b.*\bpound|\bfor every\b.*\bdollar/.test(r))
+    return { kind: 'multiple', isos, iso: isos[0] || null };
+  // BASKET: the middle income in dollars that buy the same goods everywhere
+  if (/\blives? on\b|\bliving on\b|\ba day\b|\bbasket of goods\b|\bpurchasing power\b|\bsame money buy\b|\bgo further\b/.test(r))
+    return { kind: 'basket', isos, iso: isos[0] || null };
+  // THREE: the top tenth, the forty in the middle, and the bottom half, summing to 100
+  if (/\bthree parts\b|\bmiddle 40\b|\bmiddle forty\b|\bmiddle class\b|\bhappened to the middle\b|\bhollow\w*\b|\bsplit three ways\b|\bcut into three\b|\bsqueez\w*\b/.test(r))
+    return { kind: 'three', isos, iso: isos[0] || null };
+
   // REACH: did the country's growth arrive at the median, or somewhere else
   if (/\breach(ed)? me\b|\breach the median\b|\bgot the growth\b|\bwho got\b|\btypical (income|person|wage)\b|\bgrowth actually\b/.test(r))
     return { kind: 'reach', isos, iso: isos[0] || null };
@@ -2035,7 +2054,8 @@ function syncCellFromFact(f) {
 
     : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
-  cell.view = ['reach', 'ratio', 'triple', 'tables', 'turn', 'peers', 'houses'].includes(f.kind) ? f.kind : null;
+  cell.view = ['reach', 'ratio', 'triple', 'tables', 'turn', 'peers', 'houses',
+    'multiple', 'basket', 'three'].includes(f.kind) ? f.kind : null;
   cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
     : ctx.region ? ('r:' + ctx.region) : null;
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
@@ -2075,6 +2095,18 @@ function runCell() {
   if (cell.view === 'ratio') {
     runParse({ kind: 'ratio', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
       'the richest tenth against the poorest half'); return;
+  }
+  if (cell.view === 'multiple') {
+    runParse({ kind: 'multiple', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
+      'one person at the top against one at the bottom'); return;
+  }
+  if (cell.view === 'basket') {
+    runParse({ kind: 'basket', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
+      'what the person in the middle lives on'); return;
+  }
+  if (cell.view === 'three') {
+    runParse({ kind: 'three', isos: cell.place ? [cell.place] : [], iso: cell.place || null },
+      'the country in three parts'); return;
   }
   const F = cell.form;
   if (F === 'lorenz' && cell.place) {
@@ -2340,6 +2372,101 @@ function buildAnswer(p, q) {
       `<strong>${pc1(mPct)}</strong> to ${ms[ms.length - 1].year}.` +
       (gPct - mPct > 5 ? ' The growth did not arrive in the middle.' : '') +
       ` <em>The median rests on ${ms.length} survey${ms.length === 1 ? '' : 's'} between ${ms[0].year} and ${ms[ms.length - 1].year}.</em>`;
+  }
+
+  else if (p.kind === 'multiple') {
+    // Shares are per group, and the groups are wildly different sizes, so a share says
+    // nothing about a person. Divide each by how many people are in it and you get the
+    // thing anyone can picture: what one person at the top takes against one at the bottom.
+    const iso = p.iso || ctx.lastIso || (focusIsos()[0] || null);
+    if (!iso || !BY_ISO[iso]) { showNotice('This reads one country. Name a place first.'); return null; }
+    const T = seriesOf('income_top1', iso), B = seriesOf('income_bottom50', iso);
+    if (T.length < 3 || B.length < 3) return miss();
+    const bm = new Map(B.map(d => [d.year, d.v]));
+    const pts = [];
+    for (const d of T) { const b = bm.get(d.year); if (b) pts.push({ year: d.year, v: (d.v / 0.01) / (b / 0.50) }); }
+    if (pts.length < 3) return miss();
+    // the year to measure against is the narrowest the country ever got, which the series
+    // picks for itself. anchoring on a round year instead would be a choice nobody made.
+    const last = pts[pts.length - 1];
+    const then = pts.reduce((lo, d) => d.v < lo.v ? d : lo, pts[0]);
+    ctx.metric = 'income_top1'; ctx.lastIso = iso; f.isos = [iso];
+    f.mode = 'multiple'; f.multiple = { iso, pts, then, last };
+    const near = Math.abs(last.year - then.year) <= 2;
+    f.text = `In <strong>${esc(theName(iso))}</strong>, one person in the top 1% takes ` +
+      `<strong>${last.v.toFixed(0)} times</strong> what one person in the bottom half takes (${last.year}). ` +
+      (near
+        ? `That is as close together as the two have ever been here, over ${pts.length} years of readings. `
+        : `The closest they have ever been was ${then.year}, at <strong>${then.v.toFixed(0)} times</strong>, ` +
+          `and the gap is ${(last.v / then.v).toFixed(1)} times wider now than it was then. `) +
+      `<em>Each group's share of national income divided by how many people are in it, so a share of ` +
+      `a block becomes an income for a person. Pretax, before any tax and before any benefit.</em>`;
+  }
+
+  else if (p.kind === 'basket') {
+    // The same basket of goods everywhere: PIP reports the median in 2017 purchasing power
+    // dollars, so a day in Warsaw and a day in Chicago are priced the same way.
+    const iso = p.iso || ctx.lastIso || (focusIsos()[0] || null);
+    if (!iso || !BY_ISO[iso]) { showNotice('This reads one country. Name a place first.'); return null; }
+    const m = seriesOf('median_income', iso);
+    if (m.length < 2) return miss();
+    const a = m[0], z = m[m.length - 1];
+    // the ranking is taken at this country's own latest year, not against whatever each
+    // other country last happened to report: a 2019 median against a 2012 one is not a rank
+    const pool = poolAt('median_income', z.year).slice().sort((x, y) => y.val - x.val);
+    const rk = pool.findIndex(r => r.geo_id === iso) + 1;
+    ctx.metric = 'median_income'; ctx.lastIso = iso; f.isos = [iso];
+    f.mode = 'basket'; f.basket = { iso, pts: m, rank: rk, of: pool.length, at: z.year };
+    const yr = v => '$' + Math.round(v * 365).toLocaleString('en-US');
+    const grew = z.v / a.v;
+    f.text = `The person in the middle of <strong>${esc(theName(iso))}</strong> lives on ` +
+      `<strong>$${z.v.toFixed(2)} a day</strong>, which is ${yr(z.v)} over a year (${z.year}). ` +
+      `In ${a.year} it was <strong>$${a.v.toFixed(2)}</strong>, so the middle has ` +
+      (grew >= 1.05 ? `${grew.toFixed(1)} times as much to live on as it did then` :
+       grew <= 0.95 ? `${(1 / grew).toFixed(1)} times less to live on than it did then` :
+       `about what it had then`) + '. ' +
+      (rk ? `Among the ${pool.length} countries that also report around ${z.year}, that is ` +
+        `<strong>${ordinal(rk)}</strong>. ` : '') +
+      `<em>Priced in 2017 purchasing power dollars, which means the same basket of goods costs the ` +
+      `same number of dollars everywhere on this measure. Household income after tax and after ` +
+      `benefits, one reading per survey.</em>`;
+  }
+
+  else if (p.kind === 'three') {
+    // WID's own preferred cut, and the one that answers "what happened to the middle":
+    // a country divided into the top tenth, the middle forty per cent, and the bottom half.
+    const iso = p.iso || ctx.lastIso || (focusIsos()[0] || null);
+    if (!iso || !BY_ISO[iso]) { showNotice('This reads one country. Name a place first.'); return null; }
+    const T = seriesOf('income_top10', iso), M = seriesOf('income_middle40', iso), B = seriesOf('income_bottom50', iso);
+    if (T.length < 3 || M.length < 3 || B.length < 3) return miss();
+    const lo = Math.max(T[0].year, M[0].year, B[0].year);
+    const t = T.filter(d => d.year >= lo), mm = M.filter(d => d.year >= lo), b = B.filter(d => d.year >= lo);
+    const hi = Math.min(t[t.length - 1].year, mm[mm.length - 1].year, b[b.length - 1].year);
+    const at = (arr, y) => { const q = arr.filter(d => d.year <= y); return q.length ? q[q.length - 1].v : arr[0].v; };
+    // the year the middle held the most is the year to measure from, and the series picks
+    // it. reading 1913 against 2021 in the United States nets off a fall and a rise that
+    // happened to be the same size, and reports that nothing happened.
+    const pk = mm.reduce((best, d) => d.v > best.v ? d : best, mm[0]);
+    const from = pk.year - lo <= 3 ? lo : pk.year;
+    const sg = v => (v >= 0 ? '+' : '') + v.toFixed(1) + ' points';
+    const mv = arr => sg((at(arr, hi) - at(arr, from)) * 100);
+    ctx.metric = 'income_middle40'; ctx.lastIso = iso; f.isos = [iso];
+    f.mode = 'three'; f.three = { iso, t, m: mm, b, lo, hi, from, peak: pk };
+    f.text = `<strong>${cap(esc(theName(iso)))}</strong> cut into three. From ${from}, ` +
+      (from === lo ? `where this record opens` :
+        `the year the middle forty per cent held the most of national income it has ever held here`) +
+      `, to ${hi}: the ` +
+      `middle went from <strong>${pc(at(mm, from))}</strong> to <strong>${pc(at(mm, hi))}</strong>, ` +
+      `${mv(mm)}. The top tenth went from <strong>${pc(at(t, from))}</strong> to ` +
+      `<strong>${pc(at(t, hi))}</strong>, ${mv(t)}. The bottom half from ` +
+      `<strong>${pc(at(b, from))}</strong> to <strong>${pc(at(b, hi))}</strong>, ${mv(b)}. ` +
+      `<em>The three are the whole country and add to a hundred at every point, so a point one group ` +
+      `gains is a point another loses. ` +
+      (from === lo ? `${cap(theName(iso))} carries no reading before ${lo}, so what came earlier is ` +
+          `outside the atlas rather than flat.`
+        : `The record opens in ${lo} and the chart draws all of it. Reading ${lo} straight against ` +
+          `${hi} would set a fall and a rise against each other and report that nothing happened.`) +
+      `</em>`;
   }
 
   else if (p.kind === 'houses') {
@@ -3158,9 +3285,24 @@ function resetCtx() {
   ctx.lastAspect = null; ctx.pool = null; ctx.lastQuery = null; ctx.region = null; computePool();
 }
 
+// A reading drawn for one country, asked without one named, is not a refusal: the
+// question is answerable and is one click short of a place. Hand it to the accordion
+// with the place fold open rather than answering a notice.
+function askNeedsPlace(q) {
+  let p;
+  try { p = parse(q); } catch (e) { return false; }
+  const v = VIEW_DEF[p.kind];
+  if (!v || !v.needsPlace) return false;
+  return !(p.iso || (p.isos && p.isos.length) || ctx.lastIso);
+}
 function ask(q) {
   hideNotice();
   stopIdle(false);   // the cube stops drifting once you ask
+  if (curFacet !== 'opportunity' && askNeedsPlace(q)) {
+    const box = document.getElementById('q');
+    if (box) box.value = q;
+    if (previewQuestion(q)) { setStage('chain'); return; }
+  }
   const f = (curFacet === 'opportunity' && US_CZ) ? oppAnswer(q) : runQuery(q);
   if (!f) return;
   // one editable cell: a new question refines it in place, it doesn't pile up
@@ -3241,12 +3383,14 @@ const PROMPT_SETS = {
     'how much more do the richest hold than the poorest?',
   ],
   income: [
+    'how many times more does one person at the top earn?',
+    'what does the person in the middle live on a day?',
+    'what happened to the middle here?',
     'how unequal is Brazil?',
+    'did the growth reach the typical person?',
     'where is income most unequal?',
-    'does life expectancy track inequality?',
     'how has Brazil changed over time?',
     'does poverty follow inequality?',
-    'does median income track inequality?',
     'who breaks the pattern?',
     'what about among rich countries?',
   ],
@@ -3280,6 +3424,15 @@ const QUESTIONS = [
     'when did this country change most?',                 // claim 3, turn picks the years
     'did it move differently from comparable countries?', // the peer contrast
     'did the growth reach the typical person?',           // claim 3
+  ] },
+  // The income face asks what a share means for a person rather than for a block: what
+  // one of them takes against one of the others, what the money buys, and which of the
+  // three parts of the country the movement came out of.
+  { k: '', facet: 'income', qs: [
+    'how many times more does one person at the top earn?',
+    'what does the person in the middle live on a day?',
+    'what happened to the middle here?',
+    'did the growth reach the typical person?',
   ] },
   { k: 'what it sits with', qs: [
     'does life expectancy track inequality?',             // claim 4, drawn weak on purpose
@@ -3895,6 +4048,9 @@ const VIEW_DEF = {
   reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
   houses: { label: 'houses against pay', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
   ratio:  { label: 'top tenth against bottom half', uses: ['place'], ignores: ['facet', 'against', 'when'] },
+  multiple: { label: 'one person against one person', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
+  basket: { label: 'what the middle lives on', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
+  three:  { label: 'the country in three parts', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1 },
   triple: { label: 'wealth, income and how long people live', uses: ['place'], ignores: ['facet', 'against', 'among', 'when'] },
   tables: { label: 'the two league tables', uses: ['place'], ignores: ['facet', 'against', 'when'] },
   turn:   { label: 'the sharpest years here', uses: ['place'], ignores: ['against', 'among', 'when'], needsPlace: 1, oneOnly: 1 },
@@ -3924,6 +4080,19 @@ function whyNot(dim, val) {
       }
       if (val === 'reach' && cell.place && seriesOf('median_income', cell.place).length < 2)
         return `No median income series for ${BY_ISO[cell.place].name}, so there is nothing to hold the growth against.`;
+      // the three income readings each name the series they cannot do without, rather
+      // than failing at send with a notice that says nothing about which one is short
+      if (cell.place) {
+        const need = val === 'multiple' ? [['income_top1', 'the top 1% share'], ['income_bottom50', 'the bottom 50% share']]
+          : val === 'basket' ? [['median_income', 'a median income']]
+          : val === 'three' ? [['income_top10', 'the top 10% share'], ['income_middle40', 'the middle 40% share'], ['income_bottom50', 'the bottom 50% share']]
+          : null;
+        if (need) {
+          const short = need.filter(([k]) => seriesOf(k, cell.place).length < 2);
+          if (short.length)
+            return `${cap(theName(cell.place))} has no ${short.map(s => s[1]).join(' and no ')} in the atlas.`;
+        }
+      }
       if (n > 1 && v.oneOnly)
         return `${cap(v.label)} is drawn for one country, and ${n} are chosen.`;
       return null;
@@ -4032,6 +4201,9 @@ function previewQuestion(q) {
   else if (p.kind === 'reach') cell.view = 'reach';
   else if (p.kind === 'houses') cell.view = 'houses';
   else if (p.kind === 'ratio') cell.view = 'ratio';
+  else if (p.kind === 'multiple') cell.view = 'multiple';
+  else if (p.kind === 'basket') cell.view = 'basket';
+  else if (p.kind === 'three') cell.view = 'three';
   else if (p.kind === 'triple') cell.view = 'triple';
   else if (p.kind === 'tables') cell.view = 'tables';
   else if (p.kind === 'turn') { cell.view = 'turn'; if (p.iso) cell.place = p.iso; }
@@ -4051,7 +4223,7 @@ function cellNeedsPlace() {
   // a reading that ranks or spreads across countries wants no place at all
   const acrossCountries = ['rank', 'spread', 'tiers', 'break'].includes(cell.form);
   if (cell.view && !VIEW_DEF[cell.view].needsPlace) return false;
-  if (cell.view === 'reach' || cell.view === 'houses' || cell.form === 'lorenz') return true;
+  if ((cell.view && VIEW_DEF[cell.view].needsPlace) || cell.form === 'lorenz') return true;
   if (acrossCountries) return false;
   if (cell.span === 'run' && !ctx.region && !ctx.pool) return true;
   // a question was typed, it named a measure, and nothing else: it is about somewhere
@@ -4591,7 +4763,8 @@ function setSlot(id, value, hint, color) {
     if (color) rib.style.setProperty('--rc', color); else rib.style.removeProperty('--rc');
   } else { rib.classList.remove('filled'); rib.classList.add('empty'); v.textContent = hint; rib.style.removeProperty('--rc'); }
 }
-const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence'];
+const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence',
+  'reach', 'houses', 'multiple', 'basket', 'three'];
 // the accordion reads the cell, the single source of truth, so it always matches the edits
 function updateCell() {
   if (keepOpen) { reopenAfter = keepOpen; } else closeDrawer();
@@ -5000,8 +5173,8 @@ function drawChart() {
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: { text: `indexed to ${rc.base} = 100`, font: { size: 11 } } }),
     }), CFG);
     title.textContent = rc.houses
-      ? `${BY_ISO[rc.iso].name}: houses and pay, since ${rc.base}`
-      : `${BY_ISO[rc.iso].name}: the economy and the middle, since ${rc.base}`;
+      ? `${cap(theName(rc.iso))}: houses and pay, since ${rc.base}`
+      : `${cap(theName(rc.iso))}: the economy and the middle, since ${rc.base}`;
     src.textContent = rc.houses
       ? `Both after inflation and both starting at 100, so what matters is how far apart they get. ` +
         `Houses are ${rc.iso === 'GBR' ? 'the Nationwide average price' : 'the Case-Shiller index'}, ` +
@@ -5014,6 +5187,101 @@ function drawChart() {
       `and the two are built on different definitions. Read the shape of the gap, not the exact percentages. ` +
       `Markers show where a survey actually landed; the line between them is drawn, not measured. ` +
       provenance(['gdp_pc', 'median_income']);
+  }
+
+  else if (mode === 'multiple') {
+    const mu = chain.slice().reverse().find(f => f.mode === 'multiple').multiple;
+    const lo = mu.pts[0].year, hi = mu.pts[mu.pts.length - 1].year;
+    Plotly.react(el, [
+      { type: 'scatter', mode: 'lines', showlegend: false,
+        x: mu.pts.map(d => d.year), y: mu.pts.map(d => d.v),
+        line: { color: metricColor('income_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        hovertemplate: '%{y:.0f} times, %{x}<extra></extra>' },
+      { type: 'scatter', mode: 'markers', showlegend: false,
+        x: [mu.then.year, mu.last.year], y: [mu.then.v, mu.last.v],
+        marker: { size: 10, color: hlFill('income_top1'), line: { color: hlEdge(), width: 2 } },
+        hovertemplate: '%{y:.0f} times, %{x}<extra></extra>' },
+    ], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 14, r: 16, b: 40, l: 56 },
+      shapes: eraShapes(lo, hi), annotations: eraLabels(lo, hi),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { rangemode: 'tozero',
+        ticksuffix: 'x', title: { text: 'times as much, per person', font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = `${cap(theName(mu.iso))}: one person at the top against one at the bottom, ${lo} to ${hi}`;
+    src.textContent =
+      `The top 1% take a share of all income and so does the bottom 50%, but one group is fifty ` +
+      `times the size of the other, so the two shares cannot be compared as they stand. Each is ` +
+      `divided here by the fraction of adults it covers, which turns both into an income per person ` +
+      `and makes the division mean something. Pretax national income, before tax and before any ` +
+      `benefit, per adult with income split equally inside a couple. The two marked years are the ` +
+      `last reading up to 1980 and the last reading there is. ` +
+      provenance(['income_top1', 'income_bottom50']);
+  }
+
+  else if (mode === 'basket') {
+    const bk = chain.slice().reverse().find(f => f.mode === 'basket').basket;
+    const lo = bk.pts[0].year, hi = bk.pts[bk.pts.length - 1].year;
+    Plotly.react(el, [
+      { type: 'scatter', mode: bk.pts.length < 30 ? 'lines+markers' : 'lines', showlegend: false,
+        x: bk.pts.map(d => d.year), y: bk.pts.map(d => d.v),
+        line: { color: metricColor('median_income'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        marker: { size: 6 },
+        hovertemplate: '$%{y:.2f} a day, %{x}<extra></extra>' },
+    ], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 14, r: 16, b: 40, l: 60 },
+      shapes: eraShapes(lo, hi), annotations: eraLabels(lo, hi),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { rangemode: 'tozero', tickprefix: '$',
+        title: { text: 'a day, 2017 purchasing power dollars', font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = `${cap(theName(bk.iso))}: what the person in the middle lives on, ${lo} to ${hi}`;
+    src.textContent =
+      `Household income after tax and after benefits, divided across the people in the household, ` +
+      `with the middle person taken. It is priced in 2017 purchasing power dollars, which means the ` +
+      `same basket of goods costs the same number of dollars in every country on this measure, so a ` +
+      `day in Warsaw and a day in Chicago are being counted the same way. Each marker is one survey; ` +
+      `the line between two markers is drawn, not measured, and surveys are years apart in most ` +
+      `countries. The ranking holds ${bk.at} against the ${bk.of} countries with a survey within ` +
+      `three years of it, rather than against whatever year each country last reported, which would ` +
+      `set one country's ${bk.at} beside another's 2011. ` +
+      provenance(['median_income']);
+  }
+
+  else if (mode === 'three') {
+    const th = chain.slice().reverse().find(f => f.mode === 'three').three;
+    const band = [
+      ['the top 10%', th.t, 'income_top10', 0.30],
+      ['the middle 40%', th.m, 'income_middle40', 0.0],
+      ['the bottom 50%', th.b, 'income_bottom50', -0.34],
+    ];
+    Plotly.react(el, band.map(([name, ser, key, tone]) => ({
+      type: 'scatter', mode: 'lines', name,
+      x: ser.map(d => d.year), y: ser.map(d => d.v),
+      line: { color: shade(metricColor(key), tone), width: 2.6, shape: 'spline', smoothing: 0.6 },
+      hovertemplate: name + ' take %{y:.1%} of all income, %{x}<extra></extra>',
+    })).concat([
+      // the two years the sentence quotes, marked on the middle, so the words and the
+      // picture are visibly the same reading
+      { type: 'scatter', mode: 'markers', showlegend: false,
+        x: [th.from, th.hi],
+        y: [th.from, th.hi].map(y => { const q = th.m.filter(d => d.year <= y); return (q.length ? q[q.length - 1] : th.m[0]).v; }),
+        marker: { size: 10, color: hlFill('income_middle40'), line: { color: hlEdge(), width: 2 } },
+        hovertemplate: 'the middle 40% take %{y:.1%}, %{x}<extra></extra>' },
+    ]), Object.assign({}, BASE_LAYOUT, {
+      showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
+      margin: { t: 14, r: 16, b: 40, l: 54 },
+      shapes: eraShapes(th.lo, th.hi), annotations: eraLabels(th.lo, th.hi),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { rangemode: 'tozero', tickformat: '.0%',
+        title: { text: 'share of all income', font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = `${cap(theName(th.iso))} in three parts, ${th.lo} to ${th.hi}`;
+    src.textContent =
+      `The country cut into the richest tenth, the forty per cent underneath them, and the poorer ` +
+      `half. The three add to a hundred at every point, so whenever one line rises another has to ` +
+      `fall, and the question of who gained is the same question as who lost. Pretax national ` +
+      `income, before tax and before any benefit, per adult with income split equally inside a ` +
+      `couple. The three start in different years in some countries; the run drawn here is the ` +
+      `stretch all three cover. ` +
+      provenance(['income_top10', 'income_middle40', 'income_bottom50']);
   }
 
   else if (mode === 'ratio') {
@@ -6300,8 +6568,11 @@ function boot() {
     // it is offered on: the health page offers the US life expectancy reading, which
     // lives in the opportunity layer, and from any other face it would answer something
     // else without saying so.
-    const oppQs = new Set(QUESTIONS.filter(g => g.facet === 'opportunity').flatMap(g => g.qs));
-    const faceFor = q => oppQs.has(q) ? 'opportunity' : null;
+    // the face is a property of the question, not of whichever face happens to be up:
+    // a chip clicked from a reference page turns the cube before it asks
+    const qFace = new Map();
+    for (const g of QUESTIONS) if (g.facet) for (const q of g.qs) qFace.set(q, g.facet);
+    const faceFor = q => qFace.get(q) || null;
     v.innerHTML = v.dataset.qs.split(';')
       .map(q => `<button type="button" class="chip">${q}</button>`).join('');
     v.querySelectorAll('.chip').forEach(b =>
