@@ -535,3 +535,37 @@ complete grammar of `facet x place x scope x when x against x form`, every
 combination is legal, and so a catalogue assembled from the grammar is an
 arbitrary sample rather than an argument. The claims come first. The grammar
 serves them.
+
+## 11. What an exploratory atlas owes, given it explains nothing
+
+This atlas describes and does not explain. Section 4 already rules out attributing
+a move to a policy. That is a deliberate limit, not a stage on the way to
+something else: the explanation is contested and the facts are not, and an atlas
+that supplies its own explanation inherits the argument instead of settling the
+ground under it. A reader who wants the mechanism has Gary for that. What nobody
+has is the verified ground truth in a form you can poke at.
+
+Refusing to explain is only defensible if four other things hold.
+
+1. **Every number is right.** Section 9a is the record of checking, including the
+   times it was not.
+2. **Every number says what it is and what it is not.** The provenance line, the
+   dropped-value counts, the floor note on extreme poverty, the note that the
+   completeness of the wealth file is the model.
+3. **Every answer opens onto the next question.** An atlas that only answers is a
+   lookup. Each answer carries at most three next steps worked out from *that*
+   answer: a bottom half that owes offers the other countries in that position by
+   name, a league table offers the country that came top, an income multiple
+   offers its wealth twin. Each is checked against the data before it is drawn, so
+   no step is a dead end, and the last few answers are remembered so that following
+   the first step repeatedly walks somewhere rather than bouncing between two
+   readings. A step that would change which country is being read says so on its
+   own face.
+4. **Nothing is implied that has not been shown.** Two shares on one axis, never an
+   index; correlations named as correlations across places; events drawn as
+   background and never as causes.
+
+The thing this atlas is still missing is not a mechanism. It is composition: what
+the bottom half actually owns, a house or a pension or nothing. That is section 9
+item 4, and it is description at a finer grain rather than explanation, which is
+why it belongs here and a policy story does not.
