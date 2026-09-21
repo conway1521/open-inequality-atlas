@@ -231,6 +231,13 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   transition: border-color 0.12s, color 0.12s;
 }
 .chip:hover { border-color: var(--ink-3); color: var(--ink); }
+/* where to go from the answer you are looking at, worked out from that answer */
+.next { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 18px 0 4px; }
+.next[hidden] { display: none; }
+.next > .k { font: 400 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin-right: 2px; }
+.next .chip { font-size: 13.5px; }
+.next .chip .where { color: var(--ink-3); }
 
 .notice {
   max-width: 500px; margin: 12px auto 0; text-align: center;
@@ -849,6 +856,7 @@ footer a { color: inherit; }
         <div id="chart"></div>
         <p class="chart-src" id="chart-src"></p>
       </div>
+      <div class="next" id="next" hidden></div>
       <ol id="facts"></ol>
     </section>
   </div>
@@ -5146,6 +5154,7 @@ function render() {
     session.hidden = true;
     updateCell();   // back to just the facet, the other slots empty
     const a0 = document.getElementById('answer'); if (a0) a0.innerHTML = '';
+    const n0 = document.getElementById('next'); if (n0) { n0.hidden = true; n0.innerHTML = ''; }
     return;
   }
   if (stage !== 'result') { session.hidden = true; updateCell(); return; }
@@ -5157,6 +5166,7 @@ function render() {
     `${last.changed ? ' <span class="upd">updated</span>' : ''}</span>`;
   if (list) list.innerHTML = '';
   drawChart();
+  buildNext(last);   // and where this answer can be taken next
   updateCell();   // the cube stays on the facet you chose; only the cell coordinates move
 }
 
@@ -5242,6 +5252,195 @@ function buildAddRow(last) {
   const el = document.getElementById('add-row');
   if (el) el.innerHTML = '';    // nothing to add: every fold is already in the strip, closed
   return;
+}
+
+/* ── where to go from here ──────────────────────────────────────────
+   An atlas that only answers is a lookup. What makes it explorable is that every
+   answer opens onto the next question, and the next question has to come out of the
+   answer in front of you rather than off a list. A bottom half that owes more than it
+   owns should offer the other countries in that position, by name. A country at the
+   top of a ranking should offer itself. Nothing here is a suggestion in the abstract:
+   each one is checked against the data before it is drawn, so no step is a dead end. */
+
+// what each reading needs before it can run for a country
+const STEP_NEEDS = {
+  'what does the poorest half own?': ['wealth_top1', 'wealth_bottom50'],
+  'how many times more does one person at the top own?': ['wealth_top1', 'wealth_bottom50', 'income_top1', 'income_bottom50'],
+  'how many times more does one person at the top earn?': ['income_top1', 'income_bottom50'],
+  'what happened to the middle here?': ['income_top10', 'income_middle40', 'income_bottom50'],
+  'what does the person in the middle live on a day?': ['median_income'],
+  'did the growth reach the typical person?': ['gdp_pc', 'median_income'],
+  'have houses pulled away from pay?': ['house_price', 'median_income'],
+  'are wealth and income pulling apart here?': ['wealth_top1', 'income_top1'],
+  'when did this country change most?': [],
+  'did it move differently from comparable countries?': [],
+};
+function stepRuns(step, here) {
+  const iso = step.iso || here;
+  const need = STEP_NEEDS[step.q];
+  if (!need) return true;                       // a reading that works across countries
+  // no country in play yet: the place fold will ask for one, which is the ordinary path
+  // and not a dead end, so the step stands
+  if (!iso) return true;
+  if (!BY_ISO[iso]) return false;
+  return need.every(k => seriesOf(k, iso).length >= 2);
+}
+// the steps that follow from one answer, at most three, each already checked
+function nextSteps(f) {
+  const here = (f.isos && f.isos.length === 1) ? f.isos[0] : (cell.place || null);
+  // A ranking answers about whichever country came top, not about one the reader chose.
+  // Its next steps will run for that country, so they have to say so: an unlabelled
+  // "what does the poorest half own?" under a league table reads as being about you.
+  const implied = (here && here !== cell.place) ? theName(here) : null;
+  const onScreen = (cell.asked || f.query || '');
+  const out = [];
+  const add = (q, face, iso, where) => {
+    if (q === onScreen && !iso) return;          // never offer what is already on screen
+    if (out.some(s => s.q === q && s.iso === (iso || null))) return;
+    const step = { q, face: face || null, iso: iso || null,
+      where: where || (STEP_NEEDS[q] && STEP_NEEDS[q].length ? implied : null) };
+    if (stepRuns(step, here)) out.push(step);
+  };
+  const m = f.mode, o = f.opp && f.opp.kind;
+
+  if (o) {
+    // the opportunity layer runs its own grammar, so its steps are its own questions
+    const OPP = {
+      conn:     [['are they not here, or here and not mixing?'], ['do the four faces agree inside one country?']],
+      mix:      [['does knowing better-off people help you climb?'], ['if you grow up poor here, what do you earn later?']],
+      mobility: [['does knowing better-off people help you climb?'], ['how much longer do the rich live here?']],
+      life:     [['if you grow up poor here, what do you earn later?'], ['do the four faces agree inside one country?']],
+      faces:    [['does the income gap track climbing?'], ['does knowing better-off people help you climb?']],
+      pair:     [['do the four faces agree inside one country?'], ['does knowing better-off people help you climb?']],
+      gap:      [["who owns a home, by their parents' income?"], ["who falls behind on payments, by their parents' income?"],
+                 ["does credit depend on your parents' income?"]],
+    };
+    for (const [q] of (OPP[o] || [])) add(q, 'opportunity');
+    return out;
+  }
+
+  if (m === 'owns') {
+    const b = f.owns && f.owns.b, last = b && b[b.length - 1];
+    // a half that owes points at the others in the same position, which ratio names
+    if (last && last.v < 0) add('how much more do the richest hold than the poorest?', 'wealth');
+    else add('how many times more does one person at the top own?', 'wealth');
+    add('what does the person in the middle live on a day?', 'income');
+    add('when did this country change most?', 'wealth');
+  }
+  else if (m === 'wmultiple') {
+    add('what does the poorest half own?', 'wealth');
+    add('what happened to the middle here?', 'income');
+    add('have houses pulled away from pay?', 'wealth');
+  }
+  else if (m === 'multiple') {
+    add('how many times more does one person at the top own?', 'wealth');   // the twin, and the argument
+    add('what happened to the middle here?', 'income');
+    add('what does the person in the middle live on a day?', 'income');
+  }
+  else if (m === 'basket') {
+    add('did the growth reach the typical person?', 'income');
+    add('how many times more does one person at the top earn?', 'income');
+    add('what does the poorest half own?', 'wealth');
+  }
+  else if (m === 'three') {
+    add('how many times more does one person at the top earn?', 'income');
+    add('when did this country change most?', 'income');
+    add('what does the poorest half own?', 'wealth');
+  }
+  else if (m === 'ratio') {
+    // The countries this reading could not put a number on are the interesting ones, and
+    // there are usually several: offer one that has not just been looked at, so following
+    // this repeatedly walks along them rather than bouncing between the first two.
+    const owing = (f.ratio && f.ratio.owing || []).filter(x => x.geo_id !== here);
+    const owe = owing.find(x => !seenLately(null, x.geo_id)) || owing[0];
+    if (owe) add('what does the poorest half own?', 'wealth', owe.geo_id, theName(owe.geo_id));
+    add('how many times more does one person at the top own?', 'wealth');
+    add('does my country own as unevenly as it earns?', 'wealth');
+  }
+  else if (m === 'reach') {
+    const houses = f.reach && f.reach.houses;
+    if (houses) add('what does the poorest half own?', 'wealth');
+    else add('have houses pulled away from pay?', 'wealth');
+    add('what does the person in the middle live on a day?', 'income');
+    add('how many times more does one person at the top earn?', 'income');
+  }
+  else if (m === 'divergence') {
+    add('how many times more does one person at the top own?', 'wealth');
+    add('what does the poorest half own?', 'wealth');
+    add('when did this country change most?', 'wealth');
+  }
+  else if (m === 'tables') {
+    add('how many times more does one person at the top own?', 'wealth');
+    add('what does the poorest half own?', 'wealth');
+  }
+  else if (m === 'bars') {
+    // step into whichever country the ranking just put at the top
+    const top = f.bar && f.bar.rows && f.bar.rows.length ? f.bar.rows[0].geo_id : null;
+    if (top && top !== here) add('what does the poorest half own?', 'wealth', top, theName(top));
+    add('does my country own as unevenly as it earns?', 'wealth');
+    add('how many times more does one person at the top own?', 'wealth');
+  }
+  else if (m === 'turn') {
+    add('did it move differently from comparable countries?', null);
+    add(curFacet === 'income' ? 'how many times more does one person at the top earn?'
+      : 'how many times more does one person at the top own?', curFacet === 'income' ? 'income' : 'wealth');
+  }
+  else if (m === 'scatter' || m === 'path') {
+    add('who breaks the pattern?', null);
+    add('do the four faces agree inside one country?', 'opportunity');
+  }
+  else if (m === 'triple') {
+    add('do the four faces agree inside one country?', 'opportunity');
+    add('how many times more does one person at the top own?', 'wealth');
+  }
+  else {
+    add('how many times more does one person at the top own?', 'wealth');
+    add('what does the poorest half own?', 'wealth');
+  }
+  // Somewhere new, if there is anywhere new. Following the first step repeatedly used to
+  // bounce between two readings forever, which is a loop rather than an exploration.
+  const fresh = out.filter(s => !seenLately(s.q, s.iso || here));
+  return (fresh.length ? fresh : out).slice(0, 3);
+}
+// the last few answers, so a step can prefer somewhere the reader has not just been
+const TRAIL = [];
+const TRAIL_KEEP = 5;
+function seenLately(q, iso) {
+  return TRAIL.some(t => (q == null || t.q === q) && (iso == null || t.iso === iso));
+}
+function noteVisit(q, iso) {
+  if (!q && !iso) return;
+  TRAIL.unshift({ q: q || null, iso: iso || null });
+  if (TRAIL.length > TRAIL_KEEP) TRAIL.length = TRAIL_KEEP;
+}
+let lastNoted = null;
+function buildNext(f) {
+  const el = document.getElementById('next');
+  if (!el) return;
+  const steps = (() => { try { return nextSteps(f); } catch (e) { return []; } })();
+  // note where we are only once per answer: render runs again on a redraw
+  if (f.id !== lastNoted) {
+    lastNoted = f.id;
+    noteVisit(cell.asked || f.query, (f.isos && f.isos.length === 1) ? f.isos[0] : cell.place);
+  }
+  if (!steps.length) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = '<span class="k">next</span>' + steps.map((s, i) =>
+    `<button type="button" class="chip" data-i="${i}">${esc(s.q)}` +
+    (s.where ? ` <span class="where">in ${esc(s.where)}</span>` : '') + '</button>').join('');
+  el.querySelectorAll('.chip').forEach(btn => btn.addEventListener('click', () => {
+    const s = steps[+btn.dataset.i];
+    const keep = s.iso || ((chain.length && chain[chain.length - 1].isos.length === 1)
+      ? chain[chain.length - 1].isos[0] : cell.place);
+    hideNotice();
+    if (s.face && s.face !== curFacet) { chooseFacet(s.face); faceToFront(s.face); settle(); }
+    if (s.face === 'opportunity') { ask(s.q); return; }
+    setStage('compose'); resetCell(); chain.length = 0;
+    if (!previewQuestion(s.q)) return;
+    if (keep) cell.place = keep;
+    updateCell();
+    sendCell();
+  }));
 }
 
 /* ── chart ─────────────────────────────────────────────────────────── */
