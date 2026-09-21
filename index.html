@@ -880,12 +880,16 @@ footer a { color: inherit; }
         <p class="try" data-qs="how many times more does one person at the top own?;does my country own as unevenly as it earns?"></p>
       </div>
       <div class="block">
-        <h2>What half a country owns</h2>
+        <h2>What half a country owns, and how many owe</h2>
         <p>The poorest half of British adults held 13.1% of everything owned there in 1990 and
         holds 4.6% now. In Sweden the same line crosses zero around 2000: debts there come to
-        10.9% of all household wealth more than assets do. A share can go negative, and four
-        European countries are below the line.</p>
-        <p class="try" data-qs="what does the poorest half own?;how much more do the richest hold than the poorest?;Lorenz curve for the United Kingdom"></p>
+        10.9% of all household wealth more than assets do.</p>
+        <p>That is a share of a national total, which a few deeply indebted households can drag
+        under. Counting the households instead gives a different answer and a different ranking:
+        4.1% of euro-area households owe more than they own, 10.5% in Finland, and 23.7% of Dutch
+        households headed by someone under 35. The two measures barely line up, at a rank
+        correlation of -0.14 across the 22 countries that carry both.</p>
+        <p class="try" data-qs="what does the poorest half own?;how many people own less than nothing?;how much more do the richest hold than the poorest?"></p>
       </div>
       <div class="block">
         <h2>What it is made of, and the house</h2>
@@ -1304,6 +1308,7 @@ footer a { color: inherit; }
 /* ── data stores ───────────────────────────────────────────────────── */
 let LATEST = null;
 let US_COMP = null;   // what wealth is made of, by group: the Fed's distributional accounts
+let HFCS_NEG = null;  // how many households own less than nothing: the ECB's household survey
 let BY_ISO = {};            // iso -> wealth snapshot row + name
 const SERIES = {};          // metric -> iso -> [{year, v}]
 
@@ -1949,6 +1954,10 @@ function parse(raw) {
     since: winFrom ? +winFrom[1] : (years.length > 1 ? Math.min(...years) : null),
     until: years.length > 1 ? Math.max(...years) : null,
   };
+  // UNDERWATER: the headcount behind the share. household survey, euro area.
+  if (/\bhow many (people|households|of us)\b|\bowe more than\b|\bunder ?water\b|\bnegative (net )?wealth\b|\bin the red\b|\bhow many are in debt\b|\bmore debt than\b/.test(r))
+    return { kind: 'underwater', isos, iso: isos[0] || null,
+      year: years.length ? Math.max(...years) : null };
   // MADE: not how much a group holds but what of. one country, said so on refusal.
   if (/\bmade of\b|\bmade up of\b|\bwhat kind of wealth\b|\bwhat do they actually own\b|\bwhat is (the |their )?wealth\b|\bcomposition\b|\bhouse or shares\b|\bassets? are\b|\bwhat their wealth is\b/.test(r))
     // one country carries this, so the parse names it rather than opening a place fold
@@ -2215,6 +2224,26 @@ function pearson(pts) {
   if (dx === 0 || dy === 0) return null;
   return cov / (dx * dy);
 }
+// Correlation on ranks rather than levels, for two measures that are not on the same
+// scale and are not meant to be: a share of a national total against a count of
+// households. Ties take the average rank, which is what makes it Spearman rather than
+// Pearson on a sort order.
+function spearman(xs, ys) {
+  if (!xs || xs.length < 4 || xs.length !== ys.length) return null;
+  const rank = a => {
+    const order = a.map((v, i) => [v, i]).sort((p, q) => p[0] - q[0]);
+    const r = new Array(a.length);
+    for (let i = 0; i < order.length;) {
+      let j = i; while (j + 1 < order.length && order[j + 1][0] === order[i][0]) j++;
+      const mean = (i + j) / 2;
+      for (let k = i; k <= j; k++) r[order[k][1]] = mean;
+      i = j + 1;
+    }
+    return r;
+  };
+  const rx = rank(xs), ry = rank(ys);
+  return pearson(rx.map((v, i) => ({ x: v, y: ry[i] })));
+}
 function corrClause(r, xlabel) {
   const a = Math.abs(r);
   if (a < 0.15) return `barely moves with ${xlabel}`;
@@ -2257,6 +2286,10 @@ function spanBounds(metric) {
   // whichever measure the face happens to be showing: the median runs 1969 to 2017 in
   // Britain while the income shares run 1980 to 2021, and the slider has to say which
   // the composition layer is its own file, not a series, so it names its own bounds
+  if (cell.view === 'underwater' && HFCS_NEG) {
+    const w = HFCS_NEG.waves;
+    return { lo: w[0], hi: w[w.length - 1] };
+  }
   if (cell.view === 'made' && US_COMP) {
     const y = US_COMP.years;
     return { lo: y[0], hi: y[y.length - 1] };
@@ -2290,7 +2323,7 @@ function syncCellFromFact(f) {
     : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
   cell.view = ['reach', 'ratio', 'triple', 'tables', 'turn', 'peers', 'houses',
-    'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made'].includes(f.kind) ? f.kind : null;
+    'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made', 'underwater'].includes(f.kind) ? f.kind : null;
   cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
     : ctx.region ? ('r:' + ctx.region) : null;
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
@@ -2332,6 +2365,11 @@ function runCell() {
       'the richest tenth against the poorest half'); return;
   }
   // the five readings that bring their own measures but take the reader's years
+  if (cell.view === 'underwater') {
+    runParse({ kind: 'underwater', isos: cell.place ? [cell.place] : [], iso: cell.place || null,
+      year: cell.span === 'moment' ? cell.year : null }, VIEW_DEF.underwater.label);
+    return;
+  }
   if (cell.view === 'made') {
     runParse({ kind: 'made', isos: cell.place ? [cell.place] : [], iso: cell.place || null,
       year: cell.span === 'moment' ? cell.year : null }, VIEW_DEF.made.label);
@@ -2610,6 +2648,90 @@ function buildAnswer(p, q) {
       ` <em>The median rests on ${ms.length} survey${ms.length === 1 ? '' : 's'} between ${ms[0].year} and ${ms[ms.length - 1].year}.</em>`;
   }
 
+  else if (p.kind === 'underwater') {
+    // The face already says the poorest half of five countries owns less than nothing.
+    // That is a share of a national total, and a total can be dragged under by a few
+    // households deeply in debt. This counts the households instead. Different basis,
+    // different survey, and the two do not agree, which is the reading's whole point.
+    if (!HFCS_NEG) { showNotice('The household survey is not loaded.'); return null; }
+    const B = HFCS_NEG.by, waves = HFCS_NEG.waves;
+    // A country named outright is refused by name. A country left standing from the last
+    // question is not: it falls back to the euro area and the sentence says whose country
+    // it could not use, because a reader who asked about Britain and then clicked this
+    // wanted the reading, not a wall.
+    const named = p.iso || null;
+    const standing = ctx.lastIso || (focusIsos()[0] || null);
+    if (named && !B[named]) {
+      showNotice(`Counting the households below zero takes a household survey, and the one the ` +
+        `atlas holds covers the euro area and a few of its neighbours, not ${esc(theName(named))}. ` +
+        `Ask it without a country for the euro area, or ask what the poorest half owns, which ` +
+        `runs for 213.`);
+      return null;
+    }
+    const iso = (named && B[named]) ? named : (standing && B[standing]) ? standing : null;
+    const dropped = (!iso && standing && BY_ISO[standing]) ? standing : null;
+    const want = p.year || waves[waves.length - 1];
+    let at = 0;
+    for (let k = 0; k < waves.length; k++)
+      if (Math.abs(waves[k] - want) < Math.abs(waves[at] - want)) at = k;
+    const here = iso || 'EA';
+    const rowOf = (code, cut) => (B[code] && B[code][cut]) ? B[code][cut][at] : null;
+    const all = rowOf(here, 'all');
+    if (all == null) return miss();
+    const wave = waves[at];
+    const pool = Object.keys(B).filter(c => c !== 'EA' && rowOf(c, 'all') != null)
+      .map(c => ({ c, v: rowOf(c, 'all') })).sort((x, y) => y.v - x.v);
+    const rk = iso ? pool.findIndex(r => r.c === iso) + 1 : 0;
+    // the two measures held against each other, worked out here rather than asserted
+    const paired = pool.filter(r => seriesOf('wealth_bottom50', r.c).length);
+    const rho = spearman(paired.map(r => seriesOf('wealth_bottom50', r.c).slice(-1)[0].v),
+      paired.map(r => r.v));
+    const cuts = ['own_outright', 'own_mortgage', 'renting', 'age_16_34', 'age_35_44',
+      'age_45_54', 'age_55_64', 'age_65_74', 'age_75_plus']
+      .map(k => ({ k, v: rowOf(here, k) })).filter(d => d.v != null);
+    const firstAt = B[here].all.findIndex(v => v != null);
+    ctx.metric = 'wealth_bottom50'; ctx.lastIso = iso; f.isos = iso ? [iso] : [];
+    f.mode = 'underwater';
+    f.underwater = { here, iso, all, wave, waves, at, cuts, rank: rk, of: pool.length,
+      series: B[here].all, rho, paired: paired.length, ea: rowOf('EA', 'all') };
+    const get = k => { const d = cuts.find(x => x.k === k); return d ? d.v : null; };
+    // 43 cells round to nought in this table, and '0.0%' reads as a measurement rather
+    // than as what it is: a share too small for the survey to put a figure on
+    const pct = v => v < 0.05 ? 'almost none' : v.toFixed(1) + '%';
+    const where = iso ? `<strong>${esc(theName(iso))}</strong>` : 'the <strong>euro area</strong>';
+    let t = `In ${where}, <strong>${pct(all)}</strong> of households own less than nothing: what ` +
+      `they owe comes to more than everything they hold (${wave} wave). ` +
+      (dropped ? `The survey does not reach ${esc(theName(dropped))}, so this is the euro area ` +
+        `as a whole. ` : '');
+    if (firstAt >= 0 && firstAt !== at)
+      t += `In the ${waves[firstAt]} wave it was <strong>${pct(B[here].all[firstAt])}</strong>. `;
+    if (iso && rk) t += `That is ${rk === 1 ? 'the highest' : ordinal(rk) + ' highest'} of the ` +
+      `${pool.length} countries the survey covers, against ${pct(f.underwater.ea)} across the ` +
+      `euro area. `;
+    const rent = get('renting'), outr = get('own_outright');
+    const young = get('age_16_34'), old = get('age_75_plus');
+    const bits = [];
+    if (rent != null && outr != null)
+      bits.push(`<strong>${pct(rent)}</strong> of renters against ` +
+        (outr < 0.05 ? `<strong>almost none</strong> of the people who own their home outright`
+          : `<strong>${pct(outr)}</strong> of them where the home is owned outright`));
+    if (young != null && old != null)
+      bits.push(`<strong>${pct(young)}</strong> of households run by someone under 35 against ` +
+        (old < 0.05 ? `<strong>almost none</strong> over 75` : `<strong>${pct(old)}</strong> over 75`));
+    if (bits.length) t += `It is not spread evenly: ${bits.join(', and ')}. `;
+    if (rho != null)
+      t += `<em>This counts households; the shares elsewhere on this face divide a national ` +
+        `total. Across the ${paired.length} countries carrying both they hardly line up, at a ` +
+        `rank correlation of ${rho.toFixed(2)}, so a country can hold a healthy bottom-half ` +
+        `share and still have a great many households in debt beyond what they own.</em>`;
+    f.text = t;
+  }
+
+  else if (p.kind === 'underwater') {
+    cell.view = 'underwater';
+    if (p.iso) cell.place = p.iso;
+    if (p.year) { cell.span = 'moment'; cell.year = p.year; }
+  }
   else if (p.kind === 'made') {
     // Every other wealth reading here is a share: the poorest half hold 4.6% of Britain.
     // A share says how much and never what of. This says what of, which is the thing a
@@ -3829,6 +3951,8 @@ const QUESTIONS = [
   { k: '', facet: 'wealth', qs: [
     'how many times more does one person at the top own?',
     'what is that wealth actually made of?',
+    'how many people own less than nothing?',
+    'how many people own less than nothing?',
     'what does the poorest half own?',
     'how much more do the richest hold than the poorest?',
     'have houses pulled away from pay?',
@@ -4463,6 +4587,7 @@ const VIEW_DEF = {
   // These five bring their own measures, so the facet and the "against" fold have nothing
   // to do. The years do: a reading of the whole record and a reading since 2000 are
   // different answers, and the reader should be able to ask for either.
+  underwater: { label: 'who owes more than they own', uses: ['place', 'when'], ignores: ['facet', 'against', 'among'], oneOnly: 1, moment: 1, reads: 'households below zero' },
   made:   { label: 'what the wealth is made of', uses: ['place', 'when'], ignores: ['facet', 'against', 'among'], needsPlace: 1, oneOnly: 1, moment: 1, reads: 'assets and debts by group' },
   owns:   { label: 'what the bottom half owns', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'wealth_bottom50', reads: 'wealth shares' },
   wmultiple: { label: 'owning against earning', uses: ['place', 'among'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1, reads: 'wealth and income' },
@@ -4496,6 +4621,9 @@ function whyNot(dim, val) {
           return `House prices are held for ${have.map(i => BY_ISO[i].name).join(' and ')} so far, ` +
             `not for ${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place}.`;
       }
+      if (val === 'underwater' && cell.place && !(HFCS_NEG && HFCS_NEG.by[cell.place]))
+        return `Counting households below zero takes a household survey, and the one the atlas ` +
+          `holds covers the euro area and a few neighbours, not ${theName(cell.place)}.`;
       if (val === 'made' && cell.place && cell.place !== 'USA')
         return `What wealth is made of is published by wealth group in the United States and ` +
           `nowhere else the atlas can reach, not for ${esc(theName(cell.place))}.`;
@@ -4559,6 +4687,13 @@ function whyNot(dim, val) {
     return null;
   }
   if (dim === 'place') {
+    if (cell.view === 'underwater' && val) {
+      const iso = val[0] === '+' ? val.slice(1) : val;
+      if (iso && !(HFCS_NEG && HFCS_NEG.by[iso]))
+        return `The household survey behind this one covers the euro area and a few ` +
+          `neighbours, not ${BY_ISO[iso] ? BY_ISO[iso].name : iso}. Clear the place for the ` +
+          `euro area as a whole.`;
+    }
     if (cell.view === 'made' && val) {
       const iso = val[0] === '+' ? val.slice(1) : val;
       if (iso && iso !== 'USA') return `Only the United States publishes what wealth is made of ` +
@@ -4639,6 +4774,11 @@ function previewQuestion(q) {
   else if (p.kind === 'reach') cell.view = 'reach';
   else if (p.kind === 'houses') cell.view = 'houses';
   else if (p.kind === 'ratio') cell.view = 'ratio';
+  else if (p.kind === 'underwater') {
+    cell.view = 'underwater';
+    if (p.iso) cell.place = p.iso;
+    if (p.year) { cell.span = 'moment'; cell.year = p.year; }
+  }
   else if (p.kind === 'made') {
     cell.view = 'made'; cell.place = 'USA';          // the only country it can be drawn for
     if (p.year) { cell.span = 'moment'; cell.year = p.year; }
@@ -5266,7 +5406,7 @@ function setSlot(id, value, hint, color) {
   } else { rib.classList.remove('filled'); rib.classList.add('empty'); v.textContent = hint; rib.style.removeProperty('--rc'); }
 }
 const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence',
-  'reach', 'houses', 'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made'];
+  'reach', 'houses', 'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made', 'underwater'];
 // the accordion reads the cell, the single source of truth, so it always matches the edits
 function updateCell() {
   if (keepOpen) { reopenAfter = keepOpen; } else closeDrawer();
@@ -5352,6 +5492,7 @@ function buildAddRow(last) {
 const STEP_NEEDS = {
   'what does the poorest half own?': ['wealth_top1', 'wealth_bottom50'],
   'what is that wealth actually made of?': [],
+  'how many people own less than nothing?': [],
   'how many times more does one person at the top own?': ['wealth_top1', 'wealth_bottom50', 'income_top1', 'income_bottom50'],
   'how many times more does one person at the top earn?': ['income_top1', 'income_bottom50'],
   'what happened to the middle here?': ['income_top10', 'income_middle40', 'income_bottom50'],
@@ -5406,7 +5547,13 @@ function nextSteps(f) {
     return out;
   }
 
-  if (m === 'made') {
+  if (m === 'underwater') {
+    add('what does the poorest half own?', 'wealth');
+    add('what is that wealth actually made of?', 'wealth');
+    add('how much more do the richest hold than the poorest?', 'wealth');
+  }
+  else if (m === 'made') {
+    add('how many people own less than nothing?', 'wealth');
     add('what does the poorest half own?', 'wealth');
     add('how many times more does one person at the top own?', 'wealth');
     add('have houses pulled away from pay?', 'wealth');
@@ -5414,8 +5561,12 @@ function nextSteps(f) {
   else if (m === 'owns') {
     const b = f.owns && f.owns.b, last = b && b[b.length - 1];
     // a half that owes points at the others in the same position, which ratio names
-    if (last && last.v < 0) add('how much more do the richest hold than the poorest?', 'wealth');
-    else add('how many times more does one person at the top own?', 'wealth');
+    if (last && last.v < 0) {
+      // the share has gone negative; the headcount is the question it raises and
+      // cannot answer, so it goes first where the survey reaches that country
+      if (HFCS_NEG && here && HFCS_NEG.by[here]) add('how many people own less than nothing?', 'wealth');
+      add('how much more do the richest hold than the poorest?', 'wealth');
+    } else add('how many times more does one person at the top own?', 'wealth');
     if (here === 'USA') add('what is that wealth actually made of?', 'wealth');
     add('what does the person in the middle live on a day?', 'income');
     add('when did this country change most?', 'wealth');
@@ -5884,6 +6035,59 @@ function drawChart() {
       `reading and the exact percentages are not. ` +
       `Markers show where a survey actually landed; the line between them is drawn, not measured. ` +
       provenance(['gdp_pc', 'median_income']);
+  }
+
+  else if (mode === 'underwater') {
+    const uw = chain.slice().reverse().find(f => f.mode === 'underwater').underwater;
+    const LAB = {
+      own_outright: 'owns it outright', own_mortgage: 'owns it, with a mortgage',
+      renting: 'renting, or neither', age_16_34: 'under 35', age_35_44: '35 to 44',
+      age_45_54: '45 to 54', age_55_64: '55 to 64', age_65_74: '65 to 74', age_75_plus: '75 and over',
+    };
+    // two cuts of the same households, kept apart by colour because they are not one
+    // scale: a renter of 30 is counted in both bars
+    const HOUSE = shade(metricColor('house_price'), 0.20);
+    const AGE = shade(metricColor('life_exp'), -0.10);
+    const rows = uw.cuts.slice().reverse();       // housing at the top, oldest at the foot
+    Plotly.react(el, [{
+      type: 'bar', orientation: 'h',
+      y: rows.map(d => LAB[d.k] || d.k), x: rows.map(d => d.v),
+      marker: { color: rows.map(d => d.k.slice(0, 3) === 'age' ? AGE : HOUSE) },
+      // a bar that rounds to nought is not a measurement of nought
+      text: rows.map(d => d.v < 0.05 ? '<0.1%' : d.v.toFixed(1) + '%'),
+      textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
+      hovertemplate: '%{y}: %{x:.1f}% own less than nothing<extra></extra>',
+    }], Object.assign({}, BASE_LAYOUT, {
+      margin: { t: 28, r: 70, b: 40, l: 158 },
+      shapes: [{ type: 'line', x0: uw.all, x1: uw.all, yref: 'paper', y0: 0, y1: 1,
+        line: { color: cssVar('--ink-3', '#9aa3ad'), width: 1, dash: 'dot' } }],
+      annotations: [{ x: uw.all, yref: 'paper', y: 1.045, showarrow: false, xanchor: 'left',
+        text: `  every household, ${uw.all.toFixed(1)}%`,
+        font: { size: 10.5, color: cssVar('--ink-3', '#9aa3ad') } }],
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { ticksuffix: '%', autorange: false,
+        range: [0, Math.max(...rows.map(d => d.v)) * 1.16],   // room for the end labels
+        title: { text: 'share of that kind of household owning less than nothing', font: { size: 12 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category' }),
+      bargap: 0.3,
+    }), CFG);
+    title.textContent = (uw.iso ? cap(theName(uw.iso)) : 'The euro area') +
+      `: who owes more than they own, ${uw.wave} wave`;
+    src.textContent =
+      `A household is counted here when its debts come to more than everything it holds, the ` +
+      `house included. The two blocks are two cuts of the same households, not a sequence: a ` +
+      `renter of thirty is in both. The dotted line is every household taken together, ` +
+      `${uw.all.toFixed(1)}%. ` +
+      `This is a survey of households and the shares elsewhere on this face divide a national ` +
+      `total per adult, so the two are not versions of one number` +
+      (uw.rho != null ? ` and do not behave like it: across the ${uw.paired} countries with both, ` +
+        `their rank correlation is ${uw.rho.toFixed(2)}` : '') + `. ` +
+      `Waves are named ${uw.waves[0]} to ${uw.waves[uw.waves.length - 1]} and the fieldwork behind ` +
+      `each ran in different years in different countries, so a wave is a label rather than a ` +
+      `date. The countries covered change between waves, which moves the euro-area figure as ` +
+      `well as the country ones. The source marks country-specific comparability issues for ` +
+      `most members and reports some cells as too few observations to give, which are left out ` +
+      `here rather than drawn as zero. ` +
+      `Source: ECB Household Finance and Consumption Survey, statistical table F3.`;
   }
 
   else if (mode === 'made') {
@@ -7390,8 +7594,9 @@ Promise.all([
   opt('data/us_manifest.json'),
   opt('data/us_cz.json'),
   opt('data/us_composition.json'),
+  opt('data/hfcs_negative.json'),
 ]).then(([latest, ts, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50,
-  itop1, itop10, imid40, ibot50, hprice, usCounty, usState, usNames, usManifest, usCz, usComp]) => {
+  itop1, itop10, imid40, ibot50, hprice, usCounty, usState, usNames, usManifest, usCz, usComp, hfcsNeg]) => {
   LATEST = latest;
   // spine is the union of every country any module knows, named from geo_names
   const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
@@ -7422,6 +7627,7 @@ Promise.all([
   if (usCounty && Object.keys(usCounty).length) { US_COUNTY = scrubUs(usCounty); US_NAMES = usNames; }
   if (usCz && Object.keys(usCz).length) US_CZ = usCz;
   if (usComp && usComp.groups) US_COMP = usComp;
+  if (hfcsNeg && hfcsNeg.by) HFCS_NEG = hfcsNeg;
 
   buildIndex();
   return true;

@@ -125,6 +125,15 @@ per cent, the best here, and earns 15.6 per cent, nearly the worst.
 
 This is the finding that proves the premise, and it belongs on the landing page.
 
+It now holds on a third pair. Rank the 22 countries carrying both by the poorest
+half's share of national wealth and by the share of households whose debts exceed
+everything they hold, and the two orderings correlate at **-0.14**. The Netherlands
+has one of the healthier bottom-half shares here and the second-most households below
+zero; Greece's bottom half is negative in aggregate while 1.1 per cent of its
+households are. An aggregate share and a headcount of people are not two views of one
+thing, and a few deeply indebted households can take a national total under without
+being many.
+
 ### Claim 3: ownership pulled away from earning in the United States after 2008. MODERATE, and narrow.
 
 - 1995 to 2007: US wealth top 1% +4.1 points, income top 1% +3.9. Together.
@@ -417,9 +426,27 @@ Gary listener would come.
 
 1. **Housing cost to income.** BIS and OECD both publish long series. This is the
    single most requested fact about inequality in daily life and we do not hold it.
-2. **Household debt and financial resilience.** Eurostat SILC carries "cannot face
-   an unexpected expense". The Swedish finding, a bottom half owning minus 11 per
-   cent, is a debt story and we have no way to show it.
+2. ~~**Household debt and financial resilience.**~~ **Half done.** The headcount is in:
+   the ECB's HFCS table F3 counts households whose debts exceed everything they hold,
+   for the euro area and a few neighbours, over four waves, cut by housing status and
+   by the age of the reference person. 4.1 per cent of euro-area households, 10.5 in
+   Finland, 23.7 per cent of Dutch households headed by someone under 35.
+
+   It earned its place by disagreeing with the measure beside it. Rank the 22 countries
+   carrying both by the poorest half's share of national wealth and by the share of
+   households below zero and the two orderings have a Spearman correlation of **-0.14**.
+   The Netherlands holds one of the healthier bottom-half shares in the atlas and has
+   the second-most households in debt beyond their assets; Greece's bottom half is
+   negative in aggregate while only 1.1 per cent of its households are. This is claim 2
+   on a third pair of measures, and it is the reason the reading exists rather than a
+   caveat on it.
+
+   The two must never share an axis. One is WID, per adult, an aggregate share of a
+   national total, mostly imputed. The other is a survey counting households. Section
+   9a records what happens when that rule is broken.
+
+   Still missing: resilience itself. Eurostat SILC carries "cannot face an unexpected
+   expense", which is the question a reader actually has, and we do not hold it.
 3. **Productivity against pay.** OECD GDP per hour worked. The productivity and pay
    gap is the clearest single picture of ownership beating earning, and it is what
    ties the atlas to the argument the reader arrived with. Right now `reach` uses
@@ -477,8 +504,9 @@ Gary listener would come.
 
 Item 4 is done for one country and is the reason the rest of the wealth face means
 anything: a share of a national total is abstract until you know it is a mortgaged
-house and a depreciating car. Item 1 is now the one a reader would notice missing,
-and item 2 is what would turn claim 1's five countries into a headcount of people.
+house and a depreciating car. Item 2's headcount is in and turned out to disagree
+with the shares, which makes it a finding rather than a footnote. Item 1, housing
+cost against income, is now the one a reader would notice missing.
 
 ### 9a. Known defects in what we already hold
 

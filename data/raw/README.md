@@ -45,3 +45,23 @@ waves of household medians rather than a run of aggregate levels, and its asset 
 by country goes no finer than real against financial, so the two do not join.
 
 Downloaded from federalreserve.gov/releases/z1/dataviz/dfa/distribute/table/
+
+## hfcs/
+
+Four workbooks of statistical tables from the ECB's Household Finance and Consumption
+Survey, waves 2010, 2014, 2017 and 2021. `build_hfcs.py` reads table F3 out of each,
+which counts households whose debts exceed everything they hold, and writes
+`data/hfcs_negative.json`.
+
+This is a survey of households. The wealth shares beside it in the atlas are WID's
+per-adult shares of a national total, mostly imputed. They are not two versions of one
+number and the app never draws them on one axis: ranked against each other across the
+22 countries that carry both, they correlate at -0.14.
+
+Waves are named by year and the fieldwork behind each ran in different years in
+different countries, so the wave is a label rather than a reference date. The set of
+countries changes between waves, which moves the euro-area aggregate too. The source
+marks country-specific comparability issues for most members and reports some cells as
+too few observations to give; those are dropped rather than read as zero.
+
+Downloaded from ecb.europa.eu/pub/economic-research/research-networks/html/researcher_hfcn.en.html
