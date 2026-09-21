@@ -65,3 +65,13 @@ marks country-specific comparability issues for most members and reports some ce
 too few observations to give; those are dropped rather than read as zero.
 
 Downloaded from ecb.europa.eu/pub/economic-research/research-networks/html/researcher_hfcn.en.html
+
+Tables G2, G3 and H1 of the same workbooks feed `data/hfcs_resilience.json`: money left
+over at the end of the month cut by net wealth fifth, whether a household could raise
+money from friends or relatives in an emergency, and whether it was refused credit or
+given less than it asked for.
+
+This was going to be Eurostat SILC's "cannot face an unexpected expense", which is the
+cleanest version of the question. Eurostat is not reachable from this environment. HFCS
+is the better source regardless: same survey, same waves, same countries as the
+headcount, so no new comparability seam between them.

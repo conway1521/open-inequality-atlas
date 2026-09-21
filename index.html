@@ -435,9 +435,13 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   cursor: pointer; font-size: 16px; line-height: 1; padding: 0; }
 .refresh:hover { color: var(--ink); }
 .shake { align-self: center; margin: 0 0 10px; background: none; border: 0; cursor: pointer;
-  font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: .04em; padding: 2px 8px; }
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: .04em;
+  padding: 2px 8px; display: inline-flex; align-items: center; gap: 6px; }
 .shake:hover { color: var(--ink); }
-#view-ask.stage-result .shake { display: none; }
+.shake .pip { font-size: 17px; line-height: 1; color: var(--ink-3); transition: transform .5s ease, color .2s; }
+.shake:hover .pip { color: var(--accent); }
+.shake:active .pip { transform: rotate(180deg); }
+/* the die stays once there is an answer: a reader who liked one roll wants another */
 .asknew { background: none; border: 0; cursor: pointer; font-family: var(--mono); font-size: 11px;
   color: var(--ink-3); padding: 2px 6px; }
 .asknew:hover { color: var(--ink); }
@@ -803,7 +807,7 @@ footer a { color: inherit; }
           </div>
           <span class="cube-hint" aria-hidden="true"></span>
         </div>
-        <button type="button" class="shake" id="shake" aria-label="Shake for a question">shake</button>
+        <button type="button" class="shake" id="shake" aria-label="Roll a question and answer it"><span class="pip" id="die-pip">⚄</span> roll me one</button>
         <div class="facet-chips" id="facet-chips">
           <button class="fchip w" data-facet="wealth" aria-pressed="true">wealth</button>
           <button class="fchip i" data-facet="income" aria-pressed="false">income</button>
@@ -889,7 +893,11 @@ footer a { color: inherit; }
         4.1% of euro-area households owe more than they own, 10.5% in Finland, and 23.7% of Dutch
         households headed by someone under 35. The two measures barely line up, at a rank
         correlation of -0.14 across the 22 countries that carry both.</p>
-        <p class="try" data-qs="what does the poorest half own?;how many people own less than nothing?;how much more do the richest hold than the poorest?"></p>
+        <p>And then the question all of it is for. Half of euro-area households have nothing left
+        over at the end of the month, two thirds among the poorest fifth by wealth, and four in ten
+        could not raise money from family or friends in an emergency. In Greece it is four in five,
+        and 70% of the households that went looking for credit were refused or given less.</p>
+        <p class="try" data-qs="what does the poorest half own?;how many people own less than nothing?;could you take a hit here?;how much more do the richest hold than the poorest?"></p>
       </div>
       <div class="block">
         <h2>What it is made of, and the house</h2>
@@ -1309,6 +1317,7 @@ footer a { color: inherit; }
 let LATEST = null;
 let US_COMP = null;   // what wealth is made of, by group: the Fed's distributional accounts
 let HFCS_NEG = null;  // how many households own less than nothing: the ECB's household survey
+let HFCS_RES = null;  // and how many could take a hit: money left over, help, credit refused
 let BY_ISO = {};            // iso -> wealth snapshot row + name
 const SERIES = {};          // metric -> iso -> [{year, v}]
 
@@ -1954,6 +1963,11 @@ function parse(raw) {
     since: winFrom ? +winFrom[1] : (years.length > 1 ? Math.min(...years) : null),
     until: years.length > 1 ? Math.max(...years) : null,
   };
+  // WEATHER: whether a household could absorb a shock, which is what the rest of the
+  // face is for. same survey as the headcount below it.
+  if (/\btake a hit\b|\bweather\b|\bunexpected (expense|bill|cost)\b|\bemergency\b|\brainy day\b|\bsaving\b|\bsave anything\b|\bleft over\b|\bmake ends meet\b|\bboiler\b|\bcope with\b|\bresilien\w*\b|\blose (their|your|my) job\b/.test(r))
+    return { kind: 'weather', isos, iso: isos[0] || null,
+      year: years.length ? Math.max(...years) : null };
   // UNDERWATER: the headcount behind the share. household survey, euro area.
   if (/\bhow many (people|households|of us)\b|\bowe more than\b|\bunder ?water\b|\bnegative (net )?wealth\b|\bin the red\b|\bhow many are in debt\b|\bmore debt than\b/.test(r))
     return { kind: 'underwater', isos, iso: isos[0] || null,
@@ -2228,6 +2242,13 @@ function pearson(pts) {
 // scale and are not meant to be: a share of a national total against a count of
 // households. Ties take the average rank, which is what makes it Spearman rather than
 // Pearson on a sort order.
+// the survey lists a country but does not always publish every indicator for it:
+// Finland has the credit questions and no saving figure, so for this reading it is
+// uncovered, and the drawer and the die both have to know that
+function resilienceFor(iso) {
+  const b = HFCS_RES && HFCS_RES.by[iso];
+  return !!(b && b.save && b.save.all && b.save.all.some(v => v != null));
+}
 function spearman(xs, ys) {
   if (!xs || xs.length < 4 || xs.length !== ys.length) return null;
   const rank = a => {
@@ -2286,6 +2307,10 @@ function spanBounds(metric) {
   // whichever measure the face happens to be showing: the median runs 1969 to 2017 in
   // Britain while the income shares run 1980 to 2021, and the slider has to say which
   // the composition layer is its own file, not a series, so it names its own bounds
+  if (cell.view === 'weather' && HFCS_RES) {
+    const w = HFCS_RES.waves;
+    return { lo: w[0], hi: w[w.length - 1] };
+  }
   if (cell.view === 'underwater' && HFCS_NEG) {
     const w = HFCS_NEG.waves;
     return { lo: w[0], hi: w[w.length - 1] };
@@ -2323,7 +2348,7 @@ function syncCellFromFact(f) {
     : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
   cell.view = ['reach', 'ratio', 'triple', 'tables', 'turn', 'peers', 'houses',
-    'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made', 'underwater'].includes(f.kind) ? f.kind : null;
+    'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made', 'underwater', 'weather'].includes(f.kind) ? f.kind : null;
   cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
     : ctx.region ? ('r:' + ctx.region) : null;
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
@@ -2365,6 +2390,11 @@ function runCell() {
       'the richest tenth against the poorest half'); return;
   }
   // the five readings that bring their own measures but take the reader's years
+  if (cell.view === 'weather') {
+    runParse({ kind: 'weather', isos: cell.place ? [cell.place] : [], iso: cell.place || null,
+      year: cell.span === 'moment' ? cell.year : null }, VIEW_DEF.weather.label);
+    return;
+  }
   if (cell.view === 'underwater') {
     runParse({ kind: 'underwater', isos: cell.place ? [cell.place] : [], iso: cell.place || null,
       year: cell.span === 'moment' ? cell.year : null }, VIEW_DEF.underwater.label);
@@ -2648,6 +2678,79 @@ function buildAnswer(p, q) {
       ` <em>The median rests on ${ms.length} survey${ms.length === 1 ? '' : 's'} between ${ms[0].year} and ${ms[ms.length - 1].year}.</em>`;
   }
 
+  else if (p.kind === 'weather') {
+    // What the rest of the wealth face is for. A share of a national total, a multiple,
+    // a composition: all of it is in service of one question, which is whether a
+    // household can take a hit without going under. This asks it directly.
+    if (!HFCS_RES) { showNotice('The household survey is not loaded.'); return null; }
+    const B = HFCS_RES.by, waves = HFCS_RES.waves;
+    const named = p.iso || null;
+    const standing = ctx.lastIso || (focusIsos()[0] || null);
+    const hasSave = resilienceFor;
+    if (named && !B[named]) {
+      showNotice(`Whether a household could absorb a shock comes from a household survey, and ` +
+        `the one the atlas holds covers the euro area and a few of its neighbours, not ` +
+        `${esc(theName(named))}. Ask it without a country for the euro area.`);
+      return null;
+    }
+    const iso = (named && hasSave(named)) ? named : (standing && hasSave(standing)) ? standing : null;
+    const here = iso || 'EA';
+    if (!hasSave(here)) return miss();
+    // Two different absences, and they should not read the same. A country the survey
+    // does not cover is one thing; a country it covers but does not publish this for,
+    // which is Finland, is another.
+    const fellBack = (!iso && (named || standing)) ? (named || standing) : null;
+    const dropped = (fellBack && BY_ISO[fellBack]) ? fellBack : null;
+    const inSurvey = dropped ? !!B[dropped] : false;
+    const want = p.year || waves[waves.length - 1];
+    let at = 0;
+    for (let k = 0; k < waves.length; k++)
+      if (Math.abs(waves[k] - want) < Math.abs(waves[at] - want)) at = k;
+    const sv = B[here].save;
+    // the source counts households whose expenses came to less than their income; the
+    // reading is about the others, so everything here is the complement of it
+    const short = cut => (sv[cut] && sv[cut][at] != null) ? 100 - sv[cut][at] : null;
+    const FIFTHS = ['w_bottom20', 'w_20_40', 'w_40_60', 'w_60_80', 'w_80_90', 'w_90_100'];
+    const all = short('all');
+    if (all == null) return miss();
+    const lines = FIFTHS.map(k => ({ k, vals: waves.map((y, j) => (sv[k] && sv[k][j] != null) ? 100 - sv[k][j] : null) }))
+      .filter(d => d.vals.some(v => v != null));
+    const flat = k => (B[here][k] && B[here][k][at] != null) ? B[here][k][at] : null;
+    const help = flat('help'), refused = flat('refused');
+    const wave = waves[at];
+    ctx.metric = 'wealth_bottom50'; ctx.lastIso = iso; f.isos = iso ? [iso] : [];
+    f.mode = 'weather';
+    f.weather = { here, iso, all, wave, waves, at, lines, help, refused, series: sv.all };
+    const pct = v => v.toFixed(0) + '%';
+    const where = iso ? `<strong>${esc(theName(iso))}</strong>` : 'the <strong>euro area</strong>';
+    let t = `In ${where}, <strong>${pct(all)}</strong> of households have nothing left over at the ` +
+      `end of the month: what they spend comes to as much as what they bring in, or more ` +
+      `(${wave} wave). ` +
+      (dropped ? (inSurvey
+        ? `The survey covers ${esc(theName(dropped))} but does not publish this indicator for it, ` +
+          `so this is the euro area as a whole. `
+        : `The survey does not reach ${esc(theName(dropped))}, so this is the euro area as a ` +
+          `whole. `) : '');
+    const lo = short('w_bottom20'), hi = short('w_90_100');
+    if (lo != null && hi != null)
+      t += `Among the poorest fifth by wealth it is <strong>${pct(lo)}</strong>, against ` +
+        `<strong>${pct(hi)}</strong> of the richest tenth. `;
+    if (help != null)
+      t += `<strong>${pct(100 - help)}</strong> could not raise money from family or friends in ` +
+        `an emergency. `;
+    if (refused != null)
+      t += `Of the households that went looking for credit in the last three years, ` +
+        `<strong>${pct(refused)}</strong> were refused or given less than they asked for. `;
+    t += `<em>This is what the shares on the rest of this face are for. Owning nothing is not a ` +
+      `statistic about a national total; it is the month a boiler goes.</em>`;
+    f.text = t;
+  }
+
+  else if (p.kind === 'weather') {
+    cell.view = 'weather';
+    if (p.iso) cell.place = p.iso;
+    if (p.year) { cell.span = 'moment'; cell.year = p.year; }
+  }
   else if (p.kind === 'underwater') {
     // The face already says the poorest half of five countries owns less than nothing.
     // That is a share of a national total, and a total can be dragged under by a few
@@ -2727,6 +2830,11 @@ function buildAnswer(p, q) {
     f.text = t;
   }
 
+  else if (p.kind === 'weather') {
+    cell.view = 'weather';
+    if (p.iso) cell.place = p.iso;
+    if (p.year) { cell.span = 'moment'; cell.year = p.year; }
+  }
   else if (p.kind === 'underwater') {
     cell.view = 'underwater';
     if (p.iso) cell.place = p.iso;
@@ -3952,7 +4060,9 @@ const QUESTIONS = [
     'how many times more does one person at the top own?',
     'what is that wealth actually made of?',
     'how many people own less than nothing?',
+    'could you take a hit here?',
     'how many people own less than nothing?',
+    'could you take a hit here?',
     'what does the poorest half own?',
     'how much more do the richest hold than the poorest?',
     'have houses pulled away from pay?',
@@ -4404,31 +4514,80 @@ function renderDrawer(dim, rib, opts, filter) {
 }
 // walk to the next value of a variable without opening anything
 function randomOf(a) { return a[Math.floor(Math.random() * a.length)]; }
+// ── the die ─────────────────────────────────────────────────────────
+// Building a question is work, and a reader who does not yet know what the atlas can
+// answer has no way to start. The die asks one for them and answers it outright: it
+// turns the cube, picks a question from the catalogue, finds a country that question
+// actually runs for, and sends it. It never lands on a refusal, because it checks each
+// candidate against whyNot, the same rule the drawer greys options with, and rolls
+// again if it somehow does.
+const DIE = ['\u2680', '\u2681', '\u2682', '\u2683', '\u2684', '\u2685'];
+function shuffled(a) {
+  const c = a.slice();
+  for (let i = c.length - 1; i > 0; i--) {
+    const k = Math.floor(Math.random() * (i + 1));
+    const t = c[i]; c[i] = c[k]; c[k] = t;
+  }
+  return c;
+}
+// every catalogue question, carrying the face it belongs to
+function rollable() {
+  const out = [];
+  for (const g of QUESTIONS) for (const q of g.qs) out.push({ q, face: g.facet || null });
+  return out;
+}
+let lastRolled = null;
+function rollOnce() {
+  const picks = shuffled(rollable()).filter(x => x.q !== lastRolled);
+  for (const pick of picks) {
+    const face = pick.face || (curFacet === 'opportunity' ? 'wealth' : curFacet);
+    if (FACETS[face] && !FACETS[face].soon && face !== curFacet) { paintFacet(face); faceToFront(face); }
+    hideNotice();
+    chain.length = 0;
+    if (face === 'opportunity') {                 // that layer answers in one step
+      ask(pick.q);
+      if (chain.length) { lastRolled = pick.q; return pick.q; }
+      continue;
+    }
+    setStage('compose'); resetCell(); ctx.lastIso = null;
+    if (!previewQuestion(pick.q)) continue;
+    // a reading drawn for one country needs one it can actually be drawn for, and
+    // whyNot is what already knows which those are
+    const shape = cell.view || cell.form || '';
+    if (cellNeedsPlace() || (cell.view && VIEW_DEF[cell.view] && VIEW_DEF[cell.view].oneOnly)) {
+      const pool = shuffled(placePool().map(p => p[1]));
+      let found = cell.place && !whyNot('form', shape) ? cell.place : null;
+      for (const iso of pool) {
+        if (found) break;
+        cell.place = iso;
+        if (!whyNot('form', shape) && !whyNot('place', iso)) found = iso;
+      }
+      if (!found) continue;
+      cell.place = found;
+    }
+    updateCell();
+    sendCell();
+    if (chain.length) { lastRolled = pick.q; return pick.q; }
+  }
+  return null;
+}
 function shakeCube() {
   // one clean revolution that lands square on a face. no tumbling off into space.
   motion = 'still';
   if (motRAF) { cancelAnimationFrame(motRAF); motRAF = null; }
   clearTimeout(settleT);
-  // no jump home first: it turns on from where it already is
   cRotX = Math.round(cRotX / 90) * 90;
   cRotY = Math.round(cRotY / 90) * 90 + 360 + (1 + Math.floor(Math.random() * 3)) * 90;
   baseX = cRotX; baseY = cRotY;
   cubeApply();
+  const pip = document.getElementById('die-pip');
+  if (pip) pip.textContent = randomOf(DIE);
   setTimeout(() => {
-    const face = facetFromAngles();
-    if (FACETS[face]) paintFacet(face);
+    const q = rollOnce();
+    if (!q) showNotice('Nothing came up. Roll again.');
+    else { const el = document.getElementById('q'); if (el) el.value = q; }
     settle();
-    const q = randomOf(QUESTIONS.filter(g => !g.facet).flatMap(g => g.qs));
-    const el = document.getElementById('q'); if (el) el.value = q;
-    if (previewQuestion(q)) {
-      if (!cell.place && (cell.span || cell.form === 'lorenz')) {
-        const pool = placePool();
-        if (pool.length) cell.place = randomOf(pool)[1];
-      }
-      updateCell();
-      setStage('chain');
-    }
-  }, 720);
+  }, 560);
 }
 function stepDim(dim, dir) {
   const flat = [];
@@ -4587,6 +4746,7 @@ const VIEW_DEF = {
   // These five bring their own measures, so the facet and the "against" fold have nothing
   // to do. The years do: a reading of the whole record and a reading since 2000 are
   // different answers, and the reader should be able to ask for either.
+  weather: { label: 'could you take a hit', uses: ['place', 'when'], ignores: ['facet', 'against', 'among'], oneOnly: 1, moment: 1, reads: 'households with nothing spare' },
   underwater: { label: 'who owes more than they own', uses: ['place', 'when'], ignores: ['facet', 'against', 'among'], oneOnly: 1, moment: 1, reads: 'households below zero' },
   made:   { label: 'what the wealth is made of', uses: ['place', 'when'], ignores: ['facet', 'against', 'among'], needsPlace: 1, oneOnly: 1, moment: 1, reads: 'assets and debts by group' },
   owns:   { label: 'what the bottom half owns', uses: ['place', 'when'], ignores: ['facet', 'against'], needsPlace: 1, oneOnly: 1, window: 1, spanOf: 'wealth_bottom50', reads: 'wealth shares' },
@@ -4621,6 +4781,12 @@ function whyNot(dim, val) {
           return `House prices are held for ${have.map(i => BY_ISO[i].name).join(' and ')} so far, ` +
             `not for ${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place}.`;
       }
+      if (val === 'weather' && cell.place && !resilienceFor(cell.place))
+        return `Whether a household could absorb a shock comes from a household survey. ` +
+          (HFCS_RES && HFCS_RES.by[cell.place]
+            ? `It covers ${theName(cell.place)} but publishes no saving figure for it.`
+            : `The one the atlas holds covers the euro area and a few neighbours, not ` +
+              `${theName(cell.place)}.`);
       if (val === 'underwater' && cell.place && !(HFCS_NEG && HFCS_NEG.by[cell.place]))
         return `Counting households below zero takes a household survey, and the one the atlas ` +
           `holds covers the euro area and a few neighbours, not ${theName(cell.place)}.`;
@@ -4687,6 +4853,13 @@ function whyNot(dim, val) {
     return null;
   }
   if (dim === 'place') {
+    if (cell.view === 'weather' && val) {
+      const iso = val[0] === '+' ? val.slice(1) : val;
+      if (iso && !resilienceFor(iso))
+        return `The household survey behind this one covers the euro area and a few ` +
+          `neighbours, not ${BY_ISO[iso] ? BY_ISO[iso].name : iso}. Clear the place for the ` +
+          `euro area as a whole.`;
+    }
     if (cell.view === 'underwater' && val) {
       const iso = val[0] === '+' ? val.slice(1) : val;
       if (iso && !(HFCS_NEG && HFCS_NEG.by[iso]))
@@ -4711,6 +4884,19 @@ function whyNot(dim, val) {
 const FORM_DEF = {
   rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
   tiers: 'by tier', break: 'who breaks the pattern',
+};
+// what the strip says the opportunity layer is showing, one line per reading
+const OPP_SHOWN = {
+  faces: 'the four faces against each other', pair: 'two faces, by county',
+  conn: 'who you grow up around', mix: 'around them, or mixing with them',
+  mobility: 'where children climb', life: 'how long rich and poor live',
+  gap: "by their parents' income", scatter: 'against one covariate',
+};
+const OPP_READS = {
+  faces: 'five measures, US counties', pair: 'two measures, US counties',
+  conn: 'connectedness and climbing', mix: 'exposure and friending bias',
+  mobility: 'climbing, 741 zones', life: 'life expectancy at 40, 595 zones',
+  gap: 'credit, mortgages, arrears', scatter: '741 US commuting zones',
 };
 const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'among'];
 // a typed question that names a measure turns the cube to that measure's face, so the
@@ -4774,6 +4960,11 @@ function previewQuestion(q) {
   else if (p.kind === 'reach') cell.view = 'reach';
   else if (p.kind === 'houses') cell.view = 'houses';
   else if (p.kind === 'ratio') cell.view = 'ratio';
+  else if (p.kind === 'weather') {
+    cell.view = 'weather';
+    if (p.iso) cell.place = p.iso;
+    if (p.year) { cell.span = 'moment'; cell.year = p.year; }
+  }
   else if (p.kind === 'underwater') {
     cell.view = 'underwater';
     if (p.iso) cell.place = p.iso;
@@ -5406,7 +5597,7 @@ function setSlot(id, value, hint, color) {
   } else { rib.classList.remove('filled'); rib.classList.add('empty'); v.textContent = hint; rib.style.removeProperty('--rc'); }
 }
 const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence',
-  'reach', 'houses', 'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made', 'underwater'];
+  'reach', 'houses', 'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made', 'underwater', 'weather'];
 // the accordion reads the cell, the single source of truth, so it always matches the edits
 function updateCell() {
   if (keepOpen) { reopenAfter = keepOpen; } else closeDrawer();
@@ -5416,6 +5607,13 @@ function updateCell() {
     setSlot('time', null, 'a moment, or a run of years');
     const o = last.opp;
     setSlot('against', o.covLabel || o.label || null, 'another measure to hold it to', '#c98a2b');
+    // every slot, not only the three this layer fills. arriving here from another face
+    // used to leave that face's reading sitting in the strip: a matrix of US counties
+    // under a pill reading "what the wealth is made of".
+    setSlot('scope', null, 'all');
+    setSlot('form', OPP_SHOWN[o.kind] || 'one reading of the zones', 'as is');
+    const vf = document.getElementById('v-facet');
+    if (vf) vf.innerHTML = `opportunity<span class="fmeasure">${esc(OPP_READS[o.kind] || '741 US commuting zones')}</span>`;
     return;
   }
   const named = cell.places.filter(i => BY_ISO[i]).map(i => esc(BY_ISO[i].name));
@@ -5493,6 +5691,7 @@ const STEP_NEEDS = {
   'what does the poorest half own?': ['wealth_top1', 'wealth_bottom50'],
   'what is that wealth actually made of?': [],
   'how many people own less than nothing?': [],
+  'could you take a hit here?': [],
   'how many times more does one person at the top own?': ['wealth_top1', 'wealth_bottom50', 'income_top1', 'income_bottom50'],
   'how many times more does one person at the top earn?': ['income_top1', 'income_bottom50'],
   'what happened to the middle here?': ['income_top10', 'income_middle40', 'income_bottom50'],
@@ -5547,12 +5746,19 @@ function nextSteps(f) {
     return out;
   }
 
-  if (m === 'underwater') {
+  if (m === 'weather') {
+    add('how many people own less than nothing?', 'wealth');
+    add('what is that wealth actually made of?', 'wealth');
+    add('what does the poorest half own?', 'wealth');
+  }
+  else if (m === 'underwater') {
+    add('could you take a hit here?', 'wealth');
     add('what does the poorest half own?', 'wealth');
     add('what is that wealth actually made of?', 'wealth');
     add('how much more do the richest hold than the poorest?', 'wealth');
   }
   else if (m === 'made') {
+    add('could you take a hit here?', 'wealth');
     add('how many people own less than nothing?', 'wealth');
     add('what does the poorest half own?', 'wealth');
     add('how many times more does one person at the top own?', 'wealth');
@@ -6035,6 +6241,41 @@ function drawChart() {
       `reading and the exact percentages are not. ` +
       `Markers show where a survey actually landed; the line between them is drawn, not measured. ` +
       provenance(['gdp_pc', 'median_income']);
+  }
+
+  else if (mode === 'weather') {
+    const we = chain.slice().reverse().find(f => f.mode === 'weather').weather;
+    const LAB = { w_bottom20: 'the poorest fifth', w_20_40: 'the second fifth',
+      w_40_60: 'the middle fifth', w_60_80: 'the fourth fifth',
+      w_80_90: 'the next tenth', w_90_100: 'the richest tenth' };
+    // one ramp, poorest darkest, because the bands are ordered and the order is the point
+    const ramp = shadesOf(metricColor('wealth_top1'), Math.max(2, we.lines.length)).slice().reverse();
+    Plotly.react(el, we.lines.map((d, k) => ({
+      type: 'scatter', mode: 'lines+markers', name: LAB[d.k] || d.k,
+      x: we.waves, y: d.vals, connectgaps: true,
+      line: { color: ramp[k], width: 2.4 }, marker: { size: 7 },
+      hovertemplate: (LAB[d.k] || d.k) + ': %{y:.0f}% with nothing left over, %{x} wave<extra></extra>',
+    })), Object.assign({}, BASE_LAYOUT, {
+      showlegend: true, legend: { orientation: 'h', y: 1.2, font: { size: 10.5 } },
+      margin: { t: 48, r: 22, b: 42, l: 56 },
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { tickmode: 'array', tickvals: we.waves,
+        ticktext: we.waves.map(String), title: { text: 'survey wave', font: { size: 11 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { ticksuffix: '%', rangemode: 'tozero',
+        title: { text: 'households with nothing left over', font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = (we.iso ? cap(theName(we.iso)) : 'The euro area') +
+      ': households with nothing left over, by wealth';
+    src.textContent =
+      `The survey asks whether regular expenses over the last twelve months came to less than ` +
+      `income. This draws the households it did not: expenses level with income or above it. ` +
+      `Fifths are by net wealth, not by income, which is the cut this atlas thinks in and not ` +
+      `the one a pay statistic would use. ` +
+      (we.help != null ? `Raising money in an emergency is a separate question the survey asks ` +
+        `about friends and relatives, and credit refused counts only the households that went ` +
+        `looking for it, so neither is drawn here. ` : '') +
+      `Lines join four waves and nothing between them was measured. ` +
+      (HFCS_RES && HFCS_RES.note ? HFCS_RES.note + ' ' : '') +
+      `Source: ECB Household Finance and Consumption Survey, statistical tables G2, G3 and H1.`;
   }
 
   else if (mode === 'underwater') {
@@ -7595,8 +7836,9 @@ Promise.all([
   opt('data/us_cz.json'),
   opt('data/us_composition.json'),
   opt('data/hfcs_negative.json'),
+  opt('data/hfcs_resilience.json'),
 ]).then(([latest, ts, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50,
-  itop1, itop10, imid40, ibot50, hprice, usCounty, usState, usNames, usManifest, usCz, usComp, hfcsNeg]) => {
+  itop1, itop10, imid40, ibot50, hprice, usCounty, usState, usNames, usManifest, usCz, usComp, hfcsNeg, hfcsRes]) => {
   LATEST = latest;
   // spine is the union of every country any module knows, named from geo_names
   const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
@@ -7628,6 +7870,7 @@ Promise.all([
   if (usCz && Object.keys(usCz).length) US_CZ = usCz;
   if (usComp && usComp.groups) US_COMP = usComp;
   if (hfcsNeg && hfcsNeg.by) HFCS_NEG = hfcsNeg;
+  if (hfcsRes && hfcsRes.by) HFCS_RES = hfcsRes;
 
   buildIndex();
   return true;
