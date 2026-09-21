@@ -897,7 +897,11 @@ footer a { color: inherit; }
         over at the end of the month, two thirds among the poorest fifth by wealth, and four in ten
         could not raise money from family or friends in an emergency. In Greece it is four in five,
         and 70% of the households that went looking for credit were refused or given less.</p>
-        <p class="try" data-qs="what does the poorest half own?;how many people own less than nothing?;could you take a hit here?;how much more do the richest hold than the poorest?"></p>
+        <p>In money, for the one country that publishes a household balance sheet on a run of years:
+        the American family in the middle of the poorest quarter has $3,470 to its name, and in 2010
+        and 2013 it had nothing at all. The family in the middle of the richest tenth has $3.8m.
+        8% of that poorest quarter own the home they live in; 95% of the richest tenth do.</p>
+        <p class="try" data-qs="what does the poorest half own?;how many people own less than nothing?;could you take a hit here?;what does a family actually have?"></p>
       </div>
       <div class="block">
         <h2>What it is made of, and the house</h2>
@@ -1318,6 +1322,7 @@ let LATEST = null;
 let US_COMP = null;   // what wealth is made of, by group: the Fed's distributional accounts
 let HFCS_NEG = null;  // how many households own less than nothing: the ECB's household survey
 let HFCS_RES = null;  // and how many could take a hit: money left over, help, credit refused
+let SCF_NW = null;    // what an American family in each quarter of the country actually has
 let BY_ISO = {};            // iso -> wealth snapshot row + name
 const SERIES = {};          // metric -> iso -> [{year, v}]
 
@@ -1963,6 +1968,11 @@ function parse(raw) {
     since: winFrom ? +winFrom[1] : (years.length > 1 ? Math.min(...years) : null),
     until: years.length > 1 ? Math.max(...years) : null,
   };
+  // HAVE: the money version. one country, and the refusal says why a share is not a
+  // bank balance.
+  if (/\bactually have\b|\bhow much (do|does).*(have|own)\b|\bnet worth\b|\bin (the )?bank\b|\bto (their|its|your|my) name\b|\bin (real )?money\b|\bin dollars\b|\bwhat would i have\b/.test(r))
+    return { kind: 'have', isos: ['USA'], iso: isos[0] || 'USA',
+      year: years.length ? Math.max(...years) : null };
   // WEATHER: whether a household could absorb a shock, which is what the rest of the
   // face is for. same survey as the headcount below it.
   if (/\btake a hit\b|\bweather\b|\bunexpected (expense|bill|cost)\b|\bemergency\b|\brainy day\b|\bsaving\b|\bsave anything\b|\bleft over\b|\bmake ends meet\b|\bboiler\b|\bcope with\b|\bresilien\w*\b|\blose (their|your|my) job\b/.test(r))
@@ -2307,6 +2317,10 @@ function spanBounds(metric) {
   // whichever measure the face happens to be showing: the median runs 1969 to 2017 in
   // Britain while the income shares run 1980 to 2021, and the slider has to say which
   // the composition layer is its own file, not a series, so it names its own bounds
+  if (cell.view === 'have' && SCF_NW) {
+    const y = SCF_NW.years;
+    return { lo: y[0], hi: y[y.length - 1] };
+  }
   if (cell.view === 'weather' && HFCS_RES) {
     const w = HFCS_RES.waves;
     return { lo: w[0], hi: w[w.length - 1] };
@@ -2348,7 +2362,7 @@ function syncCellFromFact(f) {
     : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
   cell.view = ['reach', 'ratio', 'triple', 'tables', 'turn', 'peers', 'houses',
-    'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made', 'underwater', 'weather'].includes(f.kind) ? f.kind : null;
+    'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made', 'underwater', 'weather', 'have'].includes(f.kind) ? f.kind : null;
   cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
     : ctx.region ? ('r:' + ctx.region) : null;
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
@@ -2390,6 +2404,11 @@ function runCell() {
       'the richest tenth against the poorest half'); return;
   }
   // the five readings that bring their own measures but take the reader's years
+  if (cell.view === 'have') {
+    runParse({ kind: 'have', isos: cell.place ? [cell.place] : [], iso: cell.place || null,
+      year: cell.span === 'moment' ? cell.year : null }, VIEW_DEF.have.label);
+    return;
+  }
   if (cell.view === 'weather') {
     runParse({ kind: 'weather', isos: cell.place ? [cell.place] : [], iso: cell.place || null,
       year: cell.span === 'moment' ? cell.year : null }, VIEW_DEF.weather.label);
@@ -2678,6 +2697,68 @@ function buildAnswer(p, q) {
       ` <em>The median rests on ${ms.length} survey${ms.length === 1 ? '' : 's'} between ${ms[0].year} and ${ms[ms.length - 1].year}.</em>`;
   }
 
+  else if (p.kind === 'have') {
+    // Every other reading on this face is a share, a multiple or a composition, and
+    // none of them is a number a reader can hold against their own bank balance. This
+    // one is. A median inside each group, so every figure is a family rather than a
+    // total, which is what makes the groups comparable to each other.
+    if (!SCF_NW) { showNotice('The net worth tables are not loaded.'); return null; }
+    const asked = p.iso || ctx.lastIso || (focusIsos()[0] || null);
+    if (asked && asked !== 'USA') {
+      showNotice(`What a family in each part of the country actually has, in money, comes from ` +
+        `the Survey of Consumer Finances, which is the United States. The atlas holds nothing ` +
+        `like it for ${esc(theName(asked))}: the wealth shares run for 213 countries, but a share ` +
+        `is not a bank balance.`);
+      return null;
+    }
+    const yrs = SCF_NW.years;
+    const want = p.year || yrs[yrs.length - 1];
+    let at = 0;
+    for (let k = 0; k < yrs.length; k++) if (Math.abs(yrs[k] - want) < Math.abs(yrs[at] - want)) at = k;
+    const year = yrs[at];
+    const ORDER = ['bottom25', 'lower_mid', 'upper_mid', 'next15', 'top10'];
+    const rows = ORDER.map(g => {
+      const b = SCF_NW.groups[g];
+      if (!b || b.net[at] == null) return null;
+      return { g, lab: SCF_NW.labels[g], net: b.net[at], series: b.net, have: b.have };
+    }).filter(Boolean);
+    if (rows.length < 2) return miss();
+    const lo = rows[0], hi = rows[rows.length - 1];
+    // a net worth of nought is a measurement here, not a gap, and it happened twice
+    const zeros = lo.series.map((v, i) => (v === 0 ? yrs[i] : null)).filter(Boolean);
+    ctx.metric = 'wealth_bottom50'; ctx.lastIso = 'USA'; f.isos = ['USA'];
+    f.mode = 'have'; f.have = { rows, year, years: yrs, at, zeros };
+    const money = v => v >= 1000 ? '$' + (v / 1000).toFixed(1) + 'm'
+      : '$' + Math.round(v * 1000).toLocaleString('en-US');
+    let t = `The family in the middle of the poorest quarter of the United States has ` +
+      `<strong>${money(lo.net)}</strong> to its name, counting everything it owns and taking off ` +
+      `everything it owes (${year}). The family in the middle of the richest tenth has ` +
+      `<strong>${money(hi.net)}</strong>. `;
+    // the year being read is already in the sentence above; only the others are news
+    const otherZeros = zeros.filter(y => y !== year);
+    if (zeros.includes(year))
+      t += `That is not a rounding: the middle of that quarter owed exactly what it owned` +
+        (otherZeros.length ? `, as it did in ${otherZeros.join(' and ')}` : '') + `. `;
+    else if (otherZeros.length)
+      t += `In ${otherZeros.join(' and ')} that first figure was <strong>nothing at all</strong>: ` +
+        `the middle of the poorest quarter owed exactly what it owned. `;
+    const H = (g, k) => { const r = rows.find(x => x.g === g); return r && r.have[k] ? r.have[k][at] : null; };
+    const hl = H('bottom25', 'home'), hh = H('top10', 'home');
+    const rl = H('bottom25', 'retirement'), rh = H('top10', 'retirement');
+    if (hl != null && hh != null)
+      t += `<strong>${hl.toFixed(0)}%</strong> of the poorest quarter own the home they live in, ` +
+        `against <strong>${hh.toFixed(0)}%</strong> of the richest tenth`;
+    if (rl != null && rh != null)
+      t += `${(hl != null && hh != null) ? ', and ' : ''}` +
+        `<strong>${rl.toFixed(0)}%</strong> have a retirement account against ` +
+        `<strong>${rh.toFixed(0)}%</strong>`;
+    if ((hl != null && hh != null) || (rl != null && rh != null)) t += '. ';
+    t += `<em>Each figure is the family in the middle of its group, so these are families and ` +
+      `not totals. Thousands of dollars in the money of the latest survey, so the run of years ` +
+      `can be read straight down.</em>`;
+    f.text = t;
+  }
+
   else if (p.kind === 'weather') {
     // What the rest of the wealth face is for. A share of a national total, a multiple,
     // a composition: all of it is in service of one question, which is whether a
@@ -2746,6 +2827,10 @@ function buildAnswer(p, q) {
     f.text = t;
   }
 
+  else if (p.kind === 'have') {
+    cell.view = 'have'; cell.place = 'USA';        // the only country that publishes it
+    if (p.year) { cell.span = 'moment'; cell.year = p.year; }
+  }
   else if (p.kind === 'weather') {
     cell.view = 'weather';
     if (p.iso) cell.place = p.iso;
@@ -2830,6 +2915,10 @@ function buildAnswer(p, q) {
     f.text = t;
   }
 
+  else if (p.kind === 'have') {
+    cell.view = 'have'; cell.place = 'USA';        // the only country that publishes it
+    if (p.year) { cell.span = 'moment'; cell.year = p.year; }
+  }
   else if (p.kind === 'weather') {
     cell.view = 'weather';
     if (p.iso) cell.place = p.iso;
@@ -4061,8 +4150,11 @@ const QUESTIONS = [
     'what is that wealth actually made of?',
     'how many people own less than nothing?',
     'could you take a hit here?',
+    'what does a family actually have?',
     'how many people own less than nothing?',
     'could you take a hit here?',
+    'what does a family actually have?',
+    'what does a family actually have?',
     'what does the poorest half own?',
     'how much more do the richest hold than the poorest?',
     'have houses pulled away from pay?',
@@ -4746,6 +4838,7 @@ const VIEW_DEF = {
   // These five bring their own measures, so the facet and the "against" fold have nothing
   // to do. The years do: a reading of the whole record and a reading since 2000 are
   // different answers, and the reader should be able to ask for either.
+  have:    { label: 'what a family actually has', uses: ['place', 'when'], ignores: ['facet', 'against', 'among'], needsPlace: 1, oneOnly: 1, moment: 1, reads: 'net worth in dollars' },
   weather: { label: 'could you take a hit', uses: ['place', 'when'], ignores: ['facet', 'against', 'among'], oneOnly: 1, moment: 1, reads: 'households with nothing spare' },
   underwater: { label: 'who owes more than they own', uses: ['place', 'when'], ignores: ['facet', 'against', 'among'], oneOnly: 1, moment: 1, reads: 'households below zero' },
   made:   { label: 'what the wealth is made of', uses: ['place', 'when'], ignores: ['facet', 'against', 'among'], needsPlace: 1, oneOnly: 1, moment: 1, reads: 'assets and debts by group' },
@@ -4781,6 +4874,9 @@ function whyNot(dim, val) {
           return `House prices are held for ${have.map(i => BY_ISO[i].name).join(' and ')} so far, ` +
             `not for ${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place}.`;
       }
+      if (val === 'have' && cell.place && cell.place !== 'USA')
+        return `A family's net worth in money comes from the Survey of Consumer Finances, ` +
+          `which is the United States, not ${theName(cell.place)}.`;
       if (val === 'weather' && cell.place && !resilienceFor(cell.place))
         return `Whether a household could absorb a shock comes from a household survey. ` +
           (HFCS_RES && HFCS_RES.by[cell.place]
@@ -4853,6 +4949,11 @@ function whyNot(dim, val) {
     return null;
   }
   if (dim === 'place') {
+    if (cell.view === 'have' && val) {
+      const iso = val[0] === '+' ? val.slice(1) : val;
+      if (iso && iso !== 'USA') return `Only the United States publishes a household balance ` +
+        `sheet on a run of years, so this one reading is fixed there.`;
+    }
     if (cell.view === 'weather' && val) {
       const iso = val[0] === '+' ? val.slice(1) : val;
       if (iso && !resilienceFor(iso))
@@ -4960,6 +5061,10 @@ function previewQuestion(q) {
   else if (p.kind === 'reach') cell.view = 'reach';
   else if (p.kind === 'houses') cell.view = 'houses';
   else if (p.kind === 'ratio') cell.view = 'ratio';
+  else if (p.kind === 'have') {
+    cell.view = 'have'; cell.place = 'USA';        // the only country that publishes it
+    if (p.year) { cell.span = 'moment'; cell.year = p.year; }
+  }
   else if (p.kind === 'weather') {
     cell.view = 'weather';
     if (p.iso) cell.place = p.iso;
@@ -5597,7 +5702,7 @@ function setSlot(id, value, hint, color) {
   } else { rib.classList.remove('filled'); rib.classList.add('empty'); v.textContent = hint; rib.style.removeProperty('--rc'); }
 }
 const SINGLE_PLACE = ['profile', 'point', 'compare', 'metric', 'time', 'path', 'lorenz', 'divergence',
-  'reach', 'houses', 'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made', 'underwater', 'weather'];
+  'reach', 'houses', 'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made', 'underwater', 'weather', 'have'];
 // the accordion reads the cell, the single source of truth, so it always matches the edits
 function updateCell() {
   if (keepOpen) { reopenAfter = keepOpen; } else closeDrawer();
@@ -5692,6 +5797,7 @@ const STEP_NEEDS = {
   'what is that wealth actually made of?': [],
   'how many people own less than nothing?': [],
   'could you take a hit here?': [],
+  'what does a family actually have?': [],
   'how many times more does one person at the top own?': ['wealth_top1', 'wealth_bottom50', 'income_top1', 'income_bottom50'],
   'how many times more does one person at the top earn?': ['income_top1', 'income_bottom50'],
   'what happened to the middle here?': ['income_top10', 'income_middle40', 'income_bottom50'],
@@ -5746,7 +5852,13 @@ function nextSteps(f) {
     return out;
   }
 
-  if (m === 'weather') {
+  if (m === 'have') {
+    add('what is that wealth actually made of?', 'wealth');
+    add('could you take a hit here?', 'wealth');
+    add('what does the poorest half own?', 'wealth');
+  }
+  else if (m === 'weather') {
+    add('what does a family actually have?', 'wealth');
     add('how many people own less than nothing?', 'wealth');
     add('what is that wealth actually made of?', 'wealth');
     add('what does the poorest half own?', 'wealth');
@@ -5758,6 +5870,7 @@ function nextSteps(f) {
     add('how much more do the richest hold than the poorest?', 'wealth');
   }
   else if (m === 'made') {
+    add('what does a family actually have?', 'wealth');
     add('could you take a hit here?', 'wealth');
     add('how many people own less than nothing?', 'wealth');
     add('what does the poorest half own?', 'wealth');
@@ -6241,6 +6354,56 @@ function drawChart() {
       `reading and the exact percentages are not. ` +
       `Markers show where a survey actually landed; the line between them is drawn, not measured. ` +
       provenance(['gdp_pc', 'median_income']);
+  }
+
+  else if (mode === 'have') {
+    const hv = chain.slice().reverse().find(f => f.mode === 'have').have;
+    // A linear axis, deliberately. On a log scale the poorest quarter would climb the
+    // picture and the two years it held nothing would vanish, because nought has no
+    // logarithm. Drawn straight, its line lies on the axis, which is the reading.
+    const ramp = shadesOf(metricColor('wealth_top1'), Math.max(2, hv.rows.length));
+    const lows = hv.rows[0];
+    Plotly.react(el, hv.rows.map((r, k) => ({
+      type: 'scatter', mode: 'lines+markers', name: r.lab,
+      x: hv.years, y: r.series,
+      line: { color: ramp[k], width: 2.4 }, marker: { size: 6 },
+      hovertemplate: r.lab + ': $%{y:,.0f}k in %{x}<extra></extra>',
+    })).concat(hv.zeros.length ? [{
+      type: 'scatter', mode: 'markers', showlegend: false,
+      x: hv.zeros, y: hv.zeros.map(() => 0),
+      marker: { size: 10, color: hlFill('wealth_top1'), line: { color: hlEdge(), width: 2 } },
+      hovertemplate: 'nothing at all, %{x}<extra></extra>',
+    }] : []), Object.assign({}, BASE_LAYOUT, {
+      showlegend: true, legend: { orientation: 'h', y: 1.2, font: { size: 10.5 } },
+      margin: { t: 48, r: 22, b: 42, l: 72 },
+      annotations: hv.zeros.length ? [{
+        x: hv.zeros[hv.zeros.length - 1], y: 0, ax: 18, ay: -34, showarrow: true,
+        arrowhead: 0, arrowwidth: 1, arrowcolor: cssVar('--ink-3', '#9aa3ad'),
+        text: 'nothing at all', xanchor: 'left',
+        font: { size: 10.5, color: cssVar('--ink-2', '#555555') },
+      }] : [],
+      shapes: eraShapes(hv.years[0], hv.years[hv.years.length - 1]),
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { tickmode: 'array', tickvals: hv.years,
+        tickangle: -40, tickfont: { size: 10 },
+        title: { text: 'survey year', font: { size: 11 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { rangemode: 'tozero',
+        tickprefix: '$', ticksuffix: 'k',
+        title: { text: 'net worth of the family in the middle', font: { size: 11 } } }),
+    }), CFG);
+    title.textContent = `What an American family actually has, ${hv.years[0]} to ${hv.years[hv.years.length - 1]}`;
+    src.textContent =
+      `Each line is the family in the middle of its quarter of the country, not what the quarter ` +
+      `holds between them, so every point is one household and the lines can be read against each ` +
+      `other. Net worth is everything owned less everything owed. ` +
+      `The axis is straight rather than logarithmic on purpose: the poorest quarter's line lies ` +
+      `along the bottom at ${lows.net >= 1 ? '$' + Math.round(lows.net * 1000).toLocaleString('en-US') : 'almost nothing'} ` +
+      `in ${hv.year}, and against the richest tenth that is what it looks like. ` +
+      (hv.zeros.length ? `The marked years are measurements of nought, not missing readings: the ` +
+        `middle of the poorest quarter owed exactly what it owned in ` +
+        `${hv.zeros.join(' and ')}. ` : '') +
+      `Thousands of dollars in the money of the latest survey, so the run reads straight down. ` +
+      `Triennial. One country: no other publishes a household balance sheet on this run of years. ` +
+      `Source: Federal Reserve Survey of Consumer Finances, bulletin chart tables.`;
   }
 
   else if (mode === 'weather') {
@@ -7837,8 +8000,9 @@ Promise.all([
   opt('data/us_composition.json'),
   opt('data/hfcs_negative.json'),
   opt('data/hfcs_resilience.json'),
+  opt('data/us_networth.json'),
 ]).then(([latest, ts, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50,
-  itop1, itop10, imid40, ibot50, hprice, usCounty, usState, usNames, usManifest, usCz, usComp, hfcsNeg, hfcsRes]) => {
+  itop1, itop10, imid40, ibot50, hprice, usCounty, usState, usNames, usManifest, usCz, usComp, hfcsNeg, hfcsRes, scfNw]) => {
   LATEST = latest;
   // spine is the union of every country any module knows, named from geo_names
   const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
@@ -7871,6 +8035,7 @@ Promise.all([
   if (usComp && usComp.groups) US_COMP = usComp;
   if (hfcsNeg && hfcsNeg.by) HFCS_NEG = hfcsNeg;
   if (hfcsRes && hfcsRes.by) HFCS_RES = hfcsRes;
+  if (scfNw && scfNw.groups) SCF_NW = scfNw;
 
   buildIndex();
   return true;

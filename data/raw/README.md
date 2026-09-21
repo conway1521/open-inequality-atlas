@@ -75,3 +75,45 @@ This was going to be Eurostat SILC's "cannot face an unexpected expense", which 
 cleanest version of the question. Eurostat is not reachable from this environment. HFCS
 is the better source regardless: same survey, same waves, same countries as the
 headcount, so no new comparability seam between them.
+
+---
+
+# If you are collecting data, put it here
+
+One rule: **a raw file goes in this directory, a build script turns it into
+`data/<name>.json`, and the app only ever reads the JSON.** Nothing in `data/raw/`
+is loaded by the page. That is what keeps the page fast and the numbers auditable,
+because the JSON is small, diffable in a pull request, and traceable back to a script
+that says what it dropped and why.
+
+Save files under the exact name in the table. The build scripts look for these names
+and fail with a message naming the path if they are absent, so a wrong filename tells
+you immediately rather than silently producing a thinner file.
+
+## What is outstanding, and exactly where it goes
+
+| what | save it as | download from | then run |
+|---|---|---|---|
+| house prices against income, all countries | `data/raw/bis_house_prices.csv` | BIS, "Selected residential property prices", long series, all countries, **and** the price-to-income ratio series | `build_house_prices.py` (needs extending past its two countries) |
+| the same from OECD, as a cross-check | `data/raw/oecd_house_prices.csv` | OECD Analytical house prices, measure `RHP` **and** `PIR`, full time range, not the last five years | as above |
+| productivity per hour | `data/raw/oecd_productivity.csv` | OECD, GDP per hour worked, constant prices, all countries, full range | a new `build_productivity.py` |
+| relative poverty, half of median | `data/raw/pip_relative_poverty.csv` | World Bank PIP, poverty line set to 50% of the national median, all countries and years | fold into `build_manifest.py`'s modules |
+| life satisfaction, spread within a country | `data/raw/whr_dispersion.csv` | World Happiness Report data appendix, the standard deviation of the Cantril ladder by country-year | a new `build_wellbeing.py` |
+| the county covariates behind `us_income_gini` | `data/raw/cty_covariates.csv` | Opportunity Insights, county covariates, **with its header row** | `build_us.py` picks it up automatically |
+
+The last one is not a new measure. It is the file that would settle what
+`us_income_gini` actually is, which the app currently cannot say. See section 9a of
+FOUNDATION.md.
+
+## Anything not in that table
+
+Put it here under a name that says what it is, then tell the build script about it.
+Every script in the repository root starts with a docstring naming the files it reads,
+the columns it takes, and what it throws away. Follow that pattern and the next person
+to look, including you in six months, can tell what a number is without opening a
+spreadsheet.
+
+## What the app actually loads
+
+Only `data/*.json`, and only the files named in the `Promise.all` block near the
+bottom of `index.html`. A new JSON file does nothing until it is added there.

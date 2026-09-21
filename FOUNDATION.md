@@ -524,8 +524,21 @@ Gary listener would come.
 Item 4 is done for one country and is the reason the rest of the wealth face means
 anything: a share of a national total is abstract until you know it is a mortgaged
 house and a depreciating car. Item 2's headcount is in and turned out to disagree
-with the shares, which makes it a finding rather than a footnote. Item 1, housing
-cost against income, is now the one a reader would notice missing.
+with the shares, which makes it a finding rather than a footnote.
+
+**And one that was never on this list because nobody had looked.** The Survey of
+Consumer Finances was sitting in the wealth pipeline's raw directory, unread. It
+carries the net worth of the family in the middle of each quarter of the United
+States, triennially from 1989, in constant dollars. The poorest quarter's median
+family holds **$3,470**, and held **nothing at all** in 2010 and again in 2013. The
+richest tenth's holds **$3.8m**. Eight per cent of that poorest quarter own the home
+they live in against ninety-five per cent of the richest tenth.
+
+That is the only figure in the atlas a reader can hold against their own bank
+balance, and it had been in the repository the whole time. The lesson is in section
+9a's spirit: check what you have before listing what you lack.
+
+Item 1, housing cost against income, is now the one a reader would notice missing.
 
 ### 9a. Known defects in what we already hold
 
