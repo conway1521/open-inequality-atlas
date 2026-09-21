@@ -1,3 +1,22 @@
+# Upstream sources
+
+**Nothing in this directory is in the repository, and nothing here is loaded by a
+browser.** The files are fetched on demand and verified against
+`../raw_manifest.json`, which records the sha256 of each one.
+
+    make data      fetch them, check them, rebuild every data file
+    make check     confirm they are the ones this repository was built from
+    make clean     remove them again
+
+A file whose checksum does not match the manifest is not used, and the build stops
+and names it. That is the point of the arrangement: an upstream file cannot be
+quietly revised and change the numbers here without somebody being told.
+
+This README is the exception. It stays in the repository, because it is the contract
+for adding new sources.
+
+---
+
 # Raw downloads
 
 Source files as they come off the publisher, before any build script has touched

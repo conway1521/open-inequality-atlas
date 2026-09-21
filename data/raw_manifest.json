@@ -1,0 +1,81 @@
+{
+ "archive": "raw-sources.tar.gz",
+ "files": [
+  {
+   "bytes": 256480,
+   "path": "OECD.ECO.MPD,DSD_AN_HOUSE_PRICES@DF_HOUSE_PRICES,+.Q.RHP..csv",
+   "sha256": "4fd5561020208912669fe8558a004aebe9aeb507fa084cf9dc4749cb6147c354"
+  },
+  {
+   "bytes": 12775,
+   "path": "bis_dp_search_export_20260901-163344.csv",
+   "sha256": "d7d4cc6ba41458aa342c3588fa05daa476dc2e27bc4a009647b59a5d5dc588c4"
+  },
+  {
+   "bytes": 1883,
+   "path": "dfa-data-definitions.txt",
+   "sha256": "0945bb94a786ebfaadf35101b42aa73f785461eda52b9dc65b88cecbfb965fec"
+  },
+  {
+   "bytes": 83497,
+   "path": "dfa-networth-levels.csv",
+   "sha256": "5cd595391c937a1c72b78c3b22918bbb0340ca80ace1bfa76972f84d9e733136"
+  },
+  {
+   "bytes": 662210,
+   "path": "health_ineq_online_table_11.csv",
+   "sha256": "0d20b1a36e3c29efdc0da8189e2409e9c0be82662ae7addc32dbcd7317712570"
+  },
+  {
+   "bytes": 242051,
+   "path": "health_ineq_online_table_6.csv",
+   "sha256": "e2da048faf1e0dd8aa90853278891c75893759994b84d0b96eea7dbe88b97ea6"
+  },
+  {
+   "bytes": 398471,
+   "path": "health_ineq_online_table_7.csv",
+   "sha256": "30417f7fb1ecc682d8387b84a6b4d0dac4125257915e6bdbfab33a4812574c6e"
+  },
+  {
+   "bytes": 717799,
+   "path": "social_capital_county.csv",
+   "sha256": "69de384096214aad20d0739d522b3731d6fa9bee5cff32c66eb5df89b8fb3828"
+  },
+  {
+   "bytes": 2409768,
+   "path": "hfcs/HFCS - Statistical tables - wave 2010 - March 2020.xlsx",
+   "sha256": "b60c0de9c35b95838a27f168311c63ee2c2e55bf2b83e64d106f9b1af3b9d427"
+  },
+  {
+   "bytes": 2457160,
+   "path": "hfcs/HFCS - Statistical tables - wave 2014 - March 2020.xlsx",
+   "sha256": "4ac764de333ce04eb407c1860cfbda8d5a0937b621963b5fc8ddd9160c061e88"
+  },
+  {
+   "bytes": 2495649,
+   "path": "hfcs/HFCS _Statistical_Tables _Wave_2017_July_2023.xlsx",
+   "sha256": "09e00b00c799e6444f1ce3166baf10de3137da7c08b0422e5c34e84f2078bcaf"
+  },
+  {
+   "bytes": 2493305,
+   "path": "hfcs/HFCS _Statistical_Tables _Wave_2021_July_2023.xlsx",
+   "sha256": "25b08902f97881a490b33ba660705d668d1fd66b151d3f66a2c0e43db4adab89"
+  },
+  {
+   "bytes": 21281,
+   "path": "scf/interactive_bulletin_charts_nwcat_have.csv",
+   "sha256": "0569292fa146c5cc76bfd2a199b56f50ab52ef94cafd8c5a8742a06ba20b545e"
+  },
+  {
+   "bytes": 21337,
+   "path": "scf/interactive_bulletin_charts_nwcat_median.csv",
+   "sha256": "a7f2c8e8e323b41ef89c4c3e010463c5405febdeaef0e992ac4c7b25e7442b64"
+  },
+  {
+   "bytes": 4358,
+   "path": "scf/scf-data-definitions.txt",
+   "sha256": "89184b3ecf8410c66ec4ff8aefb41218e227cdbcb038810e4bafada35a8a5f51"
+  }
+ ],
+ "total_bytes": 12278024
+}
