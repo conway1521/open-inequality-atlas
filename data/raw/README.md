@@ -29,3 +29,19 @@ so the raw file stays checkable against the source.
 
 The first would turn the two-country house price chart on the Why page into a real
 international one. The third is what would let the health face reopen.
+
+## dfa-networth-levels.csv
+
+The Federal Reserve's Distributional Financial Accounts, table "Levels by wealth
+percentile group". Assets by class and liabilities by kind, for Bottom50, Next40,
+Next9, RemainingTop1 and TopPt1, quarterly from 1989 Q3. Millions of current dollars.
+
+This is what `build_composition.py` reads to produce `data/us_composition.json`, and
+`dfa-data-definitions.txt` beside it is the Fed's own description of every column.
+
+It is here because no other source the atlas can reach splits assets *and* debts by
+wealth group on a run of years. The ECB's HFCS covers the euro area but publishes four
+waves of household medians rather than a run of aggregate levels, and its asset split
+by country goes no finer than real against financial, so the two do not join.
+
+Downloaded from federalreserve.gov/releases/z1/dataviz/dfa/distribute/table/

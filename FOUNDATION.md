@@ -425,11 +425,25 @@ Gary listener would come.
    ties the atlas to the argument the reader arrived with. Right now `reach` uses
    GDP per person against median survey income, which is not like for like and is
    flagged as such. Productivity per hour would make it honest.
-4. **Portfolio composition by wealth group.** What each group actually owns: a
-   house, a pension, equities. This is the mechanism in section 4a, the only
-   explanation of a move that is arithmetic rather than assertion. The Fed's DFA
-   holds it for the US and the ECB's HFCS for the euro area, both already in the
-   wealth pipeline and neither reaching the app.
+4. ~~**Portfolio composition by wealth group.**~~ **Done for one country.** The Fed's
+   DFA was already sitting in the wealth pipeline and is now in the atlas: what each
+   group's assets are, and what they owe against them, per year from 1989. Two thirds
+   of what the poorest half of American households own is the house and the car; 54
+   per cent of the richest thousandth's is shares. The poorest half owes 58 cents per
+   dollar of assets and the richest thousandth owes one.
+
+   This is description at a finer grain and not a mechanism, which is why it belongs
+   here. It does not say why the shares outran the house. It says which group held
+   which, which is the fact a reader needs before any why is worth arguing about.
+
+   **Still open: everywhere else.** No other source splits assets *and* debts by
+   wealth group on a run of years. The ECB's HFCS comes closest and is a different
+   animal: four waves rather than a run, household medians rather than aggregate
+   levels, and its asset split by country is only real against financial. Putting the
+   two on one chart would be the SCF-against-WID mistake in section 9a. What HFCS
+   does carry, and the atlas does not yet, is the share of households with negative
+   net wealth per country, which is the headcount behind claim 1's five countries
+   whose poorest half owes more than it owns.
 5. **Within-country dispersion of life satisfaction.** Published by the World
    Happiness Report. Turns a level we already hold into an inequality, and is the
    only cheap route to a fifth real face.
@@ -461,9 +475,10 @@ Gary listener would come.
    WID's own value rests on that country's tax records or on a regional imputation.
    That is upstream of this repo.
 
-Item 4 is the one that would turn the atlas from a demonstration that the numbers
-disagree into an explanation of why, and section 4 is the argument for why we may
-not want that. Item 1 is the one a reader would notice missing.
+Item 4 is done for one country and is the reason the rest of the wealth face means
+anything: a share of a national total is abstract until you know it is a mortgaged
+house and a depreciating car. Item 1 is now the one a reader would notice missing,
+and item 2 is what would turn claim 1's five countries into a headcount of people.
 
 ### 9a. Known defects in what we already hold
 
