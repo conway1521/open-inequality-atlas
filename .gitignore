@@ -1,8 +1,16 @@
+# The upstream source files are fetched, not tracked. They are large, they never
+# change once downloaded, and a git repository keeps every version of everything
+# forever, so each one added to the tree would sit in every future clone.
+#
+#   make data          fetch them and rebuild
+#   make check         confirm they are the ones this repository was built from
+#
+# data/raw_manifest.json records the sha256 of each, and fetch_raw.py refuses to use
+# a file that does not match. data/raw/README.md is the contract for adding new ones
+# and stays in the repository.
+data/raw/*
+!data/raw/README.md
 
-# raw US source CSVs (uploaded, processed into us_*.json; never committed)
-data/raw_us/
-
-# Python bytecode
 __pycache__/
 *.pyc
-us_raw/
+.DS_Store

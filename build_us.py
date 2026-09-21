@@ -29,9 +29,13 @@ def open_csv(path):
     if path.endswith(".gz"):
         return gzip.open(path, mode="rt", encoding="utf-8", errors="replace", newline="")
     return open(path, newline="", encoding="utf-8", errors="replace")
+# data/raw is where every other script reads from and where fetch_raw.py puts things;
+# the other two are kept because this script predates that arrangement and the county
+# files have arrived both ways.
 SCAN_DIRS = [
-    "/root/.claude/uploads",
+    os.path.join(HERE, "data", "raw"),
     os.path.join(HERE, "data", "raw_us"),
+    "/root/.claude/uploads",
     HERE,
 ]
 
@@ -146,8 +150,8 @@ def scan_csvs():
     for d in SCAN_DIRS:
         for p in glob.glob(os.path.join(d, "**", "*.csv"), recursive=True) + glob.glob(os.path.join(d, "**", "*.csv.gz"), recursive=True):
             rp = os.path.realpath(p)
-            # skip our own outputs and the wealth data dir
-            if "/data/" in p and "raw_us" not in p:
+            # skip our own outputs and the other modules' data, but not the raw drop
+            if "/data/" in p and "raw_us" not in p and "/data/raw" not in p:
                 continue
             if rp not in seen and os.path.getsize(p) > 0:
                 seen.add(rp)
@@ -158,13 +162,18 @@ def scan_csvs():
 def main():
     files = scan_csvs()
     if not files:
-        print("No CSVs found. Attach the county files in the chat (they land under")
-        print("/root/.claude/uploads/) or put them in ./data/raw_us/, then re-run.")
-        print("\nWhat to grab from opportunityinsights.org/data (County level):")
-        print("  - the outcomes file whose header has a 'kfr_pooled_pooled_p25' column (upward mobility)")
-        print("  - the county covariates file (homeownership, median house value, gini, poverty, ...)")
-        print("  - social_capital_county.csv from the Social Capital Atlas (ec_county)")
-        return 1
+        # Nothing to do is not a build failure. data/us_county.json is already in the
+        # repository and stays exactly as it is; say so plainly rather than exiting
+        # non-zero and stopping a rebuild of everything else.
+        out = os.path.join(HERE, "data", "us_county.json")
+        print("no county CSVs found, so data/us_county.json is left as it is%s."
+              % (" (present)" if os.path.exists(out) else " (and is absent)"))
+        print("\nTo rebuild it, put these in data/raw/ and run again:")
+        print("  - the county outcomes file, whose header carries 'kfr_pooled_pooled_p25'")
+        print("  - cty_covariates.csv, the county covariates")
+        print("  - social_capital_county.csv, which is already there")
+        print("Both are at opportunityinsights.org/data, County level. See data/raw/README.md.")
+        return 0
 
     county = {k: {} for k in METRICS}      # metric -> fips -> value
     pop = {}                               # fips -> population
@@ -280,8 +289,28 @@ def main():
     for st, nm in STATE_FIPS.items():
         names[st] = nm
 
+    # Never write a thinner file than the one already there. The county outcomes and
+    # covariates arrive by hand and are not in data/raw; running without them used to
+    # rebuild us_county.json from whatever happened to be lying around and silently
+    # drop upward mobility, the income gap and house values, which the opportunity face
+    # is built on. A partial rebuild is not a rebuild.
+    out_path = os.path.join(HERE, "data", "us_county.json")
+    if os.path.exists(out_path):
+        try:
+            had = set(json.load(open(out_path)))
+        except (ValueError, OSError):
+            had = set()
+        lost = sorted(had - set(county))
+        if lost:
+            print("\nrefusing to write data/us_county.json: this run could not rebuild %s."
+                  % ", ".join(lost))
+            print("The file on disk is left exactly as it is. To rebuild it in full, put the")
+            print("county outcomes file (header carries 'kfr_pooled_pooled_p25') and")
+            print("cty_covariates.csv into data/raw/ and run again. See data/raw/README.md.")
+            return 0
+
     os.makedirs(os.path.join(HERE, "data"), exist_ok=True)
-    json.dump(county, open(os.path.join(HERE, "data/us_county.json"), "w"), separators=(",", ":"))
+    json.dump(county, open(out_path, "w"), separators=(",", ":"))
     json.dump(state, open(os.path.join(HERE, "data/us_state.json"), "w"), separators=(",", ":"))
     json.dump(names, open(os.path.join(HERE, "data/us_names.json"), "w"), ensure_ascii=False, separators=(",", ":"))
 

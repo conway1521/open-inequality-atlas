@@ -122,6 +122,14 @@ def main(scratch):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        sys.exit(__doc__)
-    main(sys.argv[1])
+    # Take the path if given, otherwise look where fetch_raw.py puts things. Nothing
+    # there is not a build failure: the output already in the repository stays as it
+    # is, `make data` carries on, and the summary says what was skipped.
+    _here = os.path.dirname(os.path.abspath(__file__))
+    _arg = sys.argv[1] if len(sys.argv) == 2 else os.path.join(_here, 'data', 'raw', 'house_prices')
+    if not os.path.exists(_arg):
+        print('no house price sources at ' + _arg)
+        print('skipped: nothing written, the existing data files are unchanged.')
+        print('See data/raw/README.md for where this file goes.')
+        sys.exit(0)
+    main(_arg)
