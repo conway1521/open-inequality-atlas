@@ -778,7 +778,7 @@ footer a { color: inherit; }
       <h1>Four <span class="turn" id="hero-turn">faces</span> of inequality</h1>
       <p class="claim">Wealth and income get treated as one story. Count per person rather than per
         group and the gap in what people own is wider than the gap in what they earn in every
-        country where both have been measured, and about six times wider in the middle of them.
+        country where both can be worked out, and about six times wider in the middle of them.
         <button type="button" class="claim-link" id="claim-why">see it</button></p>
     </section>
 
@@ -1009,8 +1009,8 @@ footer a { color: inherit; }
 
     <p class="sub">
       Almost everything written about inequality is about pay. Ownership is a different thing, it
-      is measured far less often, and where both have been measured it is the wider gap in every
-      country. This page is what happens when you look at that one instead.
+      is measured far less often and estimated far more, and wherever the two can be set side by
+      side it is the wider gap. This page is what happens when you look at that one instead.
     </p>
 
     <h2 class="why-step">Half your country owns almost nothing</h2>
@@ -1528,6 +1528,12 @@ const META = {
 // how each series came to exist. this is stated on every chart that draws it.
 const BASIS = {
   survey:    'measured in household surveys, one point per survey year',
+  // The release carries comparability_tier and observed_vs_modeled per row and neither
+  // separates a measured country from an imputed one: every row the atlas draws is tier B
+  // ("same broad concept, different source machinery") and "imported" ("published series
+  // ingested verbatim"), which describe the pipeline's relation to WID, not WID's relation
+  // to the world. What does separate them is the shape of the file, so that is what this
+  // says instead of a flag that would read the same everywhere.
   modelled:  'modelled, with annual values imputed for most countries from the smaller set that has tax records',
   estimated: 'an estimated annual series, interpolated between benchmark years',
   dina:      'built from tax records, surveys and national accounts together, in a snapshot taken from WID in September 2022',
@@ -1607,8 +1613,34 @@ function provenance(keys) {
     const l = g.labels;
     const names = l.length === 1 ? l[0]
       : l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
-    return `${cap(names)} ${l.length === 1 ? 'is' : 'are'} ${BASIS[g.b]}, running to ${g.v}.`;
+    return `${cap(names)} ${l.length === 1 ? 'is' : 'are'} ${BASIS[g.b]}, running to ${g.v}.` +
+      (g.b === 'modelled' ? ' ' + gaplessNote() : '');
   }).join(' ');
+}
+// How much of it is imputed, said with the evidence rather than asserted. The release
+// carries comparability_tier and observed_vs_modeled per row and neither separates a
+// measured country from an imputed one: every row drawn here is tier B, "same broad
+// concept, different source machinery", and "imported", "published series ingested
+// verbatim". Those describe the pipeline's relation to WID, not WID's relation to the
+// world. The shape of the file does separate them, so the shape is what gets said.
+function gaplessNote() {
+  const s = SERIES.wealth_top1 || {};
+  const isos = Object.keys(s).filter(i => s[i].length);
+  if (!isos.length) return '';
+  let lo = Infinity, hi = -Infinity, full = 0;
+  for (const i of isos) {
+    const a = s[i];
+    lo = Math.min(lo, a[0].year); hi = Math.max(hi, a[a.length - 1].year);
+  }
+  for (const i of isos) {
+    const a = s[i];
+    if (a[0].year === lo && a[a.length - 1].year === hi && a.length === hi - lo + 1) full++;
+  }
+  if (full < isos.length) return '';
+  return `How much of it: every one of the ${isos.length} countries carries a value for every ` +
+    `year from ${lo} to ${hi}, with no gap anywhere, which no measurement programme produces. ` +
+    `The completeness is the model. Nothing in the release marks which countries sit on tax ` +
+    `records and which are filled in, so this page cannot tell you either.`;
 }
 const poolCache = {};
 function poolOf(metric) {
