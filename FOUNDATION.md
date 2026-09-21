@@ -433,15 +433,37 @@ Gary listener would come.
 5. **Within-country dispersion of life satisfaction.** Published by the World
    Happiness Report. Turns a level we already hold into an inequality, and is the
    only cheap route to a fifth real face.
-6. **Comparability tiers, which we already have and throw away.** The wealth
-   release carries `comparability_tier` and `observed_vs_modeled` per row. The JSON
-   build drops them. Carrying them through would let every chart say how solid each
-   country's line is, and would have caught the 1990 baseline problem in section 4
-   automatically instead of by hand.
+6. ~~**Comparability tiers, which we already have and throw away.**~~ **Checked, and
+   they do not do the job.** This item used to say the release carries
+   `comparability_tier` and `observed_vs_modeled` per row, that the JSON build drops
+   them, and that carrying them through would let every chart say how solid each
+   country's line is. Two of those three are true and the third is not.
 
-Item 6 is the cheapest and it improves everything else. Item 4 is the one that
-turns the atlas from a demonstration that the numbers disagree into an explanation
-of why.
+   Every one of the 7,455 rows the atlas draws reads `comparability_tier: B` and
+   `observed_vs_modeled: imported`. The codebook defines B as "same broad concept,
+   different source machinery (e.g. WID)" and imported as "published series ingested
+   verbatim". Both describe the pipeline's relationship to WID. Neither describes
+   WID's relationship to the world, which is the thing a reader needs. The columns
+   are constant across everything shown, so carrying them through would add a column
+   that reads the same on every chart.
+
+   `negative_wealth_share` and `median_net_wealth` are in the schema and empty for
+   all 7,455 rows, so neither is available either.
+
+   What does separate a measured country from an imputed one is the shape of the
+   file: all 213 countries carry a value for every year from 1990 to 2024 with no gap
+   anywhere. No measurement programme produces that, and the income shares next to it
+   show what real coverage looks like, with gaps in 81 of 154 countries and series
+   running from 1 year to 135. Every wealth chart now says this, and says that the
+   atlas cannot name which countries are which.
+
+   **To actually fix it** the pipeline would have to record, per country-year, whether
+   WID's own value rests on that country's tax records or on a regional imputation.
+   That is upstream of this repo.
+
+Item 4 is the one that would turn the atlas from a demonstration that the numbers
+disagree into an explanation of why, and section 4 is the argument for why we may
+not want that. Item 1 is the one a reader would notice missing.
 
 ### 9a. Known defects in what we already hold
 
