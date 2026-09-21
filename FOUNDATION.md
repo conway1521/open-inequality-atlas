@@ -445,8 +445,27 @@ Gary listener would come.
    national total, mostly imputed. The other is a survey counting households. Section
    9a records what happens when that rule is broken.
 
-   Still missing: resilience itself. Eurostat SILC carries "cannot face an unexpected
-   expense", which is the question a reader actually has, and we do not hold it.
+   **Resilience itself is in too, and not from SILC.** Eurostat's "cannot face an
+   unexpected expense" is the cleanest phrasing of the question and Eurostat is not
+   reachable from where this is built. HFCS turned out to be the better source anyway,
+   because it is the same survey, the same waves and the same countries as the
+   headcount, so the two sit together without a new seam between them. Tables G2, G3
+   and H1: money left over at the end of the month, cut by net wealth fifth; whether a
+   household could raise money from family or friends in an emergency; and whether it
+   was refused credit or given less than it asked for.
+
+   Half of euro-area households have nothing left over at the end of a month, rising to
+   two thirds among the poorest fifth by wealth. Four in ten could not raise emergency
+   help. In Greece it is four in five with nothing spare, and 70 per cent of the
+   households that applied for credit were refused or given less.
+
+   This is the reading the rest of the wealth face is for, and it should be said that
+   way: a share of a national total is an abstraction until it is the month a boiler
+   goes.
+
+   One thing the source does that the app now repeats: it lists Finland and publishes no
+   saving figure for it. That is a different absence from a country the survey does not
+   reach, and the two do not read the same.
 3. **Productivity against pay.** OECD GDP per hour worked. The productivity and pay
    gap is the clearest single picture of ownership beating earning, and it is what
    ties the atlas to the argument the reader arrived with. Right now `reach` uses
