@@ -669,6 +669,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .answer .t em { font-style: normal; color: var(--ink-3); }
 /* the facts first; the working one tap away */
 .answer .t .lead { margin: 0; }
+.notice .opt-view { font: 500 12.5px 'Inter', system-ui, sans-serif; color: var(--accent); background: none; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 100px; padding: 5px 12px; margin: 6px 6px 0 0; }
+.notice .opt-view:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .answer .t .notes { margin: 8px 0 0; }
 .answer details.more { margin-top: 10px; font-size: .82em; line-height: 1.55; color: var(--ink-3); }
 .answer details.more summary { cursor: pointer; font: 500 12px var(--mono); letter-spacing: .02em; color: var(--ink-3);
@@ -828,6 +831,7 @@ footer a { color: inherit; }
   </div>
   <nav class="tabs" id="tabs" hidden>
     <div class="wrap">
+      <button class="tab" data-view="ask">Ask</button>
       <button class="tab" data-view="why">Why</button>
       <button class="tab" data-view="wealth">Wealth</button>
       <button class="tab" data-view="income">Income</button>
@@ -5485,13 +5489,13 @@ const OPP_SHOWN = {
   faces: 'the four faces against each other', pair: 'two faces, by county',
   conn: 'who you grow up around', mix: 'around them, or mixing with them',
   mobility: 'where children climb', life: 'how long rich and poor live',
-  gap: "by their parents' income", scatter: 'against one covariate',
+  gap: "by their parents' income", scatter: 'against one covariate', place: 'one place, against the rest',
 };
 const OPP_READS = {
   faces: 'five measures, US counties', pair: 'two measures, US counties',
   conn: 'connectedness and climbing', mix: 'exposure and friending bias',
   mobility: 'climbing, 741 zones', life: 'life expectancy at 40, 595 zones',
-  gap: 'credit, mortgages, arrears', scatter: '741 US commuting zones',
+  gap: 'credit, mortgages, arrears', scatter: '741 US commuting zones', place: 'climbing, friends, lifespan',
 };
 const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'among'];
 // a typed question that names a measure turns the cube to that measure's face, so the
@@ -5529,6 +5533,9 @@ function offerNearest(q, lead) {
   wireNear();
 }
 function wireNear() {
+  document.querySelectorAll('#notice .opt-view').forEach(b =>
+    b.addEventListener('click', () => { setView(b.dataset.view); const t = document.getElementById('tabs'); if (t) t.hidden = false;
+      window.scrollTo({ top: 0, behavior: 'auto' }); }));
   document.querySelectorAll('#notice .opt-near').forEach(b =>
     b.addEventListener('click', () => { const el = document.getElementById('q'); if (el) el.value = b.dataset.q;
       if (runPrompt(b.dataset.q)) sendCell(); }));
@@ -5567,16 +5574,35 @@ const NOT_HELD = [
   [/\binflation\b|\bcost of living\b|\bprices? (of|for) (food|energy|petrol|gas)\b/,
     'The atlas has no price or inflation series. Median pay is held in dollars that buy the same things everywhere, which is the nearest it comes.',
     ['what does the average person earn?', 'what the middle lives on']],
+  [/\bmy (county|town|city|state|area|neighbou?rhood|zip)\b/,
+    'Name it and the atlas will read it: a US state, a county with its state, or a city. Outside the United States it goes down to countries, not towns.',
+    ['Detroit', 'Wayne County, Michigan', 'social mobility in Ohio']],
   [/\bengland\b|\bscotland\b|\bwales\b|\bnorthern ireland\b/,
     'The figures here are for the United Kingdom as a whole. None of the sources split England, Scotland, Wales and Northern Ireland.',
     ['how unequal is the UK?', 'what does the bottom half own in the UK?']],
 ];
 // questions whose only answer in the atlas is the United States layer: said before it is shown
 const TO_OPP = [
-  [/\bsocial mobility\b|\bupward mobility\b|\bmobility\b|\bpoor kids\b|\bpoor children\b|\bgrow(ing)? up poor\b|\bborn poor\b|\bget out of poverty\b|\bclimb the ladder\b|\bcan (the )?poor\b.*\b(get rich|make it|climb)\b/,
+  [/\bwhere should (i|we) (move|live|raise)\b|\bbest places? to (grow up|raise|live)\b|\bsocial mobility\b|\bupward mobility\b|\bmobility\b|\bpoor kids\b|\bpoor children\b|\bgrow(ing)? up poor\b|\bborn poor\b|\bget out of poverty\b|\bclimb the ladder\b|\bcan (the )?poor\b.*\b(get rich|make it|climb)\b/,
     'if you grow up poor here, what do you earn later?'],
   [/\blife expectancy gap\b|\bgap in life expectancy\b|\blongevity gap\b|\bhow much longer\b.*\blive\b|\b(rich|poor|richer|poorer|richest|poorest|wealthy) (people|folk|families)?\s*(live|die)\b|\brich (vs|versus|and) poor\b.*\b(life|live|die|death)\w*\b|\b(life expectancy|live|die)\w*\b.*\brich (vs|versus|and) poor\b|\bpoor (people )?die younger\b|\bdo (the )?(poor|rich)\b.*\b(die|live)\b/,
     'how much longer do the rich live here?'],
+];
+// what the skeptic and the data person type. 16 of 33 of the skeptic's questions went
+// unread in the usability runs, and most of the data person's
+const METHOD = [
+  [/\bpre[- ]?tax\b|\bpost[- ]?tax\b|\bbefore tax\b|\bafter tax\b|\btaxes? (counted|included)\b/,
+    'It depends on the measure, and each chart says which. The top 1%, top 10%, middle 40% and bottom half income shares are WID pretax national income: before tax and before benefits. The income Gini, median income and poverty come from World Bank household surveys, after tax and benefits (or spending, where that is what a country surveys). Wealth is net worth, what is owned less what is owed, which has no before or after tax.',
+    [['open the data page', 'db']]],
+  [/\bsources?\b|\bwhere (does|do|is) (the |this |your )?data\b|\bdata come from\b|\bmethod\w*\b|\bwho (made|makes|built)\b|\bwid\b|\bworld inequality database\b|\bcitation\b|\bcite\b/,
+    'Wealth and income shares come from WID, the World Inequality Database, per adult with a couple\'s holdings split equally. The income Gini, median income and poverty come from World Bank household surveys. Households below zero and households with nothing spare come from the ECB\'s household survey; the US layer from Opportunity Insights and the Federal Reserve. Every chart names its source under it.',
+    [['open the data page', 'db'], ['why the atlas exists', 'why']]],
+  [/\breliab\w*\b|\baccura\w*\b|\btrust\w*\b|\bhow (good|solid|sure)\b|\bmodell?ed\b|\bestimated?\b|\bwithout (a )?surveys?\b/,
+    'Some of it is measured and some estimated. In most richer countries the wealth figures rest on tax records and surveys; for many poorer countries WID fills the gaps from regional patterns. That is why rankings here default to the richer third of countries, close to the set with tax records behind the figure, and every answer says which set it ranked.',
+    [['open the data page', 'db']]],
+  [/\bdownload\w*\b|\bcsv\b|\bparquet\b|\bspreadsheet\b|\bexcel\b|\bexport\b|\bapi\b|\braw data\b|\bthe data\b|\bdatabase\b|\bdataset\b/,
+    'The full table, and the release files as CSV and Parquet, are on the data page.',
+    [['open the data page', 'db']]],
 ];
 let noteNext = null;   // one line said with the next answer, about how the question was read
 function previewQuestion(typed) {
@@ -5591,6 +5617,18 @@ function previewQuestion(typed) {
     showNotice(esc(text) + ' Try: ' + next.map(c => `<button type="button" class="opt-near" data-q="${esc(c)}">${esc(c)}</button>`).join(', ') + '.');
     wireNear();
     return false;
+  }
+  for (const [re, text, go] of METHOD) if (re.test(nq)) {
+    showNotice(esc(text) + ' ' + go.map(([lab, view]) => `<button type="button" class="opt-view" data-view="${view}">${esc(lab)} \u203a</button>`).join(' '));
+    wireNear();
+    return false;
+  }
+  // a US state, county or city
+  const usp = US_CZ ? usPlaceFind(q) : null;
+  if (usp) {
+    if (curFacet !== 'opportunity') chooseFacet('opportunity');
+    resetCell(); cell.raw = q; cell.asked = typed; updateCell();
+    return true;
   }
   for (const [re, text, next] of NOT_HELD) if (re.test(nq)) {
     showNotice(esc(text) + ' Try: ' + next.map(c => `<button type="button" class="opt-near" data-q="${esc(c)}">${esc(c)}</button>`).join(', ') + '.');
@@ -5927,8 +5965,149 @@ const OPP_FIN = [
   { re: /\bcredit\b|\bscore\b/, key: 'cr', label: 'credit score', fmt: v => '' + Math.round(v) },
 ];
 function czMed(sel) { const a = Object.values(US_CZ).map(sel).filter(v => v != null).sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; }
+/* ── one US place ────────────────────────────────────────────────────────
+   American visitors typed "detroit", "social mobility in ohio", "my county" and got
+   nothing: the layer holds 3,272 counties and 741 commuting zones by name and could not
+   be asked about one. A typed state, county or zone now answers for that place, against
+   the middle of all of them. Zone names are towns, and many towns share a name with
+   somewhere abroad or with an ordinary word (London, Paris, Rome, Gary, Many, Price), so
+   a town counts only with something American in the question, or when it is a city
+   nobody would take for anywhere else. A name several zones share is said to be shared. */
+const US_BIG = new Set(['detroit', 'chicago', 'houston', 'atlanta', 'boston', 'seattle', 'dallas', 'phoenix', 'denver',
+  'baltimore', 'cleveland', 'pittsburgh', 'philadelphia', 'los angeles', 'san francisco', 'san diego', 'new orleans',
+  'minneapolis', 'milwaukee', 'memphis', 'nashville', 'charlotte', 'indianapolis', 'st louis', 'kansas city', 'las vegas',
+  'sacramento', 'san antonio', 'salt lake city', 'tampa', 'orlando', 'cincinnati', 'louisville', 'oklahoma city', 'tucson',
+  'albuquerque', 'raleigh', 'honolulu', 'anchorage', 'fresno', 'el paso', 'jacksonville', 'omaha', 'tulsa', 'wichita',
+  'des moines', 'spokane', 'knoxville', 'chattanooga', 'baton rouge', 'shreveport', 'savannah', 'grand rapids', 'little rock',
+  'washington dc', 'miami', 'new york', 'columbus', 'portland']);
+let US_PLACES = null;
+function usPlaces() {
+  if (US_PLACES) return US_PLACES;
+  const states = {}, counties = [], zones = [];
+  for (const [fips, full] of Object.entries(US_NAMES || {})) {
+    const [cname, sname, abbr] = full.split(',').map(s => s.trim());
+    const st = fips.slice(0, 2);
+    if (sname && !states[st]) states[st] = { fips: st, name: sname, abbr, n: norm(sname) };
+    counties.push({ fips, name: cname, state: st, stateName: sname, n: norm(cname) });
+  }
+  for (const [id, z] of Object.entries(US_CZ || {})) if (z.name) zones.push({ id, name: z.name, n: norm(z.name) });
+  return (US_PLACES = { states: Object.values(states).sort((a, b) => b.n.length - a.n.length), counties, zones });
+}
+function usPlaceFind(raw) {
+  if (!US_NAMES || !US_CZ) return null;
+  const t = ' ' + norm(raw) + ' ';
+  const has = n => t.includes(' ' + n + ' ');
+  const P = usPlaces();
+  const usWords = /\b(us|usa|u s|america|american|americans|united states|county|counties|parish|state)\b/.test(t);
+  const abroad = findCountries(raw).isos.filter(i => i !== 'USA');
+  const bigNamed = [...US_BIG].some(n => has(n));
+  let state = P.states.find(s => has(s.n) && !(s.n === 'new york' && / city /.test(t)));
+  // Georgia the country is Georgia the country, unless the question says otherwise
+  // ("atlanta georgia" says otherwise)
+  if (state && abroad.length && !usWords && !bigNamed) state = null;
+  if (abroad.length && !usWords && !state && !bigNamed) return null;
+  if (!SPELL_KNOWN) spellSetup();
+  const cm = t.match(/ ([a-z .'-]+?) (county|parish|borough) /);
+  if (cm) {
+    const words = cm[1].trim().split(' ');
+    for (let k = Math.min(3, words.length); k >= 1; k--) {
+      const nm = words.slice(-k).join(' ');
+      let hits = P.counties.filter(c => c.n === nm);
+      if (state) hits = hits.filter(c => c.state === state.fips);
+      if (cm[2] === 'parish') hits = hits.filter(c => c.state === '22');     // only Louisiana has parishes
+      if (cm[2] === 'borough') hits = hits.filter(c => c.state === '02' || c.state === '36');
+      if (hits.length === 1) return Object.assign({ type: 'county' }, hits[0]);
+      if (hits.length > 1) return { type: 'shared-county', name: hits[0].name, states: hits.map(h => h.stateName) };
+    }
+  }
+  // a zone named after an ordinary word (Many, Price, Center) needs its state beside it
+  const zs = P.zones.filter(z => z.n.length > 3 && has(z.n) && (US_BIG.has(z.n) || state ||
+      (usWords && !SPELL_KNOWN.has(z.n))))
+    .sort((a, b) => b.n.length - a.n.length);
+  if (zs.length) {
+    const same = P.zones.filter(z => z.n === zs[0].n);
+    if (same.length === 1 && !(state && state.n === zs[0].n)) return Object.assign({ type: 'zone' }, same[0]);
+    if (same.length > 1 && !state) return { type: 'shared-zone', name: same[0].name, count: same.length };
+    if (same.length > 1 && state) return Object.assign({ type: 'state', sharedZone: same[0].name, sharedN: same.length }, state);
+  }
+  if (state) return Object.assign({ type: 'state' }, state);
+  return null;
+}
+// where one value sits among all of them: the share of places it is above
+function usPos(block, v) {
+  const vals = Object.values(block).filter(x => x != null && isFinite(x));
+  if (!vals.length || v == null) return null;
+  const below = vals.filter(x => x < v).length;
+  const sorted = vals.slice().sort((a, b) => a - b);
+  return { pct: Math.round(100 * below / vals.length), med: sorted[Math.floor(sorted.length / 2)], n: vals.length,
+    rankHigh: vals.filter(x => x > v).length + 1 };
+}
+function usPlaceAnswer(pl, q) {
+  const f = { id: ++factSeq, query: q, kind: 'opp', isos: [], mode: 'opp', text: '', opp: { kind: 'place' } };
+  if (pl.type === 'shared-zone') {
+    showNotice(`${pl.count} commuting zones are called ${esc(pl.name)}, and the source does not say which state each is in, ` +
+      `so the atlas cannot pick one. Name the county instead, for example "Franklin County, Ohio", or ask about the state.`);
+    return null;
+  }
+  if (pl.type === 'shared-county') {
+    showNotice(`There is a ${esc(pl.name)} County in ${pl.states.length} states (${esc(pl.states.slice(0, 6).join(', '))}` +
+      `${pl.states.length > 6 ? ', and more' : ''}). Add the state, for example "${esc(pl.name)} County, ${esc(pl.states[0])}".`);
+    return null;
+  }
+  const bars = [];
+  const bar = (label, pos, better) => { if (pos) bars.push({ label, pct: pos.pct, better }); };
+  if (pl.type === 'zone') {
+    const z = US_CZ[pl.id], zones = Object.values(US_CZ);
+    const col = k => Object.fromEntries(Object.entries(US_CZ).map(([id, r]) => [id, r[k]]));
+    const gapOf = r => (r.leq4M != null && r.leq1M != null) ? r.leq4M - r.leq1M : null;
+    const mob = usPos(col('mob'), z.mob), cr = usPos(col('cr25'), z.cr25), dq = usPos(col('delq25'), z.delq25);
+    const gaps = Object.fromEntries(Object.entries(US_CZ).map(([id, r]) => [id, gapOf(r)]));
+    const gp = usPos(gaps, gapOf(z));
+    f.opp.placeName = `${pl.name} (commuting zone)`;
+    let t = `In the <strong>${esc(pl.name)}</strong> commuting zone, a child from a family in the poorest quarter reaches the ` +
+      `<strong>${ord(Math.round(z.mob * 100))} percentile</strong> of income by adulthood. The middle of the ${mob.n} zones is the ` +
+      `${ord(Math.round(mob.med * 100))}, so ${esc(pl.name)} is ${ord(mob.rankHigh)} of ${mob.n} for how far poor children climb.`;
+    if (gapOf(z) != null) t += ` A man of forty in the poorest quarter here lives to <strong>${z.leq1M.toFixed(1)}</strong> and one in the ` +
+      `richest to ${z.leq4M.toFixed(1)}, a gap of <strong>${gapOf(z).toFixed(1)} years</strong> against ${gp.med.toFixed(1)} in the middle zone.`;
+    if (z.cr25 != null) t += ` Children of the poorest quarter have a credit score of ${Math.round(z.cr25)} by their mid thirties, ` +
+      `children of the richest ${Math.round(z.cr75)}.`;
+    t += ` <em>A commuting zone is a local job market, the counties people travel between for work. Children born in the early ` +
+      `1980s, measured in their mid thirties, from Opportunity Insights. Life expectancy covers the ${Object.keys(gaps).filter(k => gaps[k] != null).length} zones large enough to measure it.</em>`;
+    f.text = t;
+    bar('how far poor children climb', mob, 'higher'); bar('credit score, poorest quarter', cr, 'higher');
+    bar('behind on payments, poorest quarter', dq, 'lower'); bar('rich-poor life gap at forty', gp, 'lower');
+    f.opp.unit = 'commuting zones';
+  } else {
+    const src = pl.type === 'county' ? US_COUNTY : US_STATE;
+    const id = pl.type === 'county' ? pl.fips : pl.fips;
+    if (!src) { showNotice('The US state figures did not load. Ask about a county or a city instead.'); return null; }
+    const v = k => src[k] ? src[k][id] : null;
+    const pos = k => src[k] ? usPos(src[k], v(k)) : null;
+    const name = pl.type === 'county' ? `${pl.name} County, ${pl.stateName}` : pl.name;
+    const unit = pl.type === 'county' ? 'counties' : 'states';
+    f.opp.placeName = name; f.opp.unit = unit;
+    const mob = pos('us_mobility'), ec = pos('us_econ_conn'), gi = pos('us_income_gini'), lg = pos('us_le_gap');
+    if (v('us_mobility') == null) { showNotice(`The source carries no figures for ${esc(name)}.`); return null; }
+    let t = `In <strong>${esc(name)}</strong>, a child from a low-income family reaches the <strong>${ord(Math.round(v('us_mobility') * 100))} ` +
+      `percentile</strong> of income by adulthood. The middle of the ${mob.n} ${pl.type === 'state' && mob.n > 50 ? 'states, with DC and Puerto Rico,' : unit} is the ${ord(Math.round(mob.med * 100))}, so ` +
+      `${pl.type === 'county' ? 'the county' : pl.name} is ${ord(mob.rankHigh)} of ${mob.n} for how far poor children climb.`;
+    if (v('us_econ_conn') != null) t += ` People on low incomes here have <strong>${v('us_econ_conn').toFixed(2)}</strong> times as many ` +
+      `better-off friends as they would if friendship ignored income (the middle ${unit.replace(/ies$/, 'y').replace(/s$/, '')} has ${ec.med.toFixed(2)}).`;
+    if (v('us_le_gap') != null) t += ` At forty the rich outlive the poor by <strong>${v('us_le_gap').toFixed(1)} years</strong> (middle: ${lg.med.toFixed(1)}).`;
+    if (pl.sharedZone) t += ` <em>${pl.sharedN} commuting zones are called ${esc(pl.sharedZone)} and the source does not say which state each is in, so this is ${esc(pl.name)} as a whole.</em>`;
+    t += ` <em>Upward mobility is for children born in the early 1980s, measured in their mid thirties (Opportunity Insights); ` +
+      `friendships are from Facebook's social capital study.</em>`;
+    f.text = t;
+    bar('how far poor children climb', mob, 'higher'); bar('better-off friends', ec, 'higher');
+    bar('income Gini', gi, 'lower'); bar('rich-poor life gap at forty', lg, 'lower');
+  }
+  f.opp.bars = bars;
+  return f;
+}
 function oppAnswer(q, strict) {
   const r = norm(q);
+  const usp = usPlaceFind(q);
+  if (usp) return usPlaceAnswer(usp, q);
   const f = { id: ++factSeq, query: q, kind: 'opp', isos: [], mode: 'opp', text: '', opp: {} };
   const zones = Object.values(US_CZ);
   const fin = OPP_FIN.find(x => x.re.test(r));
@@ -6149,6 +6328,22 @@ function oppAnswer(q, strict) {
 function drawOpp(f) {
   const el = document.getElementById('chart'), title = document.getElementById('chart-title'), src = document.getElementById('chart-src');
   const o = f.opp, AM = '#c98a2b';
+  if (o.kind === 'place') {
+    const b = o.bars.slice().reverse();
+    Plotly.react(el, [{ type: 'bar', orientation: 'h', x: b.map(r => r.pct), y: b.map(r => r.label),
+      marker: { color: AM }, text: b.map(r => `above ${r.pct}%`), textposition: 'outside', cliponaxis: false,
+      hovertemplate: '%{y}: higher than %{x}% of ' + o.unit + '<extra></extra>' }],
+      Object.assign({}, BASE_LAYOUT, { margin: { t: 10, r: 60, b: 44, l: 200 },
+        xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { range: [0, 100], autorange: false, ticksuffix: '%',
+          title: { text: 'share of ' + o.unit + ' this one is higher than', font: { size: 11 } } }),
+        yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category', autorange: true }),
+        shapes: [{ type: 'line', x0: 50, x1: 50, y0: -0.5, y1: b.length - 0.5, line: { color: cssVar('--ink-3', '#999'), width: 1, dash: 'dot' } }] }), CFG);
+    title.textContent = `${o.placeName}, against every other one of the ${o.unit}`;
+    src.textContent = `Each bar is the share of ${o.unit} this place is higher than; the dotted line is the middle. Higher is ` +
+      `better for climbing, friends and credit; lower is better for the life gap, the income Gini and falling behind on payments. ` +
+      `Source: Opportunity Insights and the Social Capital Atlas.`;
+    return;
+  }
   if (o.kind === 'gap') {
     const all = o.pts.flatMap(p => [p.x, p.y]), lo = Math.min(...all), hi = Math.max(...all);
     Plotly.react(el, [
@@ -6497,7 +6692,7 @@ function updateCell() {
   if (keepOpen) { reopenAfter = keepOpen; } else closeDrawer();
   const last = chain.length ? chain[chain.length - 1] : null;
   if (last && last.kind === 'opp') {   // opportunity has no cell; read its fact
-    setSlot('place', 'US commuting zones', 'a country, or all of them');
+    setSlot('place', (last.opp && last.opp.placeName) || 'US commuting zones', 'a country, or all of them');
     setSlot('time', null, 'a moment, or a run of years');
     const o = last.opp;
     setSlot('against', o.covLabel || o.label || null, 'another measure to hold it to', '#c98a2b');
@@ -6664,6 +6859,8 @@ function nextSteps(f) {
       life:     [['if you grow up poor here, what do you earn later?'], ['do the four faces agree inside one country?']],
       faces:    [['does the income gap track climbing?'], ['does knowing better-off people help you climb?']],
       pair:     [['do the four faces agree inside one country?'], ['does knowing better-off people help you climb?']],
+      place:    [['if you grow up poor here, what do you earn later?'], ['does knowing better-off people help you climb?'],
+                 ['how much longer do the rich live here?']],
       gap:      [["who owns a home, by their parents' income?"], ["who falls behind on payments, by their parents' income?"],
                  ["does credit depend on your parents' income?"]],
     };
@@ -8089,6 +8286,7 @@ const VIEWS = ['ask', 'why', 'wealth', 'income', 'opportunity', 'wellbeing', 'db
 
 /* ── US county tier: the same ask cube, at county resolution ───────── */
 let US_COUNTY = null, US_NAMES = null;   // the county layer the opportunity face reads
+let US_STATE = null;                      // the same measures, one row per state
 
 // The standalone United States page was removed. Its reader, its chart and its own
 // question grammar went with it; the commuting-zone and county data it used is read
@@ -8885,6 +9083,7 @@ Promise.all([
   if (hprice && Object.keys(hprice).length) SERIES.house_price = toSeries(hprice);
   if (usCounty && Object.keys(usCounty).length) { US_COUNTY = scrubUs(usCounty); US_NAMES = usNames; }
   if (usCz && Object.keys(usCz).length) US_CZ = usCz;
+  if (usState && Object.keys(usState).length) US_STATE = scrubUs(usState);
   if (usComp && usComp.groups) US_COMP = usComp;
   if (hfcsNeg && hfcsNeg.by) HFCS_NEG = hfcsNeg;
   if (hfcsRes && hfcsRes.by) HFCS_RES = hfcsRes;
