@@ -110,7 +110,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .us-enter + .deeper { margin-left: 8px; }
 .us-enter:hover { color: var(--ink); border-color: var(--ink-3); }
 .theme-toggle { background: none; border: none; cursor: pointer; color: var(--ink-3); font-size: 16px;
-  line-height: 1; padding: 2px; }
+  line-height: 0; padding: 8px; }
 .theme-toggle:hover { color: var(--ink); }
 #totop { position: fixed; bottom: 20px; right: 20px; z-index: 20;
   font-family: var(--mono); font-size: 12px; color: var(--ink-2);
@@ -138,7 +138,9 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 
 /* header on narrow screens */
 @media (max-width: 720px) {
-  header .wrap { gap: 10px; flex-wrap: wrap; height: auto; padding-top: 9px; padding-bottom: 9px; }
+  /* one row: a header that wraps spends a tenth of a phone screen before the question */
+  header .wrap { gap: 8px; flex-wrap: nowrap; height: 52px; }
+  header .deeper { margin-left: auto; white-space: nowrap; }
   .ver { display: none; }
   .top-links { font-size: 12px; }
   .tabs .wrap { flex-wrap: wrap; height: auto; gap: 4px; padding-top: 8px; padding-bottom: 8px; }
@@ -289,6 +291,20 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* ── the cube: the facet selector, centred with the stack beneath ─── */
 .cubebox { display: flex; flex-direction: column; align-items: center; gap: 12px;
   margin: 74px auto 34px; user-select: none; -webkit-user-select: none; overflow: visible; }
+/* a 13-inch laptop is 800 tall: the question box and "what can I ask?" have to be on it */
+@media (min-width: 721px) and (max-height: 860px) {
+  .ask { padding-top: 40px; }
+  .cubebox { margin: 52px auto 22px; }
+}
+/* on a phone the cube is the picture, not the page: it gives up some air so the box shows */
+@media (max-width: 720px) { .cubebox { margin: 62px auto 20px; } .claim { font-size: 15px; } }
+@media (max-width: 440px) {
+  header .wm-beta { display: none; }
+  header .deeper { padding: 4px 10px; font-size: 12px; }
+  header .theme-toggle { padding: 6px; }
+}
+/* there is no tab key on a phone */
+@media (hover: none) and (pointer: coarse) { .askbox .slash { display: none; } }
 /* the cube is smaller than the scene, so it has to be centred in it rather than
    left to sit in the top corner where a block element lands by default */
 .scene { position: relative; width: 232px; height: 232px; perspective: 760px; touch-action: none; cursor: grab;
@@ -637,6 +653,10 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .answer .t { flex: 1; color: var(--ink-2); }
 .answer .t strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .answer .t em { font-style: normal; color: var(--ink-3); }
+/* how the question was read, when that is not obvious from the answer itself */
+.answer .t em.readas { display: block; margin-top: 10px; font-size: 13.5px; line-height: 1.5; }
+.notice .linkout { display: block; width: 100%; margin-top: 8px; font: 13px var(--mono); padding: 6px 8px;
+  border: 1px solid var(--border-2); border-radius: 6px; background: var(--surface); color: var(--ink); }
 /* how far the evidence goes, said next to the claim rather than under it */
 .flag { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: .05em;
   text-transform: uppercase; padding: 2px 7px; border-radius: 100px; vertical-align: 2px;
@@ -769,9 +789,9 @@ footer a { color: inherit; }
 <header>
   <div class="wrap">
     <button class="wordmark" data-view="ask" id="home">Open Inequality Atlas<span class="wm-beta">beta</span></button>
-    <button class="deeper" id="deeper" aria-expanded="false">about &rsaquo;</button>
+    <button class="deeper" id="deeper" aria-expanded="false" aria-controls="tabs">method &amp; data &rsaquo;</button>
     <div class="top-links">
-      <button class="theme-toggle" id="theme" aria-label="Toggle dark mode" title="Light / dark">&#9681;</button>
+      <button class="theme-toggle" id="theme" aria-label="Switch between light and dark" title="Light / dark"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg></button>
     </div>
   </div>
   <nav class="tabs" id="tabs" hidden>
@@ -850,7 +870,7 @@ footer a { color: inherit; }
         <div class="add-row" id="add-row"></div>
       </div>
       </div>
-      <div class="notice" id="notice" hidden></div>
+      <div class="notice" id="notice" role="status" aria-live="polite" hidden></div>
 
     <section id="session" hidden>
       <div class="session-head">
@@ -859,7 +879,7 @@ footer a { color: inherit; }
           <button id="clear">clear</button>
         </div>
       </div>
-      <div class="answer" id="answer"></div>
+      <div class="answer" id="answer" aria-live="polite"></div>
       <div class="chart-card">
         <div class="chart-title" id="chart-title"></div>
         <div id="chart"></div>
@@ -1312,7 +1332,8 @@ footer a { color: inherit; }
 <footer>
   <div class="wrap">
     <span>Open Inequality Atlas &middot; v0.4.0 &middot; CC BY 4.0 data &middot; MIT code</span>
-    <a href="https://github.com/conway1521/wealth_ineq" target="_blank" rel="noopener">github.com/conway1521/wealth_ineq</a>
+    <span class="foot-links"><a href="https://github.com/conway1521/open-inequality-atlas" target="_blank" rel="noopener">this site's code</a>
+      &middot; <a href="https://github.com/conway1521/wealth_ineq" target="_blank" rel="noopener">the wealth pipeline</a></span>
   </div>
 </footer>
 
@@ -1395,6 +1416,7 @@ const ALIASES = {
   'swaziland':'SWZ','eswatini':'SWZ','cape verde':'CPV','cabo verde':'CPV',
   'burma':'MMR','myanmar':'MMR','turkey':'TUR','turkiye':'TUR',
   'hong kong':'HKG','taiwan':'TWN','palestine':'PSE','venezuela':'VEN',
+  'brasil':'BRA','deutschland':'DEU','espana':'ESP','italia':'ITA','nz':'NZL',
 };
 let NAME_INDEX = [];
 
@@ -1730,6 +1752,7 @@ const SAYS = {
   COD: 'the Democratic Republic of Congo', PRK: 'North Korea',
   MAF: 'the French side of Saint Martin', SXM: 'the Dutch side of Sint Maarten',
   BES: 'Bonaire, Sint Eustatius and Saba', SHN: 'Saint Helena',
+  RUS: 'Russia', SYR: 'Syria',   // "half the adults in Russian Federation" is a table heading, not a sentence
 };
 function theName(iso) {
   if (SAYS[iso]) return SAYS[iso];
@@ -1835,10 +1858,24 @@ function richThird() {
 function rankNarrowed() { return !ctx.pool && !ctx.region; }
 const RANK_SET_NOTE = ' among the richer third of countries';
 function rankOf(iso, metric) {
-  let pool = rankedPool(metric, 'high', null);
-  if (rankNarrowed()) { const rt = richThird(); pool = pool.filter(r => rt.has(r.geo_id)); }
-  const i = pool.findIndex(r => r.geo_id === iso);
-  return { rank: i + 1, of: pool.length, row: i >= 0 ? pool[i] : null };
+  const all = rankedPool(metric, 'high', null);
+  let pool = all;
+  if (rankNarrowed()) { const rt = richThird(); pool = all.filter(r => rt.has(r.geo_id)); }
+  let i = pool.findIndex(r => r.geo_id === iso), outside = false;
+  // China, India and Brazil are outside the richer third, so they were "0th of 54": a
+  // rank in a set they were never in. they are ranked against every country instead,
+  // and the sentence says so
+  if (i < 0 && pool !== all) { pool = all; i = pool.findIndex(r => r.geo_id === iso); outside = i >= 0; }
+  return { rank: i + 1, of: pool.length, row: i >= 0 ? pool[i] : null, outside };
+}
+// "48th most concentrated of the 54 countries in the richer third", always naming the set
+function rankPhrase(rk, m) {
+  if (!rk.rank) return 'not in the ranking, which has no figure for it';
+  // "7th of 213" on a bottom-half share did not say whether 1st was the most or the least
+  const word = m.concFam ? ' most concentrated' : m.giniFam ? ' most unequal' : ' highest';
+  if (rk.outside) return `${ord(rk.rank)}${word} of all ${rk.of} countries with a figure ` +
+    '(it is outside the richer third that rankings here use by default, so it is ranked against all of them)';
+  return `${ord(rk.rank)}${word} of ${setLabel(rk.of)}`;
 }
 function seriesOf(metric, iso) { return (SERIES[metric] || {})[iso] || []; }
 
@@ -1910,7 +1947,10 @@ function detectMetrics(r) {
   push(/\bwealth gini\b/, 'wealth_gini');                                   // explicit Gini, for experts
   push(/\bwealth (inequality|concentration)\b|\bconcentration\b/, 'wealth_top1');  // default wealth measure = concentration
   // bare "income"/"wealth" only if no more specific income/wealth metric already matched
-  if (!found.some(k => META[k].topic === 'income') && /\bincome\b|\bearnings\b|\bwages?\b/.test(r)) found.push('income_gini');
+  // pay, wages and earnings are what a person takes home, which is the median. "income"
+  // on its own is ambiguous and keeps the face's inequality measure
+  if (!found.some(k => META[k].topic === 'income') && /\bwages?\b|\bearn\w*\b|\bpaid\b|\bsalar\w*\b|\bpay\b/.test(r)) found.push('median_income');
+  if (!found.some(k => META[k].topic === 'income') && /\bincome\b/.test(r)) found.push('income_gini');
   if (!found.some(k => k === 'wealth_gini' || k === 'wealth_top1' || k === 'wealth_bottom50') && /\bwealth\b/.test(r)) found.push('wealth_top1');
   push(/\bhappiness\b|\bhappy\b|\blife satisfaction\b|\bsatisfaction\b|\bcantril\b|\bladder\b/, 'life_satisfaction');
   if (/\bwell\s?being\b/.test(r) && !found.length) found.push('life_satisfaction');
@@ -1932,7 +1972,7 @@ function isIneq(key) { return INEQ_METRICS.includes(key); }
 const FACET_MEASURES = {
   wealth: [['wealth_top1', 'top 1% share'], ['wealth_gini', 'wealth Gini'], ['wealth_bottom50', 'bottom 50% share'],
            ['house_price', 'house prices']],
-  income: [['income_top1', 'top 1% share'], ['income_middle40', 'the middle 40%'], ['income_gini', 'income Gini'],
+  income: [['income_top1', 'top 1% share'], ['income_top10', 'top 10% share'], ['income_middle40', 'the middle 40%'], ['income_gini', 'income Gini'],
            ['median_income', 'median income'], ['poverty_rate', 'living on under $2.15 a day']],
   health: [['life_exp', 'life expectancy'], ['life_satisfaction', 'life satisfaction']],
 };
@@ -1952,11 +1992,15 @@ function facetIneqDefault() {
   return SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini';
 }
 
+// a country whose name has a region inside it. matched as a region first, "south africa"
+// lost its "south" and every answer after it was stuck on the whole continent
+const REGION_IN_NAME = /\bsouth africa\b|\bcentral african republic\b|\bamerican samoa\b|\bsouth sudan\b/;
 function parse(raw) {
   let text = norm(raw);
   let region = null;
+  const shielded = text.replace(REGION_IN_NAME, ' ');
   for (const [re, key] of REGION_TOKENS) {
-    if (re.test(text)) { region = key; text = text.replace(re, ' '); break; }
+    if (re.test(shielded)) { region = key; text = text.replace(re, ' '); break; }
   }
   const { isos, residual: r } = findCountries(text);
   const years = (r.match(/\b(?:19|20)\d{2}\b/g) || []).map(Number).filter(y => y >= 1950 && y <= 2025);
@@ -1975,7 +2019,12 @@ function parse(raw) {
   };
   // HAVE: the money version. one country, and the refusal says why a share is not a
   // bank balance.
-  if (/\bactually have\b|\bhow much (do|does).*(have|own)\b|\bnet worth\b|\bin (the )?bank\b|\bto (their|its|your|my) name\b|\bin (real )?money\b|\bin dollars\b|\bwhat would i have\b/.test(r))
+  // "how much do the richest 1% have" and "how much does the bottom half own in the uk"
+  // were both sent here and answered with the poorest quarter of American families. a
+  // question about a share, or about another country, is not this one
+  const aboutShare = /\btop\b|\brichest\b|\b1%|\b10%|\bhalf\b|\bbottom\b|\bshare\b/.test(r);
+  if (!aboutShare && !isos.some(i => i !== 'USA') &&
+      /\bactually have\b|\bhow much (do|does).*(have|own)\b|\bnet worth\b|\bin (the )?bank\b|\bto (their|its|your|my) name\b|\bin (real )?money\b|\bin dollars\b|\bwhat would i have\b/.test(r))
     return { kind: 'have', isos: ['USA'], iso: isos[0] || 'USA',
       year: years.length ? Math.max(...years) : null };
   // WEATHER: whether a household could absorb a shock, which is what the rest of the
@@ -1984,9 +2033,14 @@ function parse(raw) {
     return { kind: 'weather', isos, iso: isos[0] || null,
       year: years.length ? Math.max(...years) : null };
   // UNDERWATER: the headcount behind the share. household survey, euro area.
-  if (/\bhow many (people|households|of us)\b|\bowe more than\b|\bunder ?water\b|\bnegative (net )?wealth\b|\bin the red\b|\bhow many are in debt\b|\bmore debt than\b/.test(r))
+  if (/\bhow many (people|households|of us)\b|\bowe more than\b|\bunder ?water\b|\bnegative (net )?wealth\b|\bin the red\b|\bhow many are in debt\b|\bmore debt than\b/.test(r)) {
+    // the household survey covers the euro area. Sweden, Norway and Denmark are where the
+    // bottom half is below zero as a group, and that is in the bottom half's share
+    if (isos[0] && typeof HFCS_NEG !== 'undefined' && HFCS_NEG && !HFCS_NEG.by[isos[0]] && seriesOf('wealth_bottom50', isos[0]).length)
+      return Object.assign({ kind: 'owns', isos, iso: isos[0] }, win);
     return { kind: 'underwater', isos, iso: isos[0] || null,
       year: years.length ? Math.max(...years) : null };
+  }
   // MADE: not how much a group holds but what of. one country, said so on refusal.
   if (/\bmade of\b|\bmade up of\b|\bwhat kind of wealth\b|\bwhat do they actually own\b|\bwhat is (the |their )?wealth\b|\bcomposition\b|\bhouse or shares\b|\bassets? are\b|\bwhat their wealth is\b/.test(r))
     // one country carries this, so the parse names it rather than opening a place fold
@@ -2007,7 +2061,7 @@ function parse(raw) {
   if (perPerson)
     return Object.assign({ kind: 'multiple', isos, iso: isos[0] || null }, win);
   // BASKET: the middle income in dollars that buy the same goods everywhere
-  if (/\blives? on\b|\bliving on\b|\ba day\b|\bbasket of goods\b|\bpurchasing power\b|\bsame money buy\b|\bgo further\b/.test(r))
+  if (/\blives? on\b|\bliving on\b|\ba day\b|\bbasket of goods\b|\bpurchasing power\b|\bsame money buy\b|\bgo further\b|\b(average|typical|normal|ordinary) (person|family|household|worker|people)\b.*\b(earn|make|get|take home|paid)\w*\b/.test(r))
     return Object.assign({ kind: 'basket', isos, iso: isos[0] || null }, win);
   // THREE: the top tenth, the forty in the middle, and the bottom half, summing to 100
   if (/\bthree parts\b|\bmiddle 40\b|\bmiddle forty\b|\bmiddle class\b|\bhappened to the middle\b|\bhollow\w*\b|\bsplit three ways\b|\bcut into three\b|\bsqueez\w*\b/.test(r))
@@ -2039,11 +2093,20 @@ function parse(raw) {
     return { kind: 'correlate', x: 'wealth_top1', y: 'life_exp', region };
   // a year with "after" or "since" in front of it is a run of years from there
   const afterYear = r.match(/\b(after|since|from|post|following)\s+((?:19|20)\d{2})\b/);
+  const movingWords = /\bgetting (richer|poorer|worse|better|bigger|wider|more unequal)\b|\brising\b|\brisen\b|\bgone up\b|\bgoing up\b|\bgot worse\b|\bworse\b|\bincreas\w*\b|\bgrown\b|\bwiden\w*\b|\bchang(ed|ing)\b/;
+  const fallingWords = /\bgetting better\b|\bfallen\b|\bfalling\b|\bgone down\b|\bgoing down\b|\bdecreas\w*\b|\bnarrow\w*\b|\bimprov\w*\b/;
+  // "has inequality gone up since 2008" with no country used to hand the question to
+  // whichever country the last one named, starting in 1990
+  if (afterYear && !isos.length && (movingWords.test(r) || fallingWords.test(r)))
+    return { kind: 'delta_rank', dir: fallingWords.test(r) ? 'down' : 'up', year: +afterYear[2], region, metric };
   if (afterYear) return { kind: 'time', isos, year: +afterYear[2], region, metric };
   // a place plus a direction word is a question about change, not about a level
   const trend = /\bgetting (richer|poorer|worse|better|bigger|wider|more unequal)\b|\brising\b|\bfalling\b|\bgoing up\b|\bgone up\b|\bgot worse\b|\bworse\b|\bbetter\b|\bchang(ed|ing)\b|\bpulling away\b|\bwidening\b|\bwhat happened\b|\bhappened to\b/.test(r);
   const mine = /\bmy country\b|\bwhere i live\b|\bround here\b|\bmy place\b|\bback home\b/.test(r);
   if (trend && isos.length) return { kind: 'time', isos, year: years[0] || null, region, metric };
+  // the same words with no country: which countries moved, and which way
+  if (trend && !isos.length && !mine && !/\bhous|\bhome|\brent|\bmortgage|\bpropert/.test(r))
+    return { kind: 'delta_rank', dir: fallingWords.test(r) ? 'down' : 'up', year: years[0] || 1995, region, metric };
   // houses: the price of one against what people earn, which is the picture the
   // question is actually asking for. two countries carry it and the fold shows which.
   if (/\bhous(e|es|ing)\b|\bhome ?prices?\b|\bproperty\b|\bmortgage\b|\brent\w*\b|\bafford\w*\b|\bon the ladder\b/.test(r))
@@ -2094,7 +2157,11 @@ function parse(raw) {
     const lens = metrics.find(isIneq) || facetIneqDefault();
     return { kind: 'tiers', aspect, lens, region: region };
   }
-  const aspectHere = metrics.find(m => !isIneq(m) && META[m].series);
+  // an aspect is a second thing named in the words. the face's own measure, stood in for
+  // a bare "inequality", is not one: with bottom 50% chosen, "india inequality" became
+  // bottom 50% held against itself, across every country, with India dropped
+  const standIn = facetIneqDefault();
+  const aspectHere = metrics.find(m => !isIneq(m) && META[m].series && m !== standIn);
   const ineqWord = /\binequality\b|\bunequal\b|\bgini\b|\bconcentrat\w*\b/.test(r);
   if (wantsCorr || (aspectHere && ineqWord)) {
     const y = aspectHere || (META[ctx.metric].series && !isIneq(ctx.metric) ? ctx.metric : ctx.lastAspect) || 'life_exp';
@@ -2358,11 +2425,111 @@ function seriesYears(iso, metric) {
   const s = seriesOf(metric || facetIneqDefault(), iso) || [];
   return s.map(d => d.year);
 }
+/* ── the address bar ──────────────────────────────────────────────────
+   The URL carries the answer on screen, so the address bar can be copied, a reload
+   comes back to the same place, and Back steps to the answer before. It used to hold
+   the question's label and nothing else ("what the bottom half owns", no country),
+   and it was wiped on arrival, so every shared link opened on a blank cube. */
+let restoring = false;
+function urlState() {
+  const last = chain[chain.length - 1];
+  if (!last) return '';
+  const s = new URLSearchParams();
+  s.set('face', curFacet);
+  const m = facetMeasure(curFacet);
+  if (m && facetMeasureIdx[curFacet]) s.set('m', m);
+  if (cell.scope) s.set('among', cell.scope);
+  // a free-text reading and the opportunity face are rebuilt from the words; the rest
+  // from the folds, which is what the accordion edits
+  if (curFacet === 'opportunity' || RAW_KINDS.includes(last.kind) || last.kind === 'opp') {
+    s.set('q', last.query || '');
+    return s.toString();
+  }
+  if (cell.places.length) s.set('place', cell.places.join(','));
+  if (cell.view) s.set('view', cell.view);
+  if (cell.form) s.set('form', cell.form);
+  if (cell.against) s.set('vs', cell.against);
+  if (cell.span === 'run') s.set('t', ['run', cell.since || '', cell.until || ''].join(':'));
+  else if (cell.span === 'moment') s.set('t', 'moment:' + (cell.year || ''));
+  return s.toString();
+}
+function syncUrl() {
+  if (restoring) return;
+  const h = urlState();
+  const want = h ? '#' + h : '';
+  if (want === location.hash) return;
+  history.pushState(null, '', location.pathname + want);
+}
+// rebuild an answer from a link. anything the link names that the atlas does not know
+// is said out loud rather than dropped
+function restoreFromUrl() {
+  const raw = location.hash.slice(1);
+  if (!raw) { restoring = true; resetAll(); restoring = false; return; }
+  restoring = true;
+  const lost = [];
+  try {
+    if (!raw.includes('=')) {
+      // links made before the answer was written into the address: a list of questions
+      const qs = raw.split('|').map(x => { try { return decodeURIComponent(x); } catch (err) { return x; } }).filter(Boolean);
+      const q = qs[qs.length - 1];
+      chain.length = 0; resetCell(); resetCtx();
+      if (q) ask(q);
+      if (!chain.length) showNotice(`That link came from an older version of the atlas and held only "${esc(q || '')}", ` +
+        'which no longer reads as a full question. Ask it again below.');
+      return;
+    }
+    const s = new URLSearchParams(raw);
+    chain.length = 0; resetCell(); resetCtx();
+    const face = s.get('face');
+    if (face && FACETS[face] && !FACETS[face].soon) { if (face !== curFacet) chooseFacet(face); }
+    else if (face) lost.push(`the face "${esc(face)}"`);
+    const m = s.get('m');
+    if (m) {
+      const i = (FACET_MEASURES[curFacet] || []).findIndex(x => x[0] === m);
+      if (i >= 0) { facetMeasureIdx[curFacet] = i; paintFacet(curFacet); }
+      else lost.push(`the measure "${esc(m)}"`);
+    }
+    const among = s.get('among');
+    if (among) setScope(among);
+    if (s.has('q')) {
+      ask(s.get('q'));
+      if (!chain.length) {
+        const qb = document.getElementById('q'); if (qb) qb.value = s.get('q');
+        showNotice(`The link asked "${esc(s.get('q'))}" and it no longer reads. It is in the box below to edit.`);
+      }
+      return;
+    }
+    const places = (s.get('place') || '').split(',').filter(Boolean);
+    const known = places.filter(i => BY_ISO[i] || i === 'USA');
+    if (known.length < places.length) lost.push(places.filter(i => !known.includes(i)).join(', '));
+    cell.places = known.slice(0, MAX_PLACES);
+    const view = s.get('view');
+    if (view && VIEW_DEF[view]) cell.view = view; else if (view) lost.push(`the reading "${esc(view)}"`);
+    const form = s.get('form');
+    if (form) cell.form = form;
+    const vs = s.get('vs');
+    if (vs && META[vs]) cell.against = vs; else if (vs) lost.push(`the measure "${esc(vs)}"`);
+    const t = (s.get('t') || '').split(':');
+    if (t[0] === 'run') { cell.span = 'run'; cell.since = +t[1] || null; cell.until = +t[2] || null; }
+    else if (t[0] === 'moment') { cell.span = 'moment'; cell.year = +t[1] || null; }
+    cell.scope = among || null;
+    updateCell();
+    sendCell();
+  } finally {
+    restoring = false;
+    // the URL now says what is on screen, which may be less than the link asked for
+    const h = urlState();
+    history.replaceState(null, '', location.pathname + (h ? '#' + h : ''));
+    if (lost.length) showNotice(`This link named ${lost.join(' and ')}, which the atlas does not have, ` +
+      'so the answer below leaves it out.');
+  }
+}
+window.addEventListener('popstate', restoreFromUrl);
 function syncCellFromFact(f) {
   if (!f || f.kind === 'opp') { resetCell(); return; }
   cell.against = (f.mode === 'scatter' && f.scatter && f.scatter.y && !isIneq(f.scatter.y)) ? f.scatter.y
     : (f.mode === 'path' && f.path && f.path.y) ? f.path.y : null;
-  cell.form = ['rank', 'delta_rank'].includes(f.kind) ? 'rank'
+  cell.form = ['rank', 'delta_rank'].includes(f.kind) ? (['low', 'down'].includes(f.rankDir) ? 'least' : 'rank')
 
     : f.kind === 'spread' ? 'spread' : f.kind === 'lorenz' ? 'lorenz'
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
@@ -2377,6 +2544,8 @@ function syncCellFromFact(f) {
   const focus = (f.scatter && f.scatter.focus) || [];
   cell.place = (SINGLE_PLACE.includes(f.kind) && f.isos && f.isos.length) ? f.isos[f.isos.length - 1]
     : (focus.length === 1 ? focus[0] : null);
+  // a comparison keeps every country it compared, or the next edit drops all but one
+  if (f.kind === 'compare' && f.isos && f.isos.length > 1) cell.places = f.isos.slice(0, MAX_PLACES);
 }
 // build the answer straight from the cell's coordinates, keeping the others intact
 function runCell() {
@@ -2452,16 +2621,16 @@ function runCell() {
   } else if (F === 'break' && cell.against && META[cell.against]) {
     p = { kind: 'break', metrics: [ctx.metric, cell.against],
       year: cell.span === 'moment' ? cell.year : null }; q = 'who breaks the pattern';
-  } else if (F === 'rank') {
+  } else if (F === 'rank' || F === 'least') {
     // a ranking still answers to the rest of the cell: the country is marked and its
     // place said, a chosen year ranks at that year, and a run of years ranks the moves
     const many = cell.places.length > 1 ? cell.places.slice() : null;
     if (cell.span === 'run') {
-      p = { kind: 'delta_rank', dir: 'up', region: ctx.region, metric: ctx.metric,
+      p = { kind: 'delta_rank', dir: F === 'least' ? 'down' : 'up', region: ctx.region, metric: ctx.metric,
         year: cell.since, until: cell.until, highlight: cell.place, only: many };
       q = many ? `${many.length} countries, the moves` : 'the biggest moves';
     } else {
-      p = { kind: 'rank', dir: 'high', region: ctx.region, metric: ctx.metric, giniWords: true,
+      p = { kind: 'rank', dir: F === 'least' ? 'low' : 'high', region: ctx.region, metric: ctx.metric, giniWords: true,
         year: cell.span === 'moment' ? cell.year : null, highlight: cell.place, only: many };
       q = many ? `${many.length} countries compared` : 'the ranking';
     }
@@ -2516,6 +2685,18 @@ function runParse(p, q) {
   if (!f) { chain.push(...prev); render(); return; }
   chain.push(f); ctx.lastQuery = q; render();
 }
+// who counts as everyone: a region, the richer or poorer half, or the whole world
+function setScope(val) {
+  cell.scope = val || null;
+  if (!val) { setRegion(null); ctx.pool = null; computePool(); }
+  else if (val.slice(0, 2) === 'r:') { setRegion(val.slice(2)); ctx.pool = null; computePool(); }
+  else if (val.slice(0, 5) === 'pool:') {
+    setRegion(null);
+    const rich = val.slice(5) === 'rich';
+    ctx.pool = { label: rich ? 'richer countries' : 'poorer countries', metric: 'gdp_pc', dir: rich ? 'high' : 'low' };
+    computePool();
+  }
+}
 function applyDim(dim, val) {
   if (dim === 'place') {
     if (val && val[0] === '+') {          // toggle one country in or out of the comparison
@@ -2539,7 +2720,7 @@ function applyDim(dim, val) {
   } else if (dim === 'against') {
     cell.against = val || null;
     if (!cell.against && ['tiers', 'break'].includes(cell.form)) cell.form = null;
-    if (cell.against && ['rank', 'spread', 'lorenz'].includes(cell.form)) cell.form = null;
+    if (cell.against && ['rank', 'least', 'spread', 'lorenz'].includes(cell.form)) cell.form = null;
     if (cell.against && cell.view) cell.view = null;   // a view brings its own measures
   }
   else if (dim === 'form') {
@@ -2547,17 +2728,7 @@ function applyDim(dim, val) {
     if (VIEW_DEF[val]) { cell.view = val; cell.form = null; }
     else { cell.form = val || null; cell.view = null; }
   }
-  else if (dim === 'scope') {
-    cell.scope = val || null;
-    if (!val) { setRegion(null); ctx.pool = null; computePool(); }
-    else if (val.slice(0, 2) === 'r:') { setRegion(val.slice(2)); ctx.pool = null; computePool(); }
-    else if (val.slice(0, 5) === 'pool:') {
-      setRegion(null);
-      const rich = val.slice(5) === 'rich';
-      ctx.pool = { label: rich ? 'richer countries' : 'poorer countries', metric: 'gdp_pc', dir: rich ? 'high' : 'low' };
-      computePool();
-    }
-  }
+  else if (dim === 'scope') setScope(val);
   else if (dim === 'facet') {   // the measure of the face you're on
     const list = FACET_MEASURES[curFacet] || [];
     const i = list.findIndex(m => m[0] === val);
@@ -2593,7 +2764,8 @@ function buildAnswer(p, q) {
 
   if (p.region) setRegion(p.region);   // a named region becomes the standing geography
 
-  let f = { id: ++factSeq, query: q, kind: p.kind, isos: [], mode: 'lines', bar: null, metric: null, marker: null };
+  let f = { id: ++factSeq, query: q, kind: p.kind, isos: [], mode: 'lines', bar: null, metric: null, marker: null,
+    rankDir: p.dir || null };
 
   if (p.kind === 'contrast') {
     const y = p.y, my = META[y];
@@ -3665,8 +3837,7 @@ function buildAnswer(p, q) {
     const lv = latestValOf(key, p.iso); if (!lv) return miss();
     const rk = rankOf(p.iso, key);
     f.isos = [p.iso]; ctx.lastIso = p.iso; f.metricUsed = m.series ? key : 'wealth_gini';
-    const rankBit = m.concFam ? `${ord(rk.rank)} most concentrated of ${rk.of}`
-      : m.giniFam ? `${ord(rk.rank)} most unequal of ${rk.of}` : `${ord(rk.rank)} of ${rk.of}`;
+    const rankBit = rankPhrase(rk, m);
     if (key === 'wealth_top1')
       f.text = `<strong>${esc(c.name)}</strong>: the top 1% hold <strong>${m.fmt(lv.val)}</strong> of the wealth (${lv.year}), ${rankBit}.`;
     else {
@@ -3948,8 +4119,7 @@ function buildAnswer(p, q) {
       const lv = latestValOf(p.metric, iso); if (!lv) return miss();
       const rk = rankOf(iso, p.metric);
       f.isos = isos.slice(0, 8); ctx.lastIso = iso; f.metricUsed = p.metric;
-      const setBit = rankNarrowed() ? ' among the richer third of countries' : '';
-      const rankBit = (m.giniFam ? `${ord(rk.rank)} most unequal of ${rk.of}` : `${ord(rk.rank)} of ${rk.of}`) + setBit;
+      const rankBit = rankPhrase(rk, m);
       f.text = `<strong>${esc(BY_ISO[iso].name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> in ${lv.year}, ${rankBit}.`;
     } else if (m.snap && isos.length) {
       const iso = isos[0], lv = latestValOf(p.metric, iso);
@@ -3958,7 +4128,7 @@ function buildAnswer(p, q) {
       f.mode = 'bars'; f.metric = p.metric; f.isos = [iso]; ctx.lastIso = iso;
       f.bar = barFor(p.metric, iso);
       f.text = `<strong>${esc(BY_ISO[iso].name)}</strong>: ${m.label} <strong>${m.fmt(lv.val)}</strong> ` +
-        `(${lv.year}), ${ord(rk.rank)} of ${rk.of}.`;
+        `(${lv.year}), ${rankPhrase(rk, m)}.`;
     } else return miss();
   }
 
@@ -4206,7 +4376,8 @@ function runPrompt(text) {
   const q = text.replace(/^\w+:\s*/, '').trim();
   const el = document.getElementById('q');
   if (el) el.value = q;
-  if (previewQuestion(q)) setStage('chain');
+  if (previewQuestion(q)) { setStage('chain'); return true; }
+  return false;
 }
 const FACET_HEX = { wealth: '#2a78d6', income: '#2f9e8f', opportunity: '#c98a2b', health: '#c0607a' };
 const ACC = () => FACET_HEX[curFacet] || '#2a78d6';   // the UI accent follows the facet you're on
@@ -4447,38 +4618,48 @@ function drawRibbon(foldAt) {
   if (!ribs || !svg) return;
   const panels = [...ribs.children].filter(r => r.offsetWidth > 0);
   if (!panels.length) { svg.innerHTML = ''; return; }
-  const H = Math.round(ribs.getBoundingClientRect().height);
-  if (!H) return;
+  const box = ribs.getBoundingClientRect();
+  if (!box.height) return;
   const fold = foldAt == null ? FOLD : foldAt;   // 0 is a plain rectangle: the box before it folds
-  const xs = [0];
-  let acc = 0;
-  for (const p of panels) { acc += p.getBoundingClientRect().width; xs.push(Math.round(acc)); }
-  const W = xs[xs.length - 1];
-  const top = i => (i % 2 ? fold : 0);
-  const bot = i => (i % 2 ? H - fold : H);
-  let d = `M ${xs[0]} ${top(0)}`;
-  for (let i = 1; i < xs.length; i++) d += ` L ${xs[i]} ${top(i)}`;
-  for (let i = xs.length - 1; i >= 0; i--) d += ` L ${xs[i]} ${bot(i)}`;
-  d += ' Z';
-  // clip each section to the exact fold it is drawn as, so what you click is what you see
-  for (let i = 0; i < panels.length; i++) {
-    panels[i].style.clipPath =
-      `polygon(0 ${top(i)}px, 100% ${top(i + 1)}px, 100% ${bot(i + 1)}px, 0 ${bot(i)}px)`;
+  // on a narrow screen the folds wrap onto two or three rows, and each row is its own
+  // band. drawing them as one strip made the outline as wide as every fold laid end
+  // to end, and a phone zoomed the whole page out to fit it
+  const rows = [];
+  for (const p of panels) {
+    const r = p.getBoundingClientRect();
+    const y = Math.round(r.top - box.top);
+    let row = rows.find(w => Math.abs(w.y - y) < 4);
+    if (!row) { row = { y, h: 0, cells: [] }; rows.push(row); }
+    row.h = Math.max(row.h, Math.round(r.height));
+    row.cells.push({ p, x0: Math.round(r.left - box.left), x1: Math.round(r.right - box.left) });
   }
-  let edges = '', seams = '';
-  for (let i = 0; i < panels.length; i++) {
-    const c = getComputedStyle(panels[i]).getPropertyValue('--rc').trim() || 'currentColor';
-    edges += `<path class="rb-edge" style="stroke:${c}" d="M ${xs[i]} ${top(i)} L ${xs[i + 1]} ${top(i + 1)}"/>` +
-      `<path class="rb-edge" style="stroke:${c}" d="M ${xs[i]} ${bot(i)} L ${xs[i + 1]} ${bot(i + 1)}"/>`;
-    if (i === 0) edges += `<path class="rb-edge" style="stroke:${c}" d="M ${xs[0]} ${top(0)} L ${xs[0]} ${bot(0)}"/>`;
-    if (i === panels.length - 1) edges += `<path class="rb-edge" style="stroke:${c}" d="M ${xs[i + 1]} ${top(i + 1)} L ${xs[i + 1]} ${bot(i + 1)}"/>`;
+  let face = '', edges = '', seams = '';
+  for (const row of rows) {
+    const { y, h, cells } = row;
+    const xs = [cells[0].x0, ...cells.map(c => c.x1)];
+    const top = i => y + (i % 2 ? fold : 0);
+    const bot = i => y + (i % 2 ? h - fold : h);
+    let d = `M ${xs[0]} ${top(0)}`;
+    for (let i = 1; i < xs.length; i++) d += ` L ${xs[i]} ${top(i)}`;
+    for (let i = xs.length - 1; i >= 0; i--) d += ` L ${xs[i]} ${bot(i)}`;
+    face += `<path class="rb-face" d="${d} Z"/>`;
+    // clip each section to the exact fold it is drawn as, so what you click is what you see
+    cells.forEach((c, i) => {
+      c.p.style.clipPath = `polygon(0 ${top(i) - y}px, 100% ${top(i + 1) - y}px, 100% ${bot(i + 1) - y}px, 0 ${bot(i) - y}px)`;
+      const col = getComputedStyle(c.p).getPropertyValue('--rc').trim() || 'currentColor';
+      edges += `<path class="rb-edge" style="stroke:${col}" d="M ${xs[i]} ${top(i)} L ${xs[i + 1]} ${top(i + 1)}"/>` +
+        `<path class="rb-edge" style="stroke:${col}" d="M ${xs[i]} ${bot(i)} L ${xs[i + 1]} ${bot(i + 1)}"/>`;
+      if (i === 0) edges += `<path class="rb-edge" style="stroke:${col}" d="M ${xs[0]} ${top(0)} L ${xs[0]} ${bot(0)}"/>`;
+      if (i === cells.length - 1) edges += `<path class="rb-edge" style="stroke:${col}" d="M ${xs[i + 1]} ${top(i + 1)} L ${xs[i + 1]} ${bot(i + 1)}"/>`;
+    });
+    for (let i = 1; i < xs.length - 1; i++) {
+      seams += `<line class="rb-seam" x1="${xs[i]}" y1="${top(i)}" x2="${xs[i]}" y2="${bot(i)}"/>`;
+    }
   }
-  for (let i = 1; i < xs.length - 1; i++) {
-    seams += `<line class="rb-seam" x1="${xs[i]}" y1="${top(i)}" x2="${xs[i]}" y2="${bot(i)}"/>`;
-  }
+  const W = Math.round(box.width), H = Math.round(box.height);
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   svg.setAttribute('width', W); svg.setAttribute('height', H);
-  svg.innerHTML = `<path class="rb-face" d="${d}"/>${seams}${edges}`;
+  svg.innerHTML = face + seams + edges;
 }
 const FOLD = 11;
 let foldRAF = null;
@@ -4770,10 +4951,23 @@ function shakeCube() {
   }, 560);
 }
 function stepDim(dim, dir) {
+  // the place fold lists its countries as toggles ("+GBR", add or drop it), and the
+  // arrows compared those with the bare "GBR" on screen. nothing matched, so the next
+  // arrow toggled the current country off and the answer was left with no place.
+  // the arrows move the one place along; they never add, drop or land on a refusal.
+  const bare = v => (dim === 'place' && v[0] === '+') ? v.slice(1) : v;
   const flat = [];
-  for (const g of dimGroups(dim, '')) for (const o of (g.opts || [])) if (o[1]) flat.push(o[1]);
+  for (const g of dimGroups(dim, '')) for (const o of (g.opts || [])) {
+    const v = o[1] && bare(o[1]);
+    if (v && !flat.includes(v) && !whyNot(dim, v)) flat.push(v);
+  }
   if (!flat.length) return;
   const at = flat.indexOf(dimCurrent(dim));
+  if (at >= 0 && flat.length === 1) {
+    showNotice(`There is nothing else to step to here: this reading has figures for ${
+      dim === 'place' ? (BY_ISO[flat[0]] ? esc(BY_ISO[flat[0]].name) : esc(flat[0])) + ' only' : 'this choice only'}.`);
+    return;
+  }
   applyDim(dim, flat[(at + dir + flat.length) % flat.length]);
 }
 function toggleRib(dim) {
@@ -4919,6 +5113,8 @@ function setStage(next) {
 // kinds the cell has no coordinates for: keep the words, run them verbatim on send
 // `reads` is what the pill says the reading is looking at, since these do not use the
 // face's own measure and saying they do was a lie the reader could see.
+const VIEW_FACE = { have: 'wealth', weather: 'wealth', underwater: 'wealth', made: 'wealth', owns: 'wealth',
+  wmultiple: 'wealth', houses: 'wealth', multiple: 'income', basket: 'income', three: 'income', reach: 'income' };
 const VIEW_DEF = {
   reach:  { label: 'growth against the middle', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1, reads: 'output and pay' },
   houses: { label: 'houses against pay', uses: ['place'], ignores: ['facet', 'against', 'when'], needsPlace: 1, oneOnly: 1, reads: 'houses and pay' },
@@ -5003,7 +5199,7 @@ function whyNot(dim, val) {
         return `${cap(v.label)} is drawn for one country, and ${n} are chosen.`;
       return null;
     }
-    if (['rank', 'spread', 'lorenz'].includes(val) && held)
+    if (['rank', 'least', 'spread', 'lorenz'].includes(val) && held)
       return `${cap(FORM_DEF[val])} reads one measure on its own. Drop what it is held against first.`;
     if (['tiers', 'break'].includes(val) && !held)
       return `${cap(FORM_DEF[val])} needs a second measure to split by. Add one under "against".`;
@@ -5075,7 +5271,7 @@ function whyNot(dim, val) {
   return null;
 }
 const FORM_DEF = {
-  rank: 'a ranking', spread: 'the spread', lorenz: 'a Lorenz curve',
+  rank: 'a ranking, highest first', least: 'a ranking, lowest first', spread: 'the spread', lorenz: 'a Lorenz curve',
   tiers: 'by tier', break: 'who breaks the pattern',
 };
 // what the strip says the opportunity layer is showing, one line per reading
@@ -5112,44 +5308,146 @@ const STOP = new Set('a an the is are was were do does did of in on to for my it
 function nearestQuestions(q, n) {
   const words = new Set(norm(q).split(/\W+/).filter(w => w.length > 2 && !STOP.has(w)));
   const all = QUESTIONS.filter(g => !g.facet || g.facet === curFacet).flatMap(g => g.qs);
-  return all.map(c => ({ c, s: norm(c).split(/\W+/).filter(w => words.has(w)).length }))
-    .sort((a, b) => b.s - a.s).slice(0, n).map(x => x.c);
+  const scored = all.map(c => ({ c, s: norm(c).split(/\W+/).filter(w => words.has(w)).length }))
+    .sort((a, b) => b.s - a.s);
+  // nothing in common with anything: the three questions most people come here to ask,
+  // rather than three that merely sort first
+  if (!scored.length || scored[0].s === 0)
+    return ['how unequal is the UK?', 'which country is most unequal?', 'what does the bottom half own in the US?'].slice(0, n);
+  return scored.filter(x => x.s > 0).slice(0, n).map(x => x.c);
 }
 function offerNearest(q, lead) {
   const near = nearestQuestions(q, 3);
   showNotice(esc(lead) + ' The nearest things it can answer: ' +
     near.map(c => `<button type="button" class="opt-near" data-q="${esc(c)}">${esc(c)}</button>`).join(', ') + '.');
-  document.querySelectorAll('#notice .opt-near').forEach(b =>
-    b.addEventListener('click', () => { const el = document.getElementById('q'); if (el) el.value = b.dataset.q; runPrompt(b.dataset.q); }));
+  wireNear();
 }
+function wireNear() {
+  document.querySelectorAll('#notice .opt-near').forEach(b =>
+    b.addEventListener('click', () => { const el = document.getElementById('q'); if (el) el.value = b.dataset.q;
+      if (runPrompt(b.dataset.q)) sendCell(); }));
+}
+// what the words mean, for someone who has heard them on a podcast and wants to know
+// what they are looking at before they look at it
+const GLOSSARY = [
+  [/\bgini\b/, 'The Gini coefficient is one number for how evenly something is shared. At 0 everyone has the same; at 1 one person has all of it. Income Ginis in rich countries mostly sit between 0.25 and 0.40; wealth Ginis run much higher, often above 0.70, because wealth piles up in a way pay does not.',
+    ['which country is most unequal?', 'how unequal is the UK?']],
+  [/\btop 1\s*%|\btop one per ?cent\b|\btop 1 share\b/, 'The top 1% share is the part of everything, either all the wealth or all the income, that goes to the richest one person in a hundred. If they held only their headcount it would be 1%; in most countries here they hold between 15% and 35% of the wealth.',
+    ['what does the top 1% own?', 'which country is most unequal?']],
+  [/\bmedian\b/, 'The median is the person in the exact middle: half have more, half have less. It is used instead of the average because a few very rich people drag the average up without anyone in the middle being better off.',
+    ['what does the average person earn?', 'did the growth reach the typical person?']],
+  [/\bwealth\b.*\bincome\b|\bincome\b.*\bwealth\b/, 'Income is what comes in over a year: pay, pensions, rent, dividends. Wealth is what you own at a moment, minus what you owe: a house, savings, shares, a pension pot, less the mortgage and the card. Wealth is far more unevenly held than income, and it is what gets passed down.',
+    ['do wealth and income diverge?', 'owning against earning']],
+  [/\blorenz\b/, 'A Lorenz curve lines everyone up from poorest to richest and draws how much of the total the first 10%, 20%, 30% hold. Perfect equality is the straight diagonal; the further the curve sags below it, the less even the share.',
+    ['Lorenz curve for the UK', 'how is wealth divided up in the US?']],
+];
+// things people ask about that the atlas does not hold, said plainly, with the nearest
+// thing that it does
+const NOT_HELD = [
+  [/\bbillionaires?\b|\bmillionaires?\b|\bforbes\b|\brich list\b|\belon\b|\bmusk\b|\bbezos\b/,
+    'The atlas has no count of billionaires or rich lists. The closest thing it holds is how much of all the wealth the top 1% own, country by country.',
+    ['what does the top 1% own?', 'which country is most unequal?']],
+  [/\bwealth tax\b|\btax(es)? (the rich|rates?|polic\w*|on wealth)\b|\btaxing\b|\btaxation\b|\bpolicy\b|\bpolicies\b|\bredistribut\w*\b/,
+    'The atlas describes how things are shared; it does not model taxes or what a policy would do. What it can show is how concentrated wealth is, and where it has moved.',
+    ['what does the top 1% own?', 'has inequality gone up since 2008?']],
+  [/\binflation\b|\bcost of living\b|\bprices? (of|for) (food|energy|petrol|gas)\b/,
+    'The atlas has no price or inflation series. Median pay is held in dollars that buy the same things everywhere, which is the nearest it comes.',
+    ['what does the average person earn?', 'what the middle lives on']],
+  [/\bengland\b|\bscotland\b|\bwales\b|\bnorthern ireland\b/,
+    'The figures here are for the United Kingdom as a whole. None of the sources split England, Scotland, Wales and Northern Ireland.',
+    ['how unequal is the UK?', 'what does the bottom half own in the UK?']],
+];
+// questions whose only answer in the atlas is the United States layer: said before it is shown
+const TO_OPP = [
+  [/\bsocial mobility\b|\bupward mobility\b|\bmobility\b|\bpoor kids\b|\bpoor children\b|\bgrow(ing)? up poor\b|\bborn poor\b|\bget out of poverty\b|\bclimb the ladder\b|\bcan (the )?poor\b.*\b(get rich|make it|climb)\b/,
+    'if you grow up poor here, what do you earn later?'],
+  [/\b(rich|poor|richer|poorer|richest|poorest|wealthy) (people|folk|families)?\s*(live|die)\b|\brich (vs|versus|and) poor\b.*\b(life|live|die|death)\w*\b|\b(life expectancy|live|die)\w*\b.*\brich (vs|versus|and) poor\b|\bpoor (people )?die younger\b|\bdo (the )?(poor|rich)\b.*\b(die|live)\b/,
+    'how much longer do the rich live here?'],
+];
+let noteNext = null;   // one line said with the next answer, about how the question was read
 function previewQuestion(q) {
   hideNotice();   // the last question's complaint is not about this one
-  if (curFacet === 'opportunity') { resetCell(); cell.raw = q; updateCell(); return true; }
+  noteNext = null;
+  const nq = norm(q);
+  const defining = /^(what is|what s|whats|what are|what does .* mean|define|explain|meaning of)\b/.test(nq);
+  if (defining) for (const [re, text, next] of GLOSSARY) if (re.test(nq)) {
+    showNotice(esc(text) + ' Try: ' + next.map(c => `<button type="button" class="opt-near" data-q="${esc(c)}">${esc(c)}</button>`).join(', ') + '.');
+    wireNear();
+    return false;
+  }
+  for (const [re, text, next] of NOT_HELD) if (re.test(nq)) {
+    showNotice(esc(text) + ' Try: ' + next.map(c => `<button type="button" class="opt-near" data-q="${esc(c)}">${esc(c)}</button>`).join(', ') + '.');
+    wireNear();
+    return false;
+  }
+  if (US_CZ) for (const [re, asks] of TO_OPP) if (re.test(nq)) {
+    if (curFacet !== 'opportunity') chooseFacet('opportunity');
+    resetCell(); cell.raw = asks; cell.asked = q; updateCell();
+    noteNext = '<em class="readas">Only the United States publishes this, county by county, so this answer is the US. ' +
+      'Read as: ' + esc(asks) + '</em>';
+    return true;
+  }
+  if (curFacet === 'opportunity') {
+    // the US layer reads its own questions. one it cannot read, that the country faces
+    // can, goes back to them rather than being answered with a US county chart
+    let here = null, there = { kind: 'unknown' };
+    try { here = US_CZ ? oppAnswer(q, true) : null; } catch (err) { here = null; }
+    try { there = parse(q); } catch (err) {}
+    const namesAbroad = (there.isos || []).some(i => i !== 'USA') || (there.iso && there.iso !== 'USA');
+    if ((here && !namesAbroad) || there.kind === 'unknown' || there.kind === 'pending') {
+      resetCell(); cell.raw = q; updateCell(); return true;
+    }
+    const mk = there.metric || there.x || (there.metrics && there.metrics[0]);
+    const face = (mk && META[mk] && META[mk].topic === 'income') ? 'income' : 'wealth';
+    chooseFacet(face);
+    noteNext = `<em class="readas">The opportunity layer covers US counties only, so this was read on the ${face} face.</em>`;
+  }
   let p;
   try { p = parse(q); } catch (e) { p = { kind: 'unknown' }; }
+  // "is it getting worse", "what about here": the country from the last answer, if the
+  // question points back at it and names no other
+  // only a question that would otherwise need a country: in "where is it worst" the it
+  // points at nothing, and the question is about everywhere
+  const wantsPlace = p.needsPlace || (VIEW_DEF[p.kind] && VIEW_DEF[p.kind].needsPlace) || p.kind === 'time' ||
+    (p.kind === 'delta_rank' && !/\bwhere\b|\bwhich\b|\bcountries\b|\bcountry\b|\bwho\b/.test(nq));
+  if (wantsPlace && ctx.lastIso && BY_ISO[ctx.lastIso] &&
+      /\b(here|there|it|its|same|this country|that country)\b/.test(nq) &&
+      !(p.iso || (p.isos && p.isos.length))) {
+    try { const p2 = parse(q + ' ' + BY_ISO[ctx.lastIso].name); if (p2.kind !== 'unknown') p = p2; } catch (e) {}
+  }
   if (p.kind === 'unknown' || p.kind === 'pending') {
     offerNearest(q, 'Could not read that.');
     return false;
   }
   resetCell();
+  // a typed question is a new question. the region, the richer-countries filter and the
+  // country from the last one used to stay on, so "south africa" left every later answer
+  // stuck in Africa. they carry over only when the question points back ("here", "it")
+  const pointsBack = /\b(here|there|it|its|same|this country|that country|them|they)\b/.test(norm(q));
+  const carried = pointsBack ? (ctx.lastIso || null) : null;
+  setScope(null);
+  ctx.lastIso = null;
   const mk = p.metric || p.x || (p.metrics && p.metrics[0]);
   if (mk && !RAW_KINDS.includes(p.kind)) adoptMetric(mk);
   const iso = p.iso || (p.isos && p.isos.length === 1 ? p.isos[0] : null);
   if (iso) cell.place = iso;
   else if (p.isos && p.isos.length > 1) cell.places = p.isos.slice(0, MAX_PLACES);
-  if (p.region) cell.scope = 'r:' + p.region;
-  if (p.pool) cell.scope = 'pool:' + (p.pool.dir === 'high' ? 'rich' : 'poor');
+  if (!cell.places.length && carried) { cell.place = carried; ctx.lastIso = carried; }
+  if (p.region) setScope('r:' + p.region);
+  if (p.pool) setScope('pool:' + (p.pool.dir === 'high' ? 'rich' : 'poor'));
   if (p.kind === 'time') { cell.span = 'run'; cell.since = p.year || null; cell.until = p.until || null; }
   else if (p.kind === 'point') { cell.span = 'moment'; cell.year = p.year || null; }
   else if (p.kind === 'correlate') cell.against = p.y || null;
   else if (p.kind === 'tiers') { cell.form = 'tiers'; cell.against = p.aspect || null; }
   else if (p.kind === 'break') { cell.form = 'break';
     cell.against = (p.metrics || []).find(m => META[m] && !isIneq(m)) || null; }
-  else if (p.kind === 'rank') cell.form = 'rank';
+  // which end a ranking starts from is part of the question: "most equal" was answered
+  // with the most unequal, because the cell kept the ranking and dropped its direction
+  else if (p.kind === 'rank') cell.form = p.dir === 'low' ? 'least' : 'rank';
   // a question about risers is a ranking of change, so it carries its years across:
   // dropping them turned "is inequality rising" into "who is highest", which is a
   // different question with a confident answer
-  else if (p.kind === 'delta_rank') { cell.form = 'rank'; cell.span = 'run'; cell.since = p.year || null; }
+  else if (p.kind === 'delta_rank') { cell.form = p.dir === 'down' ? 'least' : 'rank'; cell.span = 'run'; cell.since = p.year || null; }
   else if (p.kind === 'reach') cell.view = 'reach';
   else if (p.kind === 'houses') cell.view = 'houses';
   else if (p.kind === 'ratio') cell.view = 'ratio';
@@ -5185,6 +5483,13 @@ function previewQuestion(q) {
     if (p.year) { cell.span = 'run'; cell.since = p.year; cell.until = p.until || null; } }
   else if (p.kind === 'spread') cell.form = 'spread';
   else if (p.kind === 'lorenz') { cell.form = 'lorenz'; if (p.isos && p.isos[0]) cell.place = p.isos[0]; }
+  // a reading that belongs to one face turns the cube to it: what the bottom half owns
+  // was being shown with the income face up, which says the wrong thing about the figure
+  const wantFace = (cell.view && VIEW_FACE[cell.view]) || (cell.form === 'lorenz' ? 'wealth' : null);
+  if (wantFace && wantFace !== curFacet) {
+    const vf = wantFace;
+    paintFacet(vf); faceToFront(vf); settle(); updateChips();
+  }
   if (cell.against === facetIneqDefault()) cell.against = null;   // nothing is held against itself
   if (RAW_KINDS.includes(p.kind)) cell.raw = q;
   cell.asked = q;
@@ -5195,7 +5500,7 @@ function previewQuestion(q) {
 function cellNeedsPlace() {
   if (curFacet === 'opportunity' || cell.place) return false;
   // a reading that ranks or spreads across countries wants no place at all
-  const acrossCountries = ['rank', 'spread', 'tiers', 'break'].includes(cell.form);
+  const acrossCountries = ['rank', 'least', 'spread', 'tiers', 'break'].includes(cell.form);
   if (cell.view && !VIEW_DEF[cell.view].needsPlace) return false;
   if ((cell.view && VIEW_DEF[cell.view].needsPlace) || cell.form === 'lorenz') return true;
   if (acrossCountries) return false;
@@ -5204,6 +5509,14 @@ function cellNeedsPlace() {
   if (cell.asked && !cell.raw && !cell.form && !cell.view && !cell.against && !cell.span) return true;
   return false;
 }
+// a country chosen for a question that named none is said in the answer. without it
+// "what does the top 1% own" came back as Austria and nothing on screen said why
+function notePicked(iso) {
+  if (!cell.asked) return;
+  const nm = BY_ISO[iso] ? BY_ISO[iso].name : iso;
+  noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">No country was named, so this is ${esc(nm)}, ` +
+    'picked at random. Change it in the place fold, or ask again with a country in it.</em>';
+}
 function sendCell() {
   if (!DATA_READY) { showNotice('The figures are still loading. Ask again in a moment.'); return; }
   // A reading drawn for one country, asked without one, gets one chosen before anything
@@ -5211,7 +5524,7 @@ function sendCell() {
   // typing a question and pressing enter produced a line of grey text and no answer.
   if (!cell.place && cell.view && VIEW_DEF[cell.view] && VIEW_DEF[cell.view].needsPlace) {
     const picked = pickPlaceFor(cell.view);
-    if (picked) { cell.place = picked; notePlace(picked); updateCell(); }
+    if (picked) { cell.place = picked; notePlace(picked); updateCell(); notePicked(picked); }
   }
   // the drawer greys these out already, so reaching one here means it was set by a typed
   // question rather than by a click. same rules either way.
@@ -5228,7 +5541,7 @@ function sendCell() {
   // a ranking over a run of years is the biggest movers across countries, which is a
   // reading that wants no place at all: only a plain line needs somewhere to follow
   if (cell.span === 'run' && !cell.place && !ctx.region && !ctx.pool && !cell.view
-      && !['rank', 'spread', 'tiers', 'break'].includes(cell.form)) {
+      && !['rank', 'least', 'spread', 'tiers', 'break'].includes(cell.form)) {
     showNotice('Over the years needs somewhere to follow. Add a place, or a region.');
     const rib = document.getElementById('rib-place');
     if (rib && !rib.classList.contains('expanded')) toggleRib('place');
@@ -5243,6 +5556,7 @@ function sendCell() {
       cell.place = picked;
       notePlace(picked);
       updateCell();
+      notePicked(picked);
     } else {
       const m = META[facetIneqDefault()];
       showNotice(`Read that as a question about ${m ? esc(m.label) : 'this measure'}. Which country? ` +
@@ -5791,6 +6105,7 @@ function render() {
   session.hidden = false;
   // one cell, one answer: the current reading of it
   const last = chain[chain.length - 1];
+  if (noteNext) { last.text += ' ' + noteNext; noteNext = null; }
   const ansEl = document.getElementById('answer');
   ansEl.innerHTML = `<span class="t">${last.text}` +
     `${last.changed ? ' <span class="upd">updated</span>' : ''}</span>`;
@@ -5798,6 +6113,7 @@ function render() {
   drawChart();
   buildNext(last);   // and where this answer can be taken next
   updateCell();   // the cube stays on the facet you chose; only the cell coordinates move
+  syncUrl();
 }
 
 // each dimension of the atlas is a slot; the cube fills the facet, asking fills the rest
@@ -7763,6 +8079,7 @@ function resetAll() {
   resetCell(); resetCtx(); render();
   chooseFacet('wealth'); startIdle(); setStage('compose');
   if (onUS) flipTo('ask', true); else window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+  if (!restoring && location.hash) history.pushState(null, '', location.pathname);   // Back brings the answer back
 }
 
 function setHelp(open, filter) {
@@ -7921,10 +8238,12 @@ function boot() {
     const v = (el.value || '').trim();
     setHelp(false);
     const asked = (cell.asked || '').trim();
-    if (v && v !== asked) { runPrompt(v); sendCell(); return; }   // a new question, answered
-    if (stage === 'chain') { sendCell(); return; }                 // the same one, send it
-    runPrompt(v || el.placeholder.replace(/^\w+:\s*/, ''));
-    sendCell();
+    if (stage === 'chain' && (!v || v === asked)) { sendCell(); return; }   // the same one, send it
+    // a question that could not be read must not fall through to the answer already on
+    // screen: that answer is to a different question, and showing it again under this
+    // one is worse than showing nothing. the notice says what it could not read
+    if (runPrompt(v || el.placeholder.replace(/^\w+:\s*/, ''))) sendCell();
+    else if (stage !== 'compose') { stageFocus = false; setStage('compose'); stageFocus = true; revealAnswer('#notice'); }
   });
   // pull the cycling example into the box to complete it: Tab, or click the empty prompt
   const qEl = document.getElementById('q');
@@ -7998,12 +8317,16 @@ function boot() {
   const usEnter = document.getElementById('us-enter');
   if (usEnter) usEnter.addEventListener('click', () => flipTo('us'));
   document.getElementById('share').addEventListener('click', () => {
-    const url = location.origin + location.pathname +
-      (chain.length ? '#' + chain.map(f => encodeURIComponent(f.query)).join('|') : '');
-    navigator.clipboard && navigator.clipboard.writeText(url);
+    const h = urlState();
+    const url = location.origin + location.pathname + (h ? '#' + h : '');
     const b = document.getElementById('share');
-    const old = b.textContent; b.textContent = 'copied';
-    setTimeout(() => { b.textContent = old; }, 1200);
+    const said = t => { b.textContent = t; setTimeout(() => { b.textContent = 'copy link'; }, 1600); };
+    // without a clipboard (an http page, an old browser) the link is shown to copy by hand
+    const byHand = () => { said('copy it below');
+      showNotice(`Your browser would not let the page copy it. The link to this answer: <input class="linkout" readonly value="${esc(url)}" aria-label="link to this answer">`);
+      const i = document.querySelector('#notice .linkout'); if (i) { i.focus(); i.select(); } };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(() => said('copied'), byHand);
+    else byHand();
   });
   document.querySelectorAll('.goto-db').forEach(a =>
     a.addEventListener('click', e => { e.preventDefault(); setView('db'); }));
@@ -8014,6 +8337,14 @@ function boot() {
       else { tsort.key = th.dataset.k; tsort.dir = th.dataset.k === 'geo_name' ? 'asc' : 'desc'; }
       renderTable();
     }));
+  // Escape folds an open pleat back and returns focus to the head that opened it
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const open = document.querySelector('.rib.expanded');
+    if (!open) return;
+    closeDrawer();
+    const h = open.querySelector('.rib-head'); if (h) h.focus();
+  });
   document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement !== document.getElementById('q')
         && document.activeElement !== document.getElementById('tfilter')) {
@@ -8022,13 +8353,8 @@ function boot() {
   });
   renderTable();
   fillCoverage();
-  if (location.hash.length > 1) {
-    // a shared link replays its chain, then the URL goes clean so a reload starts blank
-    location.hash.slice(1).split('|').slice(0, 12)
-      .map(decodeURIComponent).forEach(q => { const f = runQuery(q); if (f) chain.push(f); });
-    history.replaceState(null, '', location.pathname);
-    if (chain.length) render();
-  }
+  // a link to an answer is read once the figures it needs have arrived
+  if (location.hash.length > 1) restoreFromUrl();
   // otherwise the terminal opens clean: the cube drifts, the prompt waits
 }
 
