@@ -667,6 +667,24 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .answer .t { flex: 1; color: var(--ink-2); }
 .answer .t strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .answer .t em { font-style: normal; color: var(--ink-3); }
+/* the facts first; the working one tap away */
+.answer .t .lead { margin: 0; }
+.answer .t .notes { margin: 8px 0 0; }
+.answer details.more { margin-top: 10px; font-size: .82em; line-height: 1.55; color: var(--ink-3); }
+.answer details.more summary { cursor: pointer; font: 500 12px var(--mono); letter-spacing: .02em; color: var(--ink-3);
+  list-style: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 0; min-height: 32px; }
+.answer details.more summary::-webkit-details-marker { display: none; }
+.answer details.more summary::before { content: '+'; display: inline-block; width: 1em; text-align: center; }
+.answer details.more[open] summary::before { content: '\2212'; }
+.answer details.more summary:hover { color: var(--ink); }
+.answer details.more .more-body { color: var(--ink-2); padding: 2px 0 4px; }
+.answer details.more .more-body em { color: var(--ink-3); }
+/* a term is a button that says what it means */
+.answer .term { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: help;
+  text-decoration: underline dotted; text-decoration-color: var(--ink-3); text-underline-offset: 3px; }
+.answer .term[aria-expanded="true"] { text-decoration-style: solid; text-decoration-color: var(--accent); }
+.answer .termdef { margin: 10px 0 0; padding: 8px 12px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2);
+  background: var(--surface); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; }
 /* how the question was read, when that is not obvious from the answer itself */
 .answer .t em.readas { display: block; margin-top: 10px; font-size: 13.5px; line-height: 1.5; }
 .notice .linkout { display: block; width: 100%; margin-top: 8px; font: 13px var(--mono); padding: 6px 8px;
@@ -5098,7 +5116,16 @@ function revealAnswer(sel) {
       return Math.max(24, Math.min(h + 16, window.innerHeight * 0.62));
     };
     const go = () => {
-      const box = el.getBoundingClientRect();
+      let box = el.getBoundingClientRect();
+      // a scroll far enough to condense the deck is measured against the condensed deck,
+      // so the answer is placed under the deck it will end up under
+      const deck = document.getElementById('deck');
+      if (deck && !deckCondensed && getComputedStyle(deck).position === 'sticky' &&
+          (window.scrollY + box.top - clear() > 90 || box.top > window.innerHeight * 0.55)) {
+        deckCondensed = true; deck.classList.add('condensed'); cubeScale = 0.36; cubeApply();
+        deckHoldUntil = Date.now() + 1400;
+        box = el.getBoundingClientRect();
+      }
       const top = clear();
       if (box.top >= top - 4 && box.top < window.innerHeight * 0.7) return;
       window.scrollTo({ top: Math.max(0, window.scrollY + box.top - top),
@@ -5267,7 +5294,7 @@ function cubeSnap() {
   // whichever face ended up nearest the viewer wins, from any tumbled orientation
   chooseFacet(facetFromAngles());
 }
-let deckCondensed = false;
+let deckCondensed = false, deckHoldUntil = 0;
 let stage = 'compose', stageFocus = true;   // compose -> chain -> result
 function setStage(next) {
   const from = stage;
@@ -5570,6 +5597,23 @@ function previewQuestion(typed) {
     wireNear();
     return false;
   }
+  // an opportunity question typed from another face: "does knowing better-off people
+  // help you climb" went to a ranking of wealth risers, because "climb" reads as rising.
+  // the words are held against the layer's own questions first
+  if (US_CZ && curFacet !== 'opportunity') {
+    const content = s => norm(s).split(' ').filter(w => w.length > 3 && !STOP.has(w));
+    const typedW = new Set(content(q));
+    for (const g of QUESTIONS) if (g.facet === 'opportunity') for (const oq of g.qs) {
+      const want = content(oq);
+      const got = want.filter(w => typedW.has(w)).length;
+      if (want.length >= 2 && got / want.length >= 0.7) {
+        chooseFacet('opportunity');
+        resetCell(); cell.raw = oq; cell.asked = typed; updateCell();
+        noteNext = (noteNext || '') + '<em class="readas">Only the United States publishes this, county by county, so this answer is the US.</em>';
+        return true;
+      }
+    }
+  }
   if (US_CZ) for (const [re, asks] of TO_OPP) if (re.test(nq)) {
     if (curFacet !== 'opportunity') chooseFacet('opportunity');
     resetCell(); cell.raw = asks; cell.asked = typed; updateCell();
@@ -5583,7 +5627,9 @@ function previewQuestion(typed) {
     let here = null, there = { kind: 'unknown' };
     try { here = US_CZ ? oppAnswer(q, true) : null; } catch (err) { here = null; }
     try { there = parse(q); } catch (err) {}
-    const namesAbroad = (there.isos || []).some(i => i !== 'USA') || (there.iso && there.iso !== 'USA');
+    // a question about countries, or the world, is not about US counties whatever it shares with one
+    const namesAbroad = (there.isos || []).some(i => i !== 'USA') || (there.iso && there.iso !== 'USA') ||
+      (/\bcountr(y|ies)\b|\bworld\b|\bnations?\b|\bglobal\b/.test(nq) && there.kind !== 'unknown');
     if ((here && !namesAbroad) || there.kind === 'unknown' || there.kind === 'pending') {
       resetCell(); cell.raw = q; cell.asked = typed; updateCell(); return true;
     }
@@ -5811,7 +5857,13 @@ function syncDeck() {
   const deck = document.getElementById('deck');
   const view = document.getElementById('view-ask');
   if (!deck || !view) return;
-  const want = view.classList.contains('engaged') && window.scrollY > 90;
+  // two thresholds, not one: shrinking the deck pulls the page up under the reader,
+  // which put the scroll back under 90, which grew the deck again, and it settled in
+  // whichever state came last, sometimes tall and over the first line of the answer
+  let want = view.classList.contains('engaged') && window.scrollY > (deckCondensed ? 30 : 90);
+  // while an answer is being scrolled into place the deck holds the size the scroll was
+  // measured against; growing it mid-scroll left the page where it started
+  if (deckCondensed && !want && view.classList.contains('engaged') && Date.now() < deckHoldUntil) want = true;
   if (want !== deckCondensed) {
     deckCondensed = want;
     deck.classList.toggle('condensed', want);
@@ -6311,6 +6363,71 @@ function drawOpp(f) {
   }
 }
 
+/* ── reading load ──────────────────────────────────────────────────────
+   Answers ran to a median of 54 words and one in ten past 90, and a quarter carried a
+   term nobody had explained. The facts stay on screen; the working (the grey part the
+   readings already mark in <em>) folds away under "more", one tap to open. The terms
+   become buttons that say what they mean, and a correlation says in words how strong
+   it is instead of leaving "r = 0.72" to do it. */
+const TERMS = {
+  gini: [/\bGini\b/, 'The Gini runs from 0, where everyone has the same, to 1, where one person has everything. Income Ginis in rich countries mostly sit between 0.25 and 0.40; wealth Ginis run much higher.'],
+  percentile: [/\bpercentile\b/, 'A percentile ranks everyone from poorest to richest out of 100. Someone at the 37th percentile has more than 36 people in every hundred and less than the other 63.'],
+  zone: [/\bcommuting zones?\b/, 'A commuting zone is a local job market: the group of US counties people travel between for work. The US splits into 741 of them.'],
+  wid: [/\bWID\b/, 'WID is the World Inequality Database. It builds income and wealth shares from tax records, household surveys and national accounts, the same way for every country.'],
+  ppp: [/\bpurchasing power\b/, 'Purchasing power dollars are adjusted so that one buys the same basket of goods in every country. It is what makes pay in Poland and pay in Norway comparable.'],
+  transfers: [/\bafter transfers\b/, 'After transfers means after the taxes people pay and the benefits they receive.'],
+  r: [/\br = /, 'r measures how closely two things move together across places, from 0 (no link) to 1 (move in lockstep). A negative r means more of one goes with less of the other. It says nothing about which causes which.'],
+};
+function linkWords(v) {
+  const a = Math.abs(v);
+  const s = a < 0.1 ? 'no real link' : a < 0.3 ? 'a weak link' : a < 0.5 ? 'a moderate link' : a < 0.7 ? 'a strong link' : 'a very strong link';
+  return v < -0.1 ? s + ', running the opposite way' : s;
+}
+function decorate(html) {
+  // put words to every correlation, then turn the first use of each term into a button
+  let out = html.replace(/\br = (-|\u2212)?(\d?\.\d+)/g, (m, sg, n) => `${m}, ${linkWords((sg ? -1 : 1) * parseFloat(n))}`);
+  for (const [k, [re]] of Object.entries(TERMS)) {
+    let done = false;
+    out = out.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, text) => {
+      if (tag || done) return m;
+      return text.replace(new RegExp(re.source, re.flags), w => { if (done) return w; done = true;
+        return `<button type="button" class="term" data-term="${k}">${w.trim()}</button>${w.endsWith(' ') ? ' ' : ''}`; });
+    });
+  }
+  return out;
+}
+// the facts before the first stretch of working, capped at about sixty words; the rest
+// under "more". the notes on how the question was read always stay in view
+function splitLead(html) {
+  const notes = [];
+  let body = html.replace(/\s*<em class="readas">[\s\S]*?<\/em>/g, m => { notes.push(m.trim()); return ''; });
+  let cut = -1, depth = 0, words = 0, inTag = false;
+  const ends = [];
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    if (c === '<') {
+      inTag = true;
+      if (body.startsWith('<em', i) && depth === 0 && i > 0) { cut = i; break; }
+      if (/^<(strong|em|span|button)\b/.test(body.slice(i, i + 8))) depth++;
+      if (/^<\/(strong|em|span|button)>/.test(body.slice(i, i + 10))) depth--;
+      continue;
+    }
+    if (c === '>') { inTag = false; continue; }
+    if (inTag) continue;
+    if (/\s/.test(c) && i && !/\s/.test(body[i - 1])) words++;
+    if (depth === 0 && '.?!'.includes(c) && /\s/.test(body[i + 1] || '') && /[A-Z<"0-9]/.test((body.slice(i + 1).trimStart()[0]) || '')) ends.push([i + 1, words]);
+  }
+  let lead = cut >= 0 ? body.slice(0, cut) : body, rest = cut >= 0 ? body.slice(cut) : '';
+  if (words > 60 || (cut < 0 && ends.length && ends[ends.length - 1][1] > 60)) {
+    const stop = ends.find(([at, w]) => w >= 30 && (cut < 0 || at <= cut));
+    if (stop) { lead = body.slice(0, stop[0]); rest = body.slice(stop[0]); }
+  }
+  // a tail of a few words is not worth a fold
+  if (rest.replace(/<[^>]*>/g, '').trim().split(/\s+/).length < 10) { lead = body; rest = ''; }
+  return { lead: lead.trim(), rest: rest.trim(), notes: notes.join(' ') };
+}
+let moreOpen = false;
+try { moreOpen = localStorage.getItem('oia-more') === '1'; } catch (err) {}
 function render() {
   const session = document.getElementById('session');
   const list = document.getElementById('facts');
@@ -6341,8 +6458,22 @@ function render() {
   const last = chain[chain.length - 1];
   if (noteNext) { last.text += ' ' + noteNext; noteNext = null; }
   const ansEl = document.getElementById('answer');
-  ansEl.innerHTML = `<span class="t">${last.text}` +
-    `${last.changed ? ' <span class="upd">updated</span>' : ''}</span>`;
+  const parts = splitLead(decorate(last.text));
+  ansEl.innerHTML = `<div class="t"><p class="lead">${parts.lead}` +
+    `${last.changed ? ' <span class="upd">updated</span>' : ''}</p>` +
+    (parts.notes ? `<p class="notes">${parts.notes}</p>` : '') +
+    (parts.rest ? `<details class="more"${moreOpen ? ' open' : ''}><summary>more, and how it is worked out</summary>` +
+      `<div class="more-body">${parts.rest}</div></details>` : '') +
+    `<p class="termdef" id="termdef" hidden></p></div>`;
+  const det = ansEl.querySelector('details.more');
+  if (det) det.addEventListener('toggle', () => { moreOpen = det.open; try { localStorage.setItem('oia-more', moreOpen ? '1' : '0'); } catch (err) {} });
+  ansEl.querySelectorAll('.term').forEach(b => b.addEventListener('click', () => {
+    const d = document.getElementById('termdef'); if (!d) return;
+    const same = !d.hidden && d.dataset.term === b.dataset.term;
+    d.hidden = same; d.dataset.term = b.dataset.term;
+    d.textContent = TERMS[b.dataset.term][1];
+    ansEl.querySelectorAll('.term').forEach(x => x.setAttribute('aria-expanded', !same && x === b ? 'true' : 'false'));
+  }));
   if (list) list.innerHTML = '';
   drawChart();
   buildNext(last);   // and where this answer can be taken next
