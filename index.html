@@ -389,9 +389,14 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
    the cube is large for the first two and rises out of the way for the third. */
 #view-ask.stage-compose .cell, #view-ask.stage-compose #session { display: none; }
 #view-ask:not(.stage-compose) .claim { display: none; }
-#view-ask.stage-chain .askbox, #view-ask.stage-chain .helpbtn,
-#view-ask.stage-chain .help, #view-ask.stage-chain #session { display: none; }
-#view-ask.stage-result .askbox, #view-ask.stage-result .helpbtn, #view-ask.stage-result .help { display: none; }
+/* The ask box stays on the page at every stage. It used to be removed once you had
+   asked anything, so typing a second question was impossible and the box appeared to
+   do nothing. It shrinks instead, and the placeholder says what enter will do. */
+#view-ask.stage-chain .helpbtn, #view-ask.stage-chain .help,
+#view-ask.stage-chain #session { display: none; }
+#view-ask.stage-result .helpbtn, #view-ask.stage-result .help { display: none; }
+#view-ask:not(.stage-compose) .askbox { max-width: 520px; margin-top: 14px; animation: none; }
+#view-ask:not(.stage-compose) .askbox input { font-size: 14px; padding: 9px 13px; }
 #view-ask.stage-result #send-chain { display: none; }
 /* the arrow: black, appears once there is something to send */
 .sendbtn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
@@ -4622,17 +4627,72 @@ function shuffled(a) {
   }
   return c;
 }
-// every catalogue question, carrying the face it belongs to
+// Every catalogue question, carrying the face it belongs to, ordered so that a face
+// with seven questions does not come up seven times as often as one with two. Pick a
+// face first and a question inside it second: the wealth face had grown to where three
+// rolls in five landed on it.
 function rollable() {
+  const byFace = new Map();
+  for (const g of QUESTIONS) {
+    const face = g.facet || 'any';
+    if (!byFace.has(face)) byFace.set(face, []);
+    for (const q of g.qs) byFace.get(face).push({ q, face: g.facet || null });
+  }
+  const faces = shuffled([...byFace.keys()]);
   const out = [];
-  for (const g of QUESTIONS) for (const q of g.qs) out.push({ q, face: g.facet || null });
+  // one question from each face in turn, then the next from each, and so on
+  const queues = faces.map(f => shuffled(byFace.get(f)));
+  for (let i = 0; queues.some(q => q.length); i++) {
+    for (const q of queues) if (q.length) out.push(q.shift());
+  }
   return out;
+}
+// A reading drawn for one country, asked without one, used to stop and ask. Typing a
+// question and getting nothing back reads as the box being broken, so it picks a
+// country the reading actually supports and shows it in the place pill, where it can
+// be changed. whyNot is the same rule the drawer greys options with, so a pick that
+// passes it cannot refuse later.
+const recentPlaces = [];
+function pickPlaceFor(shape) {
+  if (cell.place && !whyNot('form', shape) && !whyNot('place', cell.place)) return cell.place;
+  const fits = iso => {
+    const keep = cell.place;
+    cell.place = iso;
+    const bad = whyNot('form', shape) || whyNot('place', iso);
+    cell.place = keep;
+    return !bad;
+  };
+  if (ctx.lastIso && BY_ISO[ctx.lastIso] && fits(ctx.lastIso)) return ctx.lastIso;
+  const pool = placePool().map(p => p[1]);
+  // somewhere the reading covers, preferring the better-measured set and somewhere
+  // the last few answers have not already been about
+  const rt = richThird();
+  // Somewhere well measured first, then anywhere at all, then repeats. Trying the
+  // richer third twice before anywhere else made almost every answer European, since
+  // that is what the richer third mostly is.
+  const tiers = [
+    shuffled(pool.filter(i => rt.has(i) && !recentPlaces.includes(i))),
+    shuffled(pool.filter(i => !rt.has(i) && !recentPlaces.includes(i))),
+    shuffled(pool.filter(i => !recentPlaces.includes(i))),
+    shuffled(pool),
+  ];
+  for (const tier of tiers) for (const iso of tier) if (fits(iso)) return iso;
+  return null;
+}
+function notePlace(iso) {
+  if (!iso) return;
+  recentPlaces.unshift(iso);
+  if (recentPlaces.length > 8) recentPlaces.length = 8;
 }
 let lastRolled = null;
 function rollOnce() {
-  const picks = shuffled(rollable()).filter(x => x.q !== lastRolled);
+  const picks = rollable().filter(x => x.q !== lastRolled);   // already face-interleaved
   for (const pick of picks) {
-    const face = pick.face || (curFacet === 'opportunity' ? 'wealth' : curFacet);
+    // A question that belongs to no face used to be shown on whichever face happened to
+    // be up, so a wealth roll kept the cube on wealth and the next unfaceted question
+    // stayed there too. It gets a face of its own instead.
+    const OPEN = ['wealth', 'income'];
+    const face = pick.face || randomOf(OPEN);
     if (FACETS[face] && !FACETS[face].soon && face !== curFacet) { paintFacet(face); faceToFront(face); }
     hideNotice();
     chain.length = 0;
@@ -4647,21 +4707,48 @@ function rollOnce() {
     // whyNot is what already knows which those are
     const shape = cell.view || cell.form || '';
     if (cellNeedsPlace() || (cell.view && VIEW_DEF[cell.view] && VIEW_DEF[cell.view].oneOnly)) {
-      const pool = shuffled(placePool().map(p => p[1]));
-      let found = cell.place && !whyNot('form', shape) ? cell.place : null;
-      for (const iso of pool) {
-        if (found) break;
-        cell.place = iso;
-        if (!whyNot('form', shape) && !whyNot('place', iso)) found = iso;
-      }
+      const found = pickPlaceFor(shape);
       if (!found) continue;
       cell.place = found;
+      notePlace(found);
     }
     updateCell();
     sendCell();
     if (chain.length) { lastRolled = pick.q; return pick.q; }
   }
   return null;
+}
+// Bring the thing that just changed onto the screen. Without this an answer lands
+// below the fold on a laptop, the eye is still on the cube, and a roll or a new
+// question reads as nothing having happened.
+let revealT = null;
+function revealAnswer(sel) {
+  clearTimeout(revealT);
+  revealT = setTimeout(() => {
+    const el = document.querySelector(sel || '#answer');
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // The cube, the ask box and the accordion sit in a sticky deck at the top of the
+    // page. Scrolling the answer to a fixed offset put it underneath them, which looked
+    // exactly like no answer at all, so the deck's real height is measured each time.
+    const clear = () => {
+      const deck = document.getElementById('deck');
+      const h = deck ? deck.getBoundingClientRect().bottom : 0;
+      return Math.max(24, Math.min(h + 16, window.innerHeight * 0.62));
+    };
+    const go = () => {
+      const box = el.getBoundingClientRect();
+      const top = clear();
+      if (box.top >= top - 4 && box.top < window.innerHeight * 0.7) return;
+      window.scrollTo({ top: Math.max(0, window.scrollY + box.top - top),
+        behavior: smooth ? 'smooth' : 'auto' });
+    };
+    go();
+    // the cube shrinks once there is an answer, which pulls everything up under the
+    // scroll that just ran, so the position is taken again after it has settled
+    setTimeout(go, 520);
+  }, 140);
 }
 function shakeCube() {
   // one clean revolution that lands square on a face. no tumbling off into space.
@@ -4679,6 +4766,7 @@ function shakeCube() {
     if (!q) showNotice('Nothing came up. Roll again.');
     else { const el = document.getElementById('q'); if (el) el.value = q; }
     settle();
+    revealAnswer();
   }, 560);
 }
 function stepDim(dim, dir) {
@@ -4865,8 +4953,12 @@ function whyNot(dim, val) {
   if (dim === 'form') {
     const v = VIEW_DEF[val];
     if (v) {
-      if (v.needsPlace && !cell.place)
-        return `${cap(v.label)} is drawn for one country. Name a place first.`;
+      // No longer a refusal. A reading drawn for one country now has one chosen for it
+      // on send, and the pill says which, so greying the option here would have the
+      // drawer saying no to something the app then goes ahead and does.
+      if (v.needsPlace && !cell.place && !pickPlaceFor(val))
+        return `${cap(v.label)} is drawn for one country, and the atlas holds none that ` +
+          `carry it.`;
       if (val === 'houses') {
         const have = Object.keys(SERIES.house_price || {}).filter(i => BY_ISO[i]);
         if (!have.length) return 'No house price series is loaded.';
@@ -5114,6 +5206,13 @@ function cellNeedsPlace() {
 }
 function sendCell() {
   if (!DATA_READY) { showNotice('The figures are still loading. Ask again in a moment.'); return; }
+  // A reading drawn for one country, asked without one, gets one chosen before anything
+  // else looks at the cell. It used to fall through to the refusal below, which meant
+  // typing a question and pressing enter produced a line of grey text and no answer.
+  if (!cell.place && cell.view && VIEW_DEF[cell.view] && VIEW_DEF[cell.view].needsPlace) {
+    const picked = pickPlaceFor(cell.view);
+    if (picked) { cell.place = picked; notePlace(picked); updateCell(); }
+  }
   // the drawer greys these out already, so reaching one here means it was set by a typed
   // question rather than by a click. same rules either way.
   const stop = whyNot('form', cell.view || cell.form || '') ||
@@ -5138,18 +5237,27 @@ function sendCell() {
   if (cell.raw) { const q = cell.raw; ask(q); return; }
   if (cellNeedsPlace()) {
     // the old behaviour here was a silent world ranking. this says what it read and asks
-    const m = META[facetIneqDefault()];
-    showNotice(`Read that as a question about ${m ? esc(m.label) : 'this measure'}. Which country? ` +
-      `Pick one from the place fold, or ask for "the most concentrated" to read it across all of them.`);
-    const rib = document.getElementById('rib-place');
-    if (rib && !rib.classList.contains('expanded')) toggleRib('place');
-    return;
+    // choose one rather than stopping. the pill says which, and the fold is open.
+    const picked = pickPlaceFor(cell.view || cell.form || '');
+    if (picked) {
+      cell.place = picked;
+      notePlace(picked);
+      updateCell();
+    } else {
+      const m = META[facetIneqDefault()];
+      showNotice(`Read that as a question about ${m ? esc(m.label) : 'this measure'}. Which country? ` +
+        `Pick one from the place fold, or ask for "the most concentrated" to read it across all of them.`);
+      const rib = document.getElementById('rib-place');
+      if (rib && !rib.classList.contains('expanded')) toggleRib('place');
+      return;
+    }
   }
   hideNotice();
   runCell();
   // a reading that refused has already said why; do not paper over it with a shrug
-  if (chain.length) setStage('result');
+  if (chain.length) { setStage('result'); revealAnswer(); }
   else if (document.getElementById('notice').hidden) showNotice('Nothing to show for that yet.');
+  else revealAnswer('#notice');
 }
 function syncDeck() {
   const deck = document.getElementById('deck');
@@ -6594,7 +6702,7 @@ function drawChart() {
         marker: { size: 12, color: hlFill('wealth_top1'), line: { color: hlEdge(), width: 2 } },
         hovertemplate: '%{text}<br>earning gap %{x:.0f}x<br>owning gap %{y:.0f}x<extra></extra>' }] : []),
       Object.assign({}, BASE_LAYOUT, {
-      margin: { t: 16, r: 18, b: 48, l: 62 },
+      margin: { t: 16, r: 18, b: 48, l: 76 },
       // a country whose poorest half owes cannot be plotted here at all, and a reader
       // looking for it should be told that on the picture rather than only underneath it
       annotations: here ? [] : [{
@@ -6604,10 +6712,8 @@ function drawChart() {
         font: { size: 11, color: cssVar('--ink-2', '#555555') },
         bgcolor: cssVar('--card', '#ffffff'), borderpad: 4,
       }],
-      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, logMult(lo, hi,
-        'the gap in earning, times')),
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, logMult(lo, hi,
-        'the gap in owning, times')),
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, logMult(lo, hi, 'earning gap, times')),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, logMult(lo, hi, 'owning gap, times')),
     }), CFG);
     title.textContent = 'The gap in owning against the gap in earning, one dot per country';
     src.textContent =
@@ -7456,9 +7562,9 @@ function drawWhyGaps() {
       marker: { size: 11, color: hlFill('wealth_top1'), line: { color: hlEdge(), width: 2 } },
       hovertemplate: '%{text}<br>earning gap %{x:.0f}x<br>owning gap %{y:.0f}x<extra></extra>' },
   ], Object.assign({}, BASE_LAYOUT, {
-    margin: { t: 16, r: 18, b: 48, l: 64 },
-    xaxis: Object.assign({}, BASE_LAYOUT.xaxis, logMult(lo, hi, 'the gap in earning, times')),
-    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, logMult(lo, hi, 'the gap in owning, times')),
+    margin: { t: 16, r: 18, b: 48, l: 76 },
+    xaxis: Object.assign({}, BASE_LAYOUT.xaxis, logMult(lo, hi, 'earning gap, times')),
+    yaxis: Object.assign({}, BASE_LAYOUT.yaxis, logMult(lo, hi, 'owning gap, times')),
   }), CFG);
   const t = document.getElementById('why-gaps-title');
   if (t) t.textContent = 'The gap in owning against the gap in earning';
@@ -7805,13 +7911,20 @@ function boot() {
   });
   document.getElementById('helpbtn').addEventListener('click', () =>
     setHelp(document.getElementById('help').hidden));
+  // Enter always moves. The old rule was "at the chain stage, send" regardless of what
+  // was in the box, so editing the question there silently sent the previous one; and
+  // at the result stage the box was hidden altogether, which is why typing a second
+  // question appeared to do nothing at all.
   document.getElementById('ask-form').addEventListener('submit', e => {
     e.preventDefault();
     const el = document.getElementById('q');
-    const v = el.value.trim();
+    const v = (el.value || '').trim();
     setHelp(false);
-    if (stage === 'chain') { sendCell(); return; }      // a second enter sends it
-    runPrompt(v || el.placeholder);                      // the first reads it into the chain
+    const asked = (cell.asked || '').trim();
+    if (v && v !== asked) { runPrompt(v); sendCell(); return; }   // a new question, answered
+    if (stage === 'chain') { sendCell(); return; }                 // the same one, send it
+    runPrompt(v || el.placeholder.replace(/^\w+:\s*/, ''));
+    sendCell();
   });
   // pull the cycling example into the box to complete it: Tab, or click the empty prompt
   const qEl = document.getElementById('q');
