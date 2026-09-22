@@ -2301,7 +2301,7 @@ function parseCore(raw) {
   // reading built for exactly this. "worse" used to send it to the income risers
   if (/\bwealth\b/.test(r) && /\bincome\b|\bearn\w*\b|\bpay\b|\bwages?\b/.test(r) &&
       /\bworse\b|\bmore unequal\b|\bwider\b|\bbigger\b|\bgreater\b|\bhigher\b|\bthan\b|\bor\b/.test(r) && !/\bover time\b|\bsince\b|\bpulling apart\b|\bdiverg/.test(r))
-    return { kind: 'wmultiple', isos, iso: isos[0] || null };
+    return isos.length ? { kind: 'wmultiple', isos, iso: isos[0] } : { kind: 'owngap' };
   const afterYear = r.match(/\b(after|since|from|post|following)\s+((?:19|20)\d{2})\b/);
   const movingWords = /\bgetting (richer|poorer|worse|better|bigger|wider|more unequal)\b|\brising\b|\brisen\b|\bgone up\b|\bgoing up\b|\bgot worse\b|\bworse\b|\bincreas\w*\b|\bgrown\b|\bwiden\w*\b|\bchang(ed|ing)\b/;
   const fallingWords = /\bgetting better\b|\bfallen\b|\bfalling\b|\bgone down\b|\bgoing down\b|\bdecreas\w*\b|\bnarrow\w*\b|\bimprov\w*\b/;
@@ -3405,6 +3405,26 @@ function buildAnswer(p, q) {
       `negative because debts count.</em>`;
   }
 
+  // is owning more unequal than earning, asked of no country in particular: the claim the
+  // landing page makes, answered across every country where both can be worked out. it
+  // used to take one country at random and answer for that
+  else if (p.kind === 'owngap') {
+    const sw = multipleSweep();
+    if (!sw.both.length) return miss();
+    const rows = sw.both.map(x => ({ iso: x.iso, wm: x.wm, im: x.im, ratio: x.wm / x.im }))
+      .sort((a, b) => b.ratio - a.ratio);
+    const n = rows.length, wider = sw.wider, mid = rows[Math.floor(n / 2)];
+    f.mode = 'owngap'; f.owngap = { rows, set: setLabel(n) }; f.isos = [];
+    f.text = (wider === n ? `Yes, in every one of ${setLabel(n)} where both can be worked out` :
+        `In ${wider} of ${setLabel(n)} where both can be worked out`) +
+      `, the gap in what people own is wider than the gap in what they earn. In the country in the middle, ` +
+      `<strong>${esc(theName(mid.iso))}</strong>, one person in the top 1% owns <strong>${roughly(mid.wm)} times</strong> what one ` +
+      `person in the poorest half owns and earns <strong>${roughly(mid.im)} times</strong> as much.` +
+      (sw.owing.length ? ` <em>In ${sw.owing.length} more the poorest half owes more than it owns, so there is no multiple to give; ` +
+        `those are the far end of the same answer.</em>` : '') +
+      ` <em>Both come from WID shares per adult, a couple's holdings split equally between them, each divided by the share ` +
+      `of adults it covers so a block becomes one person. Name a country to read it there.</em>`;
+  }
   else if (p.kind === 'wmultiple') {
     // The same division done twice: what one person at the top owns against one at the
     // bottom, and what one earns against the other. The distance between those two
@@ -5579,7 +5599,7 @@ const OPP_READS = {
   mobility: 'climbing, 741 zones', life: 'life expectancy at 40, 595 zones',
   gap: 'credit, mortgages, arrears', scatter: '741 US commuting zones', place: 'climbing, friends, lifespan',
 };
-const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'among'];
+const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'among', 'owngap'];
 // a typed question that names a measure turns the cube to that measure's face, so the
 // answer is computed on what was asked and not on whichever face happened to be up
 function adoptMetric(m) {
@@ -7303,7 +7323,25 @@ function drawChart() {
   const title = document.getElementById('chart-title');
   const src = document.getElementById('chart-src');
 
+  el.style.height = '';   // only the owning-against-earning chart grows with its rows
   if (mode === 'opp') { drawOpp(drawable); return; }
+  if (mode === 'owngap') {
+    const og = drawable.owngap, rows = og.rows.slice().reverse();
+    const hex = metricColor('wealth_top1');
+    Plotly.react(el, [{ type: 'bar', orientation: 'h', y: rows.map(r => theName(r.iso)), x: rows.map(r => r.ratio),
+      marker: { color: shadesOf(hex, rows.length) }, text: rows.map(r => `${roughly(r.ratio)}x`), textposition: 'outside',
+      textfont: { size: 10, color: cssVar('--ink-2', '#555555') }, cliponaxis: false,
+      hovertemplate: '%{y}: owning %{x:.0f} times as unequal as earning<extra></extra>' }],
+      Object.assign({}, BASE_LAYOUT, { height: Math.max(318, 14 * rows.length + 60), margin: { t: 8, r: 56, b: 40, l: 140 },
+        xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { type: 'log', title: { text: 'how many times wider the owning gap is (log scale)', font: { size: 11 } } }),
+        yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category', tickfont: { size: 10 } }),
+        shapes: [{ type: 'line', x0: 1, x1: 1, y0: -0.5, y1: rows.length - 0.5, line: { color: cssVar('--ink-3', '#999'), width: 1, dash: 'dot' } }] }), CFG);
+    el.style.height = Math.max(318, 14 * rows.length + 60) + 'px';
+    title.textContent = `Owning against earning, ${og.set}`;
+    src.textContent = 'Each bar is how many times wider the gap between the top 1% and the poorest half is in wealth than in income. ' +
+      'The dotted line at 1 is where they would be equal; every bar is to the right of it. Source: WID, per adult, equal split.';
+    return;
+  }
 
   if (mode === 'bars') {
     const bar = chain.slice().reverse().find(f => f.mode === 'bars').bar;
