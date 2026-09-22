@@ -299,6 +299,14 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   .ask { padding-top: 40px; }
   .cubebox { margin: 52px auto 22px; }
 }
+/* On a phone the deck does not follow you down the page. Held at the top it was
+   460 to 675 pixels of an 844 pixel screen, and a tapped next step changed an answer
+   that was hidden under it half the time. The box is one scroll up. */
+@media (max-width: 720px) { #view-ask.engaged #deck.deck { position: static; box-shadow: none; }
+  #view-ask.engaged #deck.deck::after { display: none; }
+  /* the chart title was pinned below a deck that no longer stays, 460 pixels down the
+     screen, and sat over the top of every chart */
+  #view-ask.engaged #chart-title.chart-title { position: static; padding: 4px 0 6px; } }
 /* on a phone the cube is the picture, not the page: it gives up some air so the box shows */
 @media (max-width: 720px) { .cubebox { margin: 62px auto 20px; } .claim { font-size: 15px; } }
 @media (max-width: 440px) {
@@ -5083,7 +5091,10 @@ function revealAnswer(sel) {
     // exactly like no answer at all, so the deck's real height is measured each time.
     const clear = () => {
       const deck = document.getElementById('deck');
-      const h = deck ? deck.getBoundingClientRect().bottom : 0;
+      // on a phone the deck scrolls away with the page (it was two thirds of the screen
+      // when it stayed), so the answer goes to the top
+      if (!deck || getComputedStyle(deck).position !== 'sticky') return 12;
+      const h = deck.getBoundingClientRect().bottom;
       return Math.max(24, Math.min(h + 16, window.innerHeight * 0.62));
     };
     const go = () => {
@@ -5744,6 +5755,7 @@ function sendCell() {
     (cell.against ? whyNot('against', cell.against) : null);
   if (stop) {
     showNotice(stop);
+    revealAnswer('#notice');
     if (/name a place|which country/i.test(stop)) {
       const rib = document.getElementById('rib-place');
       if (rib && !rib.classList.contains('expanded')) toggleRib('place');
@@ -6685,6 +6697,9 @@ function buildNext(f) {
 }
 
 /* ── chart ─────────────────────────────────────────────────────────── */
+// Lines run straight between measured points. They were smoothed, and a smoothed curve
+// overshoots: it drew peaks between two years that no source ever reported, and on the
+// France chart the top 1% line ran off the top of the axis chasing one.
 const BASE_LAYOUT = {
   paper_bgcolor: 'rgba(0,0,0,0)',
   plot_bgcolor: 'rgba(0,0,0,0)',
@@ -6951,11 +6966,11 @@ function drawChart() {
     Plotly.react(el, [
       { type: 'scatter', mode: 'lines', name: 'of all wealth',
         x: dv.w.map(d => d.year), y: dv.w.map(d => d.v),
-        line: { color: metricColor('wealth_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        line: { color: metricColor('wealth_top1'), width: 2.8, shape: 'linear' },
         hovertemplate: 'the top 1% own %{y:.1%} of all wealth<extra></extra>' },
       { type: 'scatter', mode: 'lines', name: 'of all income',
         x: dv.i.map(d => d.year), y: dv.i.map(d => d.v),
-        line: { color: metricColor('income_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        line: { color: metricColor('income_top1'), width: 2.8, shape: 'linear' },
         hovertemplate: 'the top 1% take %{y:.1%} of all income<extra></extra>' },
     ], Object.assign({}, BASE_LAYOUT, {
       showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
@@ -7001,11 +7016,11 @@ function drawChart() {
         fillcolor: rc.houses ? 'rgba(42,120,214,0.13)' : 'rgba(47,158,143,0.15)', hoverinfo: 'skip' },
       { type: 'scatter', mode: 'lines', name: (rc.labels && rc.labels.top) || 'output per person',
         x: rc.gs.map(d => d.year), y: idx(rc.gs),
-        line: { color: metricColor(rc.houses ? 'house_price' : 'gdp_pc'), width: 2.6, shape: 'spline', smoothing: 0.6 } },
+        line: { color: metricColor(rc.houses ? 'house_price' : 'gdp_pc'), width: 2.6, shape: 'linear' } },
       { type: 'scatter', mode: rc.ms.length < 12 ? 'lines+markers' : 'lines', name: (rc.labels && rc.labels.mid) || 'the income in the middle',
         x: rc.ms.map(d => d.year), y: mi,
         // both sides are income, so both wear the income colour, a step apart
-        line: { color: shade(metricColor('median_income'), 0.42), width: 2.6, shape: 'spline', smoothing: 0.6 },
+        line: { color: shade(metricColor('median_income'), 0.42), width: 2.6, shape: 'linear' },
         marker: { size: 6 } },
     ], Object.assign({}, BASE_LAYOUT, {
       showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
@@ -7226,11 +7241,11 @@ function drawChart() {
     Plotly.react(el, [
       { type: 'scatter', mode: 'lines', name: 'the richest 1%',
         x: ow.t.map(d => d.year), y: ow.t.map(d => d.v),
-        line: { color: shade(metricColor('wealth_top1'), 0.30), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        line: { color: shade(metricColor('wealth_top1'), 0.30), width: 2.8, shape: 'linear' },
         hovertemplate: 'the richest 1% hold %{y:.1%}, %{x}<extra></extra>' },
       { type: 'scatter', mode: 'lines', name: 'the poorest half',
         x: ow.b.map(d => d.year), y: ow.b.map(d => d.v),
-        line: { color: shade(metricColor('wealth_top1'), -0.34), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        line: { color: shade(metricColor('wealth_top1'), -0.34), width: 2.8, shape: 'linear' },
         hovertemplate: 'the poorest half hold %{y:.1%}, %{x}<extra></extra>' },
     ], Object.assign({}, BASE_LAYOUT, {
       showlegend: true, legend: { orientation: 'h', y: 1.18, font: { size: 11 } },
@@ -7311,7 +7326,7 @@ function drawChart() {
     Plotly.react(el, [
       { type: 'scatter', mode: 'lines', showlegend: false,
         x: mu.pts.map(d => d.year), y: mu.pts.map(d => d.v),
-        line: { color: metricColor('income_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        line: { color: metricColor('income_top1'), width: 2.8, shape: 'linear' },
         hovertemplate: '%{y:.0f} times, %{x}<extra></extra>' },
       { type: 'scatter', mode: 'markers', showlegend: false,
         x: [mu.then.year, mu.last.year], y: [mu.then.v, mu.last.v],
@@ -7340,7 +7355,7 @@ function drawChart() {
     Plotly.react(el, [
       { type: 'scatter', mode: bk.pts.length < 30 ? 'lines+markers' : 'lines', showlegend: false,
         x: bk.pts.map(d => d.year), y: bk.pts.map(d => d.v),
-        line: { color: metricColor('median_income'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+        line: { color: metricColor('median_income'), width: 2.8, shape: 'linear' },
         marker: { size: 6 },
         hovertemplate: '$%{y:.2f} a day, %{x}<extra></extra>' },
     ], Object.assign({}, BASE_LAYOUT, {
@@ -7372,7 +7387,7 @@ function drawChart() {
     Plotly.react(el, band.map(([name, ser, key, tone]) => ({
       type: 'scatter', mode: 'lines', name,
       x: ser.map(d => d.year), y: ser.map(d => d.v),
-      line: { color: shade(metricColor(key), tone), width: 2.6, shape: 'spline', smoothing: 0.6 },
+      line: { color: shade(metricColor(key), tone), width: 2.6, shape: 'linear' },
       hovertemplate: name + ' take %{y:.1%} of all income, %{x}<extra></extra>',
     })).concat([
       // the two years the sentence quotes, marked on the middle, so the words and the
@@ -7465,7 +7480,7 @@ function drawChart() {
     Plotly.react(el, [
       { type: 'scatter', mode: 'lines+markers', showlegend: false,
         x: xs, y: ys, text: yrs.map(String),
-        line: { color: metricColor(pa.x), width: 2, shape: 'spline', smoothing: 0.5 },
+        line: { color: metricColor(pa.x), width: 2, shape: 'linear' },
         marker: { size: 5, color: metricColor(pa.x), opacity: 0.55 },
         hovertemplate: '%{text}<br>' + mx.label + ' %{x}<br>' + my.label + ' %{y}<extra></extra>' },
       { type: 'scatter', mode: 'markers+text', showlegend: false,
@@ -7500,11 +7515,11 @@ function drawChart() {
     Plotly.react(el, [
       { type: 'scatter', mode: 'lines', name: BY_ISO[tn.iso].name, showlegend: false,
         x: tn.ser.map(d => d.year), y: tn.ser.map(d => d.v),
-        line: { color: metricColor(tn.key), width: 2.4, shape: 'spline', smoothing: 0.6 },
+        line: { color: metricColor(tn.key), width: 2.4, shape: 'linear' },
         hovertemplate: BY_ISO[tn.iso].name + ': ' + m.hover + '<extra></extra>' },
       { type: 'scatter', mode: 'lines', name: 'the sharpest stretch', showlegend: false,
         x: inWin.map(d => d.year), y: inWin.map(d => d.v),
-        line: { color: hlFill(tn.key), width: 4, shape: 'spline', smoothing: 0.6 },
+        line: { color: hlFill(tn.key), width: 4, shape: 'linear' },
         hovertemplate: m.hover + '<extra></extra>' },
     ], Object.assign({}, BASE_LAYOUT, {
       // two staggered rows of event labels sit above the plot and need the room
@@ -7795,7 +7810,7 @@ function drawChart() {
       const py = [0, b50 * 100, (1 - t10) * 100, (1 - t1) * 100, 100];
       return {
         type: 'scatter', mode: 'lines', name: BY_ISO[iso].name,
-        x: px, y: py, line: { color: lzRamp[li], width: 2.2, shape: 'spline', smoothing: 0.6 },
+        x: px, y: py, line: { color: lzRamp[li], width: 2.2, shape: 'linear' },
         hovertemplate: BY_ISO[iso].name + ': bottom %{x:.0f}% hold %{y:.1f}%<extra></extra>',
       };
     });
@@ -7835,7 +7850,7 @@ function drawChart() {
         x: s.map(d => d.year), y: s.map(d => d.v),
         line: { color: isoSet.length === 1 ? metricColor(metric)
           : shadesOf(metricColor(metric), isoSet.length)[isoSet.indexOf(iso)], width: 2.2,
-          shape: 'spline', smoothing: 0.6 },
+          shape: 'linear' },
         marker: { size: 5 },
         hovertemplate: BY_ISO[iso].name + ': ' + m.hover + '<extra></extra>',
       });
@@ -7868,7 +7883,7 @@ function drawChart() {
       if (at) traces.push({
         type: 'scatter', mode: 'markers', showlegend: false,
         x: [at.year], y: [at.v],
-        marker: { color: assignColor(mk.iso), size: 9, line: { color: '#ffffff', width: 2 , shape: 'spline', smoothing: 0.6 } },
+        marker: { color: assignColor(mk.iso), size: 9, line: { color: '#ffffff', width: 2 , shape: 'linear' } },
         hovertemplate: `${BY_ISO[mk.iso].name}, ${at.year}: ` + m.hover + '<extra></extra>',
       });
     }
@@ -8073,7 +8088,7 @@ function drawWhyOwn() {
     lo = Math.min(lo, ser[0].year); hi = Math.max(hi, ser[ser.length - 1].year);
     return { type: 'scatter', mode: 'lines', name: BY_ISO[iso].name,
       x: ser.map(d => d.year), y: ser.map(d => d.v),
-      line: { color: ramp[k], width: 2.6, shape: 'spline', smoothing: 0.6 },
+      line: { color: ramp[k], width: 2.6, shape: 'linear' },
       hovertemplate: BY_ISO[iso].name + ': the bottom half own %{y:.1%}<extra></extra>' };
   });
   Plotly.react(el, traces, Object.assign({}, BASE_LAYOUT, {
@@ -8256,11 +8271,11 @@ function drawWhyHouse() {
   Plotly.react(el, [
     { type: 'scatter', mode: 'lines', name: 'the price of a house',
       x: Hs.map(d => d.year), y: Hs.map(d => d.v / hBase * 100),
-      line: { color: metricColor('wealth_top1'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+      line: { color: metricColor('wealth_top1'), width: 2.8, shape: 'linear' },
       hovertemplate: 'houses %{y:.0f} (' + base + ' = 100)<extra></extra>' },
     { type: 'scatter', mode: Is.length < 14 ? 'lines+markers' : 'lines', name: 'what people earn',
       x: Is.map(d => d.year), y: Is.map(d => d.v / iBase * 100),
-      line: { color: metricColor('median_income'), width: 2.8, shape: 'spline', smoothing: 0.6 },
+      line: { color: metricColor('median_income'), width: 2.8, shape: 'linear' },
       marker: { size: 5 },
       hovertemplate: 'income %{y:.0f} (' + base + ' = 100)<extra></extra>' },
   ], Object.assign({}, BASE_LAYOUT, {
