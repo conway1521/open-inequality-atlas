@@ -410,11 +410,15 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* The ask box stays on the page at every stage. It used to be removed once you had
    asked anything, so typing a second question was impossible and the box appeared to
    do nothing. It shrinks instead, and the placeholder says what enter will do. */
-#view-ask.stage-chain .helpbtn, #view-ask.stage-chain .help,
 #view-ask.stage-chain #session { display: none; }
-#view-ask.stage-result .helpbtn, #view-ask.stage-result .help { display: none; }
+/* the catalogue stays reachable once there is an answer: in the usability runs two
+   picks in three came after the first answer and landed on a list that was hidden.
+   Past the first question it opens over the page instead of pushing the answer down. */
+#view-ask:not(.stage-compose) .helpbtn { margin-top: 6px; font-size: 10.5px; }
+#view-ask:not(.stage-compose) .help { position: absolute; z-index: 40; left: 50%; transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px)); margin-top: 4px; }
 #view-ask:not(.stage-compose) .askbox { max-width: 520px; margin-top: 14px; animation: none; }
-#view-ask:not(.stage-compose) .askbox input { font-size: 14px; padding: 9px 13px; }
+#view-ask:not(.stage-compose) .askbox input { font-size: 14px; padding: 9px 84px 9px 34px; }   /* room for the arrows and the hint */
 #view-ask.stage-result #send-chain { display: none; }
 /* the arrow: black, appears once there is something to send */
 .sendbtn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
@@ -2068,6 +2072,12 @@ function detectMetrics(r) {
   // bare "income"/"wealth" only if no more specific income/wealth metric already matched
   // pay, wages and earnings are what a person takes home, which is the median. "income"
   // on its own is ambiguous and keeps the face's inequality measure
+  // "top 1% income share" is the top 1% of income, not of wealth. the top 1% words claim
+  // wealth by default, so income named alongside them, with no wealth word, takes it back
+  if (found.includes('wealth_top1') && /\bincome\b|\bearn\w*\b|\bpay\b|\bwages?\b/.test(r) &&
+      !/\bwealth\w*\b|\bowns?\b|\bassets?\b|\bnet worth\b|\bconcentration\b/.test(r)) {
+    found.splice(found.indexOf('wealth_top1'), 1, 'income_top1');
+  }
   if (!found.some(k => META[k].topic === 'income') && /\bwages?\b|\bearn\w*\b|\bpaid\b|\bsalar\w*\b|\bpay\b/.test(r)) found.push('median_income');
   if (!found.some(k => META[k].topic === 'income') && /\bincome\b/.test(r)) found.push('income_gini');
   if (!found.some(k => k === 'wealth_gini' || k === 'wealth_top1' || k === 'wealth_bottom50') && /\bwealth\b/.test(r)) found.push('wealth_top1');
@@ -2216,6 +2226,14 @@ function parse(raw) {
   if (metrics.includes('life_exp') && (metrics.includes('wealth_top1') || /\brich\b/.test(r)) && !isos.length)
     return { kind: 'correlate', x: 'wealth_top1', y: 'life_exp', region };
   // a year with "after" or "since" in front of it is a run of years from there
+  // "1980 vs now", "1990 compared to today": a run from that year, not the one year
+  const thenNow = r.match(/\b((?:19|20)\d{2})\s*(?:vs\.?|versus|to|and|compared (?:to|with)|against)\s*(?:now|today|the latest|latest|present)\b/);
+  if (thenNow) return { kind: 'time', isos, year: +thenNow[1], region, metric };
+  // is wealth worse than income: the owning gap against the earning gap, which is the
+  // reading built for exactly this. "worse" used to send it to the income risers
+  if (/\bwealth\b/.test(r) && /\bincome\b|\bearn\w*\b|\bpay\b|\bwages?\b/.test(r) &&
+      /\bworse\b|\bmore unequal\b|\bwider\b|\bbigger\b|\bgreater\b|\bhigher\b|\bthan\b|\bor\b/.test(r) && !/\bover time\b|\bsince\b|\bpulling apart\b|\bdiverg/.test(r))
+    return { kind: 'wmultiple', isos, iso: isos[0] || null };
   const afterYear = r.match(/\b(after|since|from|post|following)\s+((?:19|20)\d{2})\b/);
   const movingWords = /\bgetting (richer|poorer|worse|better|bigger|wider|more unequal)\b|\brising\b|\brisen\b|\bgone up\b|\bgoing up\b|\bgot worse\b|\bworse\b|\bincreas\w*\b|\bgrown\b|\bwiden\w*\b|\bchang(ed|ing)\b/;
   const fallingWords = /\bgetting better\b|\bfallen\b|\bfalling\b|\bgone down\b|\bgoing down\b|\bdecreas\w*\b|\bnarrow\w*\b|\bimprov\w*\b/;
@@ -3531,9 +3549,19 @@ function buildAnswer(p, q) {
       .sort((a, b) => a.v - b.v);
     if (!rows.length) return miss();
     const iso = p.iso || ctx.lastIso || null;
-    const hit = iso ? rows.find(x => x.geo_id === iso) : null;
+    let hit = iso ? rows.find(x => x.geo_id === iso) : null;
     const owe = iso ? owing.find(x => x.geo_id === iso) : null;
     const med = rows[Math.floor(rows.length / 2)];
+    // a country outside the set the ranking runs on was dropped without a word: China in
+    // the place fold, and an answer about the United States and Estonia. it is read on
+    // its own now and the sentence says it sits outside the set
+    let outside = null, noFigure = false;
+    if (iso && !hit && !owe) {
+      const r = LATEST.find(x => x.geo_id === iso);
+      if (r && r.top10_wealth_share != null && r.bottom50_wealth_share != null && r.bottom50_wealth_share > 0.0005)
+        outside = { geo_id: iso, val: r.top10_wealth_share / r.bottom50_wealth_share, year: r.year };
+      else noFigure = true;
+    }
     f.mode = 'ratio';
     f.ratio = { rows, owing, highlight: hit ? hit.geo_id : owe ? owe.geo_id : null,
       inRanking: !!hit };
@@ -3560,8 +3588,16 @@ function buildAnswer(p, q) {
       f.text = `In <strong>${esc(theName(hit.geo_id))}</strong> the richest tenth hold ` +
         `<strong>${hit.val.toFixed(1)} times</strong> what the poorest half hold (${hit.year}). ` +
         `Across ${set} the middle of the pack is ${med.val.toFixed(1)} times.` + tail;
+    } else if (outside) {
+      ctx.lastIso = iso; f.isos = [iso];
+      f.text = `In <strong>${esc(theName(iso))}</strong> the richest tenth hold <strong>${outside.val.toFixed(1)} times</strong> ` +
+        `what the poorest half hold (${outside.year}). It sits outside ${set}, the set this reading ranks by default, where ` +
+        `the middle of the pack is ${med.val.toFixed(1)} times and the widest gap is ${rows[0].val.toFixed(1)} times, in ` +
+        `${esc(theName(rows[0].geo_id))}.`;
     } else {
-      f.text = `The richest tenth hold <strong>${rows[0].val.toFixed(1)} times</strong> what the poorest half hold in ` +
+      f.text = (noFigure ? `There is no top tenth and bottom half split of wealth for <strong>${esc(theName(iso))}</strong> here, ` +
+        'so this is the ranking without it. ' : '') +
+        `The richest tenth hold <strong>${rows[0].val.toFixed(1)} times</strong> what the poorest half hold in ` +
         `${esc(theName(rows[0].geo_id))}, ${rows[1].val.toFixed(1)} times in ${esc(theName(rows[1].geo_id))}. ` +
         `Across ${set} the middle of the pack is <strong>${med.val.toFixed(1)} times</strong>.` + tail;
     }
@@ -3799,7 +3835,7 @@ function buildAnswer(p, q) {
     ctx.metric = 'wealth_top1'; ctx.lastIso = iso; f.isos = [iso];
     f.mode = 'divergence'; f.diverge = { iso, w, i, lo, both };
     const pp = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(1);
-    f.text = `In <strong>${esc(BY_ISO[iso].name)}</strong>, the top 1% took ` +
+    f.text = `In <strong>${esc(theName(iso))}</strong>, the top 1% took ` +
       `<strong>${pc(i[0].v)}</strong> of national income in ${lo} and held ` +
       `<strong>${pc(w[0].v)}</strong> of national wealth. By ${both} that was ` +
       `<strong>${pc(at(i, both))}</strong> and <strong>${pc(at(w, both))}</strong>: ` +
@@ -4191,12 +4227,13 @@ function buildAnswer(p, q) {
     if (!isos.length) { showNotice('Ask about a country first, then "over time".'); return null; }
     f.isos = isos.slice(0, 8); ctx.lastIso = f.isos[f.isos.length - 1];
     f.fromYear = p.year || null; f.toYear = p.until || null; f.metricUsed = key;
-    const short = [];
+    const short = [], lateStart = [];
     const bits = f.isos.slice(0, 3).map(iso => {
       const whole = seriesOf(key, iso); if (!whole.length) return null;
       const s = clip(whole);
       if (s.length < 2) { short.push(BY_ISO[iso].name); return null; }
       const from = s[0], to = s[s.length - 1];
+      if (p.year && from.year > p.year + 1) lateStart.push([iso, from.year]);
       const d = to.v - from.v;
       return `${esc(BY_ISO[iso].name)} ${d >= 0 ? '+' : '-'}<strong>${m.fmtD(Math.abs(d))}</strong> ` +
         `from ${from.year} to ${to.year}`;
@@ -4214,7 +4251,10 @@ function buildAnswer(p, q) {
       (extra > 0 ? ` <em>${extra} more ${extra === 1 ? 'country is' : 'countries are'} drawn.</em>` : '') +
       (short.length ? ` <em>${esc(short.join(', '))} ${short.length === 1 ? 'has' : 'have'} ` +
         `fewer than two points inside those years, so ${short.length === 1 ? 'it is' : 'they are'} ` +
-        `not summarised.</em>` : '');
+        `not summarised.</em>` : '') +
+      // "since 1980" answered from 1990 without a word, and read as a claim about 1980
+      (lateStart.length ? ` <em>You asked from ${p.year}; the record here starts in ${lateStart.map(([i, y]) =>
+        `${y}${f.isos.length > 1 ? ' for ' + esc(theName(i)) : ''}`).join(', ')}, so that is where this begins.</em>` : '');
   }
 
   else if (p.kind === 'point') {
@@ -4447,15 +4487,11 @@ const QUESTIONS = [
   // The wealth face: what half a country holds, and what one person at the top holds
   // against one at the bottom, set beside the same division done on pay. That second one
   // is the atlas's own argument, computed live rather than asserted.
-  { k: '', facet: 'wealth', qs: [
+  { k: 'the wealth face', facet: 'wealth', qs: [
     'how many times more does one person at the top own?',
     'what is that wealth actually made of?',
     'how many people own less than nothing?',
     'could you take a hit here?',
-    'what does a family actually have?',
-    'how many people own less than nothing?',
-    'could you take a hit here?',
-    'what does a family actually have?',
     'what does a family actually have?',
     'what does the poorest half own?',
     'how much more do the richest hold than the poorest?',
@@ -4465,13 +4501,13 @@ const QUESTIONS = [
   // The income face asks what a share means for a person rather than for a block: what
   // one of them takes against one of the others, what the money buys, and which of the
   // three parts of the country the movement came out of.
-  { k: '', facet: 'income', qs: [
+  { k: 'the income face', facet: 'income', qs: [
     'how many times more does one person at the top earn?',
     'what does the person in the middle live on a day?',
     'what happened to the middle here?',
     'did the growth reach the typical person?',
   ] },
-  { k: '', facet: 'opportunity', qs: [
+  { k: 'opportunity, US counties only', facet: 'opportunity', qs: [
     'do the four faces agree inside one country?',
     'if you grow up poor here, what do you earn later?',
     'does knowing better-off people help you climb?',
@@ -5501,7 +5537,7 @@ const NOT_HELD = [
 const TO_OPP = [
   [/\bsocial mobility\b|\bupward mobility\b|\bmobility\b|\bpoor kids\b|\bpoor children\b|\bgrow(ing)? up poor\b|\bborn poor\b|\bget out of poverty\b|\bclimb the ladder\b|\bcan (the )?poor\b.*\b(get rich|make it|climb)\b/,
     'if you grow up poor here, what do you earn later?'],
-  [/\b(rich|poor|richer|poorer|richest|poorest|wealthy) (people|folk|families)?\s*(live|die)\b|\brich (vs|versus|and) poor\b.*\b(life|live|die|death)\w*\b|\b(life expectancy|live|die)\w*\b.*\brich (vs|versus|and) poor\b|\bpoor (people )?die younger\b|\bdo (the )?(poor|rich)\b.*\b(die|live)\b/,
+  [/\blife expectancy gap\b|\bgap in life expectancy\b|\blongevity gap\b|\bhow much longer\b.*\blive\b|\b(rich|poor|richer|poorer|richest|poorest|wealthy) (people|folk|families)?\s*(live|die)\b|\brich (vs|versus|and) poor\b.*\b(life|live|die|death)\w*\b|\b(life expectancy|live|die)\w*\b.*\brich (vs|versus|and) poor\b|\bpoor (people )?die younger\b|\bdo (the )?(poor|rich)\b.*\b(die|live)\b/,
     'how much longer do the rich live here?'],
 ];
 let noteNext = null;   // one line said with the next answer, about how the question was read
@@ -5551,16 +5587,20 @@ function previewQuestion(typed) {
   // question points back at it and names no other
   // only a question that would otherwise need a country: in "where is it worst" the it
   // points at nothing, and the question is about everywhere
-  const wantsPlace = p.needsPlace || (VIEW_DEF[p.kind] && VIEW_DEF[p.kind].needsPlace) || p.kind === 'time' ||
+  const wantsPlace = p.needsPlace || (VIEW_DEF[p.kind] && VIEW_DEF[p.kind].needsPlace) || p.kind === 'time' || p.kind === 'divergence' ||
     (p.kind === 'delta_rank' && !/\bwhere\b|\bwhich\b|\bcountries\b|\bcountry\b|\bwho\b/.test(nq));
   // and only when the last answer was about one country: after a ranking, "this
   // country" is not whichever came top of it
+  let qRead = q;   // the words the answer is built from, with any country pointed back to
   const lastWasOnePlace = chain.length > 0 && SINGLE_PLACE.includes(chain[chain.length - 1].kind);
   if (wantsPlace && lastWasOnePlace && ctx.lastIso && BY_ISO[ctx.lastIso] &&
       /\b(here|there|it|its|same|this country|that country)\b/.test(nq) &&
-      !(p.iso || (p.isos && p.isos.length))) {
-    try { const p2 = parse(q + ' ' + BY_ISO[ctx.lastIso].name); if (p2.kind !== 'unknown') p = p2; } catch (e) {}
+      !findCountries(q).isos.length) {   // the words name none (the parser may have borrowed one)
+    try { const q2 = q + ' ' + BY_ISO[ctx.lastIso].name; const p2 = parse(q2); if (p2.kind !== 'unknown') { p = p2; qRead = q2; } } catch (e) {}
   }
+  if (p.kind === 'divergence' && !findCountries(q).isos.length && !(lastWasOnePlace && /\b(here|there|it|its|same|this country|that country)\b/.test(nq)))
+    noteNext = (noteNext ? noteNext + ' ' : '') + '<em class="readas">No country was named, so this is the United States, ' +
+      'which has the longest run of both records. Name a country to read it there.</em>';
   if (p.kind === 'unknown' || p.kind === 'pending') {
     offerNearest(q, 'Could not read that.');
     return false;
@@ -5643,7 +5683,7 @@ function previewQuestion(typed) {
   // a ranking by a measure the face does not carry (the poorest country, the happiest)
   // is read from the words: the cell would put the face's own measure in its place
   const faceHas = m => Object.values(FACET_MEASURES).some(l => l.some(x => x[0] === m));
-  if (RAW_KINDS.includes(p.kind) || (p.kind === 'rank' && p.metric && !faceHas(p.metric))) cell.raw = q;
+  if (RAW_KINDS.includes(p.kind) || (p.kind === 'rank' && p.metric && !faceHas(p.metric))) cell.raw = qRead;
   cell.asked = typed;
   updateCell();
   return true;
@@ -6424,6 +6464,36 @@ function stepRuns(step, here) {
   if (!BY_ISO[iso]) return false;
   return need.every(k => seriesOf(k, iso).length >= 2);
 }
+// Would this step answer if pressed? The usability runs had 17 of 98 offered steps
+// refuse: "how many people own less than nothing?" under a US answer, "what is that
+// wealth made of?" under a French one, "who breaks the pattern?" with nothing to break.
+// Each step is read the way pressing it would read it and put to the same rules the
+// folds grey out by, against the country it would run on. Only steps that pass are shown.
+function stepAnswers(step, here) {
+  if (step.face === 'opportunity') {
+    try { return !!(US_CZ && oppAnswer(step.q, true)); } catch (err) { return false; }
+  }
+  let p;
+  try { p = parse(spellFix(step.q).text); } catch (err) { return false; }
+  if (!p || p.kind === 'unknown' || p.kind === 'pending') return false;
+  const iso = step.iso || here;
+  const shape = VIEW_DEF[p.kind] ? p.kind
+    : ({ rank: 'rank', delta_rank: 'rank', spread: 'spread', lorenz: 'lorenz', tiers: 'tiers', break: 'break' })[p.kind] || '';
+  if (!shape) return true;
+  const saved = { places: cell.places.slice(), against: cell.against, face: curFacet };
+  try {
+    if (curFacet === 'opportunity') curFacet = VIEW_FACE[shape] || 'wealth';   // where pressing it will turn
+    cell.places = iso ? [iso] : [];
+    cell.against = p.kind === 'break' ? ((p.metrics || []).find(m => META[m] && !isIneq(m)) || null)
+      : p.kind === 'tiers' ? (p.aspect || null) : null;
+    if (whyNot('form', shape)) return false;
+    // the sharpest years and the peers read the face's own measure, so that is the one
+    // that has to have a record here (Hong Kong has wealth but no income series)
+    if ((shape === 'turn' || shape === 'peers') && iso) return seriesOf(facetIneqDefault(), iso).length >= 6;
+    return true;
+  } catch (err) { return false; }
+  finally { cell.places = saved.places; cell.against = saved.against; curFacet = saved.face; }
+}
 // the steps that follow from one answer, at most three, each already checked
 function nextSteps(f) {
   const here = (f.isos && f.isos.length === 1) ? f.isos[0] : (cell.place || null);
@@ -6438,7 +6508,7 @@ function nextSteps(f) {
     if (out.some(s => s.q === q && s.iso === (iso || null))) return;
     const step = { q, face: face || null, iso: iso || null,
       where: where || (STEP_NEEDS[q] && STEP_NEEDS[q].length ? implied : null) };
-    if (stepRuns(step, here)) out.push(step);
+    if (stepRuns(step, here) && stepAnswers(step, here)) out.push(step);
   };
   const m = f.mode, o = f.opp && f.opp.kind;
 
@@ -6604,7 +6674,8 @@ function buildNext(f) {
       ? chain[chain.length - 1].isos[0] : cell.place);
     hideNotice();
     if (s.face && s.face !== curFacet) { chooseFacet(s.face); faceToFront(s.face); settle(); }
-    if (s.face === 'opportunity') { ask(s.q); return; }
+    else if (!s.face && curFacet === 'opportunity') { chooseFacet('wealth'); faceToFront('wealth'); settle(); }
+    if (s.face === 'opportunity') { ask(s.q); revealAnswer(); return; }
     setStage('compose'); resetCell(); chain.length = 0;
     if (!previewQuestion(s.q)) return;
     if (keep) cell.place = keep;
@@ -8272,9 +8343,12 @@ function setHelp(open, filter) {
     const groups = QUESTIONS.slice().sort((a, b) =>
       (b.facet === curFacet ? 1 : 0) - (a.facet === curFacet ? 1 : 0));
     let html = '', hits = 0;
+    const listed = new Set();   // several groups share a question; the list shows it once
     for (const g of groups) {
-      const list = f ? g.qs.filter(q => norm(q).includes(f)) : g.qs;
+      const list = (f ? g.qs.filter(q => norm(q).includes(f)) : g.qs).filter(q => !listed.has(q));
+      if (list.length && g.k) html += `<div class="help-g-k" role="presentation">${esc(g.k)}</div>`;
       for (const q of list) {
+        listed.add(q);
         hits++;
         html += `<button type="button" class="q-item" role="option" aria-selected="false"` +
           `${g.facet ? ` data-facet="${esc(g.facet)}"` : ''}>${esc(q)}</button>`;
@@ -8288,7 +8362,10 @@ function setHelp(open, filter) {
         setHelp(false);
         const want = b.dataset.facet;                    // a question belonging to another face turns to it first
         if (want && want !== curFacet) chooseFacet(want);
-        runPrompt(b.textContent);
+        else if (!want && curFacet === 'opportunity') chooseFacet('wealth');
+        // one click answers. it used to fill the strip and wait for "show me", which read
+        // as the list not working; the strip is still there to change afterwards
+        if (runPrompt(b.textContent)) sendCell();
       });
     });
   }
@@ -8459,7 +8536,11 @@ function boot() {
     }
     if (e.key === 'Enter') {
       const sel = items.find(b => b.getAttribute('aria-selected') === 'true');
-      if (sel) { e.preventDefault(); setHelp(false); runPrompt(sel.textContent); }
+      if (sel) { e.preventDefault(); setHelp(false);
+        const want = sel.dataset.facet;
+        if (want && want !== curFacet) chooseFacet(want);
+        else if (!want && curFacet === 'opportunity') chooseFacet('wealth');
+        if (runPrompt(sel.textContent)) sendCell(); }
     }
   });
   // the on-screen steppers do the same as the arrow keys
