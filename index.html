@@ -1419,6 +1419,12 @@ const ALIASES = {
   'burma':'MMR','myanmar':'MMR','turkey':'TUR','turkiye':'TUR',
   'hong kong':'HKG','taiwan':'TWN','palestine':'PSE','venezuela':'VEN',
   'brasil':'BRA','deutschland':'DEU','espana':'ESP','italia':'ITA','nz':'NZL',
+  // the same countries as they are written in the languages people most often type in
+  'alemania':'DEU','allemagne':'DEU','francia':'FRA','frankreich':'FRA','suecia':'SWE','suede':'SWE','schweden':'SWE',
+  'noruega':'NOR','norvege':'NOR','estados unidos':'USA','etats unis':'USA','reino unido':'GBR','royaume uni':'GBR',
+  'italien':'ITA','spanien':'ESP','espagne':'ESP','japon':'JPN','china popular':'CHN','chine':'CHN','inde':'IND',
+  'sudafrica':'ZAF','afrique du sud':'ZAF','mexique':'MEX','dinamarca':'DNK','danemark':'DNK','polonia':'POL','pologne':'POL',
+  'holanda':'NLD','paises bajos':'NLD','pays bas':'NLD','irlanda':'IRL','irlande':'IRL','grecia':'GRC','grece':'GRC',
 };
 let NAME_INDEX = [];
 
@@ -1429,6 +1435,114 @@ function norm(s) {
     .replace(/\s+/g, ' ').trim();
 }
 
+/* ── reading what people type, not what they meant to type ────────────
+   One typed question in five went unread in the usability runs, most of them one
+   letter out: "norwey", "sweeden", "what is weath". A word the atlas does not know is
+   compared against country names and the words its questions are made of, and taken
+   to the nearest one if it is one letter off (two for a long word). A word the atlas
+   does know is never touched, so Iran never becomes Iraq and Austria never Australia.
+   Every change is said in the answer. */
+const FOREIGN = {
+  desigualdad: 'inequality', desigualdade: 'inequality', inegalite: 'inequality', inegalites: 'inequality',
+  ungleichheit: 'inequality', disuguaglianza: 'inequality', ongelijkheid: 'inequality',
+  pobreza: 'poverty', pauvrete: 'poverty', armut: 'poverty', poverta: 'poverty', armoede: 'poverty',
+  riqueza: 'wealth', richesse: 'wealth', vermogen: 'wealth', reichtum: 'wealth', ricchezza: 'wealth',
+  ingresos: 'income', ingreso: 'income', renda: 'income', revenu: 'income', revenus: 'income', einkommen: 'income',
+  reddito: 'income', inkomen: 'income', salario: 'wages', salarios: 'wages', salaire: 'wages', salaires: 'wages', lohn: 'wages',
+  vivienda: 'housing', logement: 'housing', wohnung: 'housing', ricos: 'rich', riches: 'rich', reiche: 'rich', ricchi: 'rich',
+  pobres: 'poor', pauvres: 'poor', poveri: 'poor', pais: 'country', pays: 'country', paese: 'country',
+};
+const SPELL_WORDS = ('wealth wealthy income incomes inequality inequalities unequal equality equal poorest richest poverty poor rich ' +
+  'median average typical house houses housing affordability afford affordable mortgage mortgages rent renting wages wage salary ' +
+  'salaries earnings earn country countries compare comparison between highest lowest most least concentration share shares ' +
+  'bottom middle top half over time since life expectancy mobility children debt debts owe savings emergency happiness gini lorenz ' +
+  'percent billionaires millionaires europe european africa african asia asian america american latin world global trend rising ' +
+  'falling growth change history gap difference distribution population people person family families household households ' +
+  'owns own owned property properties assets pension pensions inherit inheritance generation young younger older class workers ' +
+  'unemployment economy economic government healthy health longer younger quarter tenth percentile comparable similar ' +
+  'measure measured correlation relationship ranking ranked').split(' ');
+const COMMON = new Set(('a an the is are was were be been being do does did done have has had having of in on at to for from by with ' +
+  'about into over under than then so and or but if not no yes it its this that these those there here where when what which who whom ' +
+  'whose why how much many more less very too also just only even still ever never always again all any each every some such own same ' +
+  'other another my your our their his her them they we you i me us he she him one two three four five ten hundred thousand million ' +
+  'can could should would will shall may might must get got gets make makes made go goes going went come comes see show tell give ' +
+  'find know think want need like look say says said use used work works live lives lived die dies died pay paid buy bought sell sold ' +
+  'keep kept take took let put set new old big small high low good bad best worst better worse fair fairer fairest free right wrong ' +
+  'real really actually true false same different today now year years day days week month since until after before during while ' +
+  'first last next per cent percent vs versus against compared compare near around across between within among everyone anyone ' +
+  'someone nobody something anything nothing everything way lot lots bit kind sort part whole rest time times place places city ' +
+  'town state states county counties area areas region regions world people kids child son daughter mum mom dad parents parent ' +
+  'grow grew grown growing up down out off back home homes job jobs school rigged gary stevenson economics podcast hello hi hey thanks ' +
+  'please explain define meaning mean means interesting data source sources csv download method methodology wid reliable pre post ' +
+  'tax taxes taxing policy policies minimum universal basic unions union nordic model reduce reduces work working rise rose risen ' +
+  'fall fell fallen went gone happened happening happen getting become becoming stay stayed move moved moving should ' +
+  'detroit ohio chicago texas california york').split(' '));
+let SPELL_KNOWN = null, SPELL_TARGETS = null;
+function spellSetup() {
+  SPELL_KNOWN = new Set(COMMON);
+  const add = s => norm(s).split(' ').forEach(w => w && SPELL_KNOWN.add(w));
+  SPELL_WORDS.forEach(w => SPELL_KNOWN.add(w));
+  NAME_INDEX.forEach(n => add(n.norm));
+  (typeof QUESTIONS !== 'undefined' ? QUESTIONS : []).forEach(g => g.qs.forEach(add));
+  Object.values(META).forEach(m => m.label && add(m.label));
+  // one-word targets: the key words, and every country name or alias of one word
+  SPELL_TARGETS = { one: [...new Set([...SPELL_WORDS, ...NAME_INDEX.filter(n => !n.norm.includes(' ')).map(n => n.norm)])],
+    two: NAME_INDEX.filter(n => n.norm.split(' ').length === 2).map(n => n.norm) };
+}
+// optimal string alignment distance: a swapped pair of letters counts as one slip
+function osa(a, b, cap) {
+  if (Math.abs(a.length - b.length) > cap) return cap + 1;
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    let best = Infinity;
+    for (let j = 1; j <= b.length; j++) {
+      const c = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+      best = Math.min(best, d[i][j]);
+    }
+    if (best > cap) return cap + 1;
+  }
+  return d[a.length][b.length];
+}
+function nearestWord(w, list) {
+  const cap = w.length >= 8 ? 2 : 1;
+  let best = null, bestD = cap + 1, tie = false;
+  for (const t of list) {
+    if (Math.abs(t.length - w.length) > cap || t[0] !== w[0] && cap === 1 && t[1] !== w[1]) continue;
+    const dd = osa(w, t, cap);
+    if (dd < bestD) { best = t; bestD = dd; tie = false; } else if (dd === bestD && t !== best) tie = true;
+  }
+  return bestD <= cap && !tie ? best : null;
+}
+// returns the corrected text and what was changed, for the answer to say
+function spellFix(raw) {
+  if (!SPELL_KNOWN) spellSetup();
+  const words = norm(raw).split(' ').filter(Boolean);
+  const out = [], changes = [];
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (FOREIGN[w]) { out.push(FOREIGN[w]); changes.push([w, FOREIGN[w]]); continue; }
+    if (SPELL_KNOWN.has(w) || w.length < 4 || /\d|%/.test(w)) { out.push(w); continue; }
+    // a two-word country with a slip in one of the words: "south afrika", "new zeland"
+    const pair = i + 1 < words.length ? w + ' ' + words[i + 1] : null;
+    const prev = out.length ? out[out.length - 1] + ' ' + w : null;
+    const two = (pair && nearestWord(pair, SPELL_TARGETS.two)) || null;
+    if (two && two !== pair) { out.push(two); changes.push([pair, two]); i++; continue; }
+    const two0 = (prev && nearestWord(prev, SPELL_TARGETS.two)) || null;
+    if (two0 && two0 !== prev) { out.pop(); out.push(two0); changes.push([prev, two0]); continue; }
+    const one = nearestWord(w, SPELL_TARGETS.one);
+    if (one) { out.push(one); changes.push([w, one]); } else out.push(w);
+  }
+  return { text: changes.length ? out.join(' ') : raw, changes };
+}
+// "Read norwey as Norway." A country is named the way the atlas names it
+function readAsNote(changes) {
+  if (!changes.length) return '';
+  const say = t => { const hit = NAME_INDEX.find(n => n.norm === t); return hit && BY_ISO[hit.iso] ? BY_ISO[hit.iso].name : t; };
+  return '<em class="readas">Read ' + changes.map(([a, b]) => `"${esc(a)}" as ${esc(say(b))}`).join(', ') + '.</em>';
+}
 function buildIndex() {
   const seen = new Set();
   for (const iso in BY_ISO) {
@@ -1520,7 +1634,7 @@ const META = {
     poolSrc: 'Source: World Bank PIP via OWID. The share below $2.15 a day in 2017 purchasing power dollars, latest survey per country. This is the survival line: across the richer third of countries the median reading is a quarter of one per cent, so a ranking of rich countries on it is a ranking of rounding.',
   },
   wealth_top1: {
-    label: 'wealth concentration', topic: 'wealth', series: true, giniFam: true, concFam: true, file: 'data/wealth_top1.json',
+    label: 'top 1% wealth share', topic: 'wealth', series: true, giniFam: true, concFam: true, file: 'data/wealth_top1.json',
     fmt: pc, fmtD: pts, hover: '%{y:.1%}',
     lineSrc: 'Source: WID. Share of household net wealth held by the top 1%.',
     poolSrc: 'Source: WID, top 1% wealth share, latest year per country.',
@@ -1999,6 +2113,11 @@ function facetIneqDefault() {
 
 // a country whose name has a region inside it. matched as a region first, "south africa"
 // lost its "south" and every answer after it was stuck on the whole continent
+function regionIn(raw) {
+  const t = norm(raw).replace(REGION_IN_NAME, ' ');
+  for (const [re, key] of REGION_TOKENS) if (re.test(t)) return key;
+  return null;
+}
 const REGION_IN_NAME = /\bsouth africa\b|\bcentral african republic\b|\bamerican samoa\b|\bsouth sudan\b/;
 function parse(raw) {
   let text = norm(raw);
@@ -2187,6 +2306,8 @@ function parse(raw) {
 
   // metric-specific superlatives ("happiest", "healthiest", "greenest")
   const SUPER = [
+    [/\bpoorest (country|countries|nations?|place)\b|\bpoorest in the world\b/, 'gdp_pc', 'low'],
+    [/\brichest (country|countries|nations?|place)\b|\brichest in the world\b/, 'gdp_pc', 'high'],
     [/\bhappiest\b/, 'life_satisfaction', 'high'], [/\bunhappiest\b|\bsaddest\b|\bleast happy\b/, 'life_satisfaction', 'low'],
     [/\bhealthiest\b|\blongest[- ]liv\w*\b/, 'life_exp', 'high'], [/\bunhealthiest\b|\bshortest[- ]liv\w*\b/, 'life_exp', 'low'],
     [/\bgreenest\b|\bcleanest\b|\blowest emitters?\b/, 'co2_pc', 'low'], [/\bdirtiest\b|\bmost polluting\b|\bbiggest emitters?\b/, 'co2_pc', 'high'],
@@ -3871,7 +3992,8 @@ function buildAnswer(p, q) {
     ctx.metric = key;
     const m = META[key];
     let pool = rankedPool(key, p.dir, p.region, p.year);
-    const narrowed = rankNarrowed() && !(p.only && p.only.length);
+    // ranking the poorest countries inside the richer third would be a ranking of nothing
+    const narrowed = rankNarrowed() && !(p.only && p.only.length) && key !== 'gdp_pc';
     if (narrowed) { const rt = richThird(); pool = pool.filter(r => rt.has(r.geo_id)); }
     if (p.only && p.only.length) {
       const want = p.only;
@@ -4871,7 +4993,12 @@ function notePlace(iso) {
   if (recentPlaces.length > 8) recentPlaces.length = 8;
 }
 let lastRolled = null;
+let rolling = false;
 function rollOnce() {
+  rolling = true;
+  try { return rollOnceInner(); } finally { rolling = false; }
+}
+function rollOnceInner() {
   const picks = rollable().filter(x => x.q !== lastRolled);   // already face-interleaved
   for (const pick of picks) {
     // A question that belongs to no face used to be shown on whichever face happened to
@@ -5335,6 +5462,11 @@ function wireNear() {
 // what the words mean, for someone who has heard them on a podcast and wants to know
 // what they are looking at before they look at it
 const GLOSSARY = [
+  // the bare word on its own is a question about the word, not about what wealth is made of
+  [/^(what is|what s|whats|define|explain|meaning of) (the )?(wealth|net worth)$/, 'Wealth is what a household owns at one moment, less what it owes: the house, savings, shares, a pension pot and a business, minus the mortgage, loans and cards. It can be below zero. Income is different: what comes in over a year.',
+    ['what does the top 1% own?', 'what is the wealth of the richest made of?']],
+  [/^(what is|what s|whats|define|explain|meaning of) (an |the )?income$/, 'Income is what comes in over a year: pay, pensions, benefits, rent, interest and dividends. The atlas mostly measures it for a whole country, split into shares of the total, and as the median, the person in the exact middle.',
+    ['what does the average person earn?', 'how unequal is income in the UK?']],
   [/\bgini\b/, 'The Gini coefficient is one number for how evenly something is shared. At 0 everyone has the same; at 1 one person has all of it. Income Ginis in rich countries mostly sit between 0.25 and 0.40; wealth Ginis run much higher, often above 0.70, because wealth piles up in a way pay does not.',
     ['which country is most unequal?', 'how unequal is the UK?']],
   [/\btop 1\s*%|\btop one per ?cent\b|\btop 1 share\b/, 'The top 1% share is the part of everything, either all the wealth or all the income, that goes to the richest one person in a hundred. If they held only their headcount it would be 1%; in most countries here they hold between 15% and 35% of the wealth.',
@@ -5355,6 +5487,9 @@ const NOT_HELD = [
   [/\bwealth tax\b|\btax(es)? (the rich|rates?|polic\w*|on wealth)\b|\btaxing\b|\btaxation\b|\bpolicy\b|\bpolicies\b|\bredistribut\w*\b/,
     'The atlas describes how things are shared; it does not model taxes or what a policy would do. What it can show is how concentrated wealth is, and where it has moved.',
     ['what does the top 1% own?', 'has inequality gone up since 2008?']],
+  [/\bminimum wage\b|\bbasic income\b|\bubi\b|\bunions?\b|\bwhat (reduces|causes|would reduce|fixes|drives)\b|\bhow (do we|to|can we|could we) (fix|reduce|solve|end|lower|tackle)\b|\bnordic model\b|\bsolutions?\b|\bcauses? of\b/,
+    'The atlas shows how things are shared and how that has moved. It does not test what causes it or what would change it, so it cannot say whether a policy works. What it can show is where inequality is lower and where it has fallen.',
+    ['which countries are most equal?', 'is inequality falling anywhere?']],
   [/\binflation\b|\bcost of living\b|\bprices? (of|for) (food|energy|petrol|gas)\b/,
     'The atlas has no price or inflation series. Median pay is held in dollars that buy the same things everywhere, which is the nearest it comes.',
     ['what does the average person earn?', 'what the middle lives on']],
@@ -5370,9 +5505,12 @@ const TO_OPP = [
     'how much longer do the rich live here?'],
 ];
 let noteNext = null;   // one line said with the next answer, about how the question was read
-function previewQuestion(q) {
+function previewQuestion(typed) {
   hideNotice();   // the last question's complaint is not about this one
-  noteNext = null;
+  // the words are read after the slips are taken out; the box keeps what was typed
+  const fix = spellFix(typed);
+  const q = fix.text;
+  noteNext = readAsNote(fix.changes) || null;
   const nq = norm(q);
   const defining = /^(what is|what s|whats|what are|what does .* mean|define|explain|meaning of)\b/.test(nq);
   if (defining) for (const [re, text, next] of GLOSSARY) if (re.test(nq)) {
@@ -5387,8 +5525,8 @@ function previewQuestion(q) {
   }
   if (US_CZ) for (const [re, asks] of TO_OPP) if (re.test(nq)) {
     if (curFacet !== 'opportunity') chooseFacet('opportunity');
-    resetCell(); cell.raw = asks; cell.asked = q; updateCell();
-    noteNext = '<em class="readas">Only the United States publishes this, county by county, so this answer is the US. ' +
+    resetCell(); cell.raw = asks; cell.asked = typed; updateCell();
+    noteNext = (noteNext || '') + '<em class="readas">Only the United States publishes this, county by county, so this answer is the US. ' +
       'Read as: ' + esc(asks) + '</em>';
     return true;
   }
@@ -5400,12 +5538,12 @@ function previewQuestion(q) {
     try { there = parse(q); } catch (err) {}
     const namesAbroad = (there.isos || []).some(i => i !== 'USA') || (there.iso && there.iso !== 'USA');
     if ((here && !namesAbroad) || there.kind === 'unknown' || there.kind === 'pending') {
-      resetCell(); cell.raw = q; updateCell(); return true;
+      resetCell(); cell.raw = q; cell.asked = typed; updateCell(); return true;
     }
     const mk = there.metric || there.x || (there.metrics && there.metrics[0]);
     const face = (mk && META[mk] && META[mk].topic === 'income') ? 'income' : 'wealth';
     chooseFacet(face);
-    noteNext = `<em class="readas">The opportunity layer covers US counties only, so this was read on the ${face} face.</em>`;
+    noteNext = (noteNext || '') + `<em class="readas">The opportunity layer covers US counties only, so this was read on the ${face} face.</em>`;
   }
   let p;
   try { p = parse(q); } catch (e) { p = { kind: 'unknown' }; }
@@ -5415,7 +5553,10 @@ function previewQuestion(q) {
   // points at nothing, and the question is about everywhere
   const wantsPlace = p.needsPlace || (VIEW_DEF[p.kind] && VIEW_DEF[p.kind].needsPlace) || p.kind === 'time' ||
     (p.kind === 'delta_rank' && !/\bwhere\b|\bwhich\b|\bcountries\b|\bcountry\b|\bwho\b/.test(nq));
-  if (wantsPlace && ctx.lastIso && BY_ISO[ctx.lastIso] &&
+  // and only when the last answer was about one country: after a ranking, "this
+  // country" is not whichever came top of it
+  const lastWasOnePlace = chain.length > 0 && SINGLE_PLACE.includes(chain[chain.length - 1].kind);
+  if (wantsPlace && lastWasOnePlace && ctx.lastIso && BY_ISO[ctx.lastIso] &&
       /\b(here|there|it|its|same|this country|that country)\b/.test(nq) &&
       !(p.iso || (p.isos && p.isos.length))) {
     try { const p2 = parse(q + ' ' + BY_ISO[ctx.lastIso].name); if (p2.kind !== 'unknown') p = p2; } catch (e) {}
@@ -5429,7 +5570,7 @@ function previewQuestion(q) {
   // country from the last one used to stay on, so "south africa" left every later answer
   // stuck in Africa. they carry over only when the question points back ("here", "it")
   const pointsBack = /\b(here|there|it|its|same|this country|that country|them|they)\b/.test(norm(q));
-  const carried = pointsBack ? (ctx.lastIso || null) : null;
+  const carried = pointsBack && lastWasOnePlace ? (ctx.lastIso || null) : null;
   setScope(null);
   ctx.lastIso = null;
   const mk = p.metric || p.x || (p.metrics && p.metrics[0]);
@@ -5438,7 +5579,10 @@ function previewQuestion(q) {
   if (iso) cell.place = iso;
   else if (p.isos && p.isos.length > 1) cell.places = p.isos.slice(0, MAX_PLACES);
   if (!cell.places.length && carried) { cell.place = carried; ctx.lastIso = carried; }
-  if (p.region) setScope('r:' + p.region);
+  // several readings come back from the parser without the region the words named
+  // ("wealth inequality in europe" ranked the richer third); the words are checked here
+  const regionNamed = p.region || regionIn(q);
+  if (regionNamed) setScope('r:' + regionNamed);
   if (p.pool) setScope('pool:' + (p.pool.dir === 'high' ? 'rich' : 'poor'));
   if (p.kind === 'time') { cell.span = 'run'; cell.since = p.year || null; cell.until = p.until || null; }
   else if (p.kind === 'point') { cell.span = 'moment'; cell.year = p.year || null; }
@@ -5496,8 +5640,11 @@ function previewQuestion(q) {
     paintFacet(vf); faceToFront(vf); settle(); updateChips();
   }
   if (cell.against === facetIneqDefault()) cell.against = null;   // nothing is held against itself
-  if (RAW_KINDS.includes(p.kind)) cell.raw = q;
-  cell.asked = q;
+  // a ranking by a measure the face does not carry (the poorest country, the happiest)
+  // is read from the words: the cell would put the face's own measure in its place
+  const faceHas = m => Object.values(FACET_MEASURES).some(l => l.some(x => x[0] === m));
+  if (RAW_KINDS.includes(p.kind) || (p.kind === 'rank' && p.metric && !faceHas(p.metric))) cell.raw = q;
+  cell.asked = typed;
   updateCell();
   return true;
 }
@@ -5517,13 +5664,33 @@ function cellNeedsPlace() {
 // a country chosen for a question that named none is said in the answer. without it
 // "what does the top 1% own" came back as Austria and nothing on screen said why
 function notePicked(iso) {
-  if (!cell.asked) return;
-  const nm = BY_ISO[iso] ? BY_ISO[iso].name : iso;
-  noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">No country was named, so this is ${esc(nm)}, ` +
-    'picked at random. Change it in the place fold, or ask again with a country in it.</em>';
+  if (!cell.asked || rolling) return;
+  const nm = BY_ISO[iso] ? theName(iso) : iso;
+  noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">This reading is drawn for one country and none was named, ` +
+    `so this is ${esc(nm)}, one of those it can be drawn for. Change it in the place fold, or ask again with a country in it.</em>`;
+}
+// A typed question that names no country is about all of them. The usability runs
+// answered 18% of typed questions with one country picked at random, which is honest
+// when the page says so and still not an answer to "who owns everything". These are
+// read across countries instead: the reading's own measure, ranked. The die keeps its
+// random countries; that is what the die is for.
+const VIEW_ACROSS = { owns: 'wealth_bottom50', multiple: 'income_top1', basket: 'median_income', three: 'income_middle40' };
+function typedNoPlace() {
+  return !!cell.asked && !cell.place && !cell.raw && !rolling;
+}
+function acrossNote(region) {
+  noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">No country was named, so this ranks ${region ? 'the countries in ' + esc(region) : 'them all'}. ` +
+    'Name one, or pick it in the place fold, to see it on its own.</em>';
 }
 function sendCell() {
   if (!DATA_READY) { showNotice('The figures are still loading. Ask again in a moment.'); return; }
+  if (typedNoPlace() && cell.view && VIEW_ACROSS[cell.view]) {
+    adoptMetric(VIEW_ACROSS[cell.view]);
+    cell.view = null; cell.form = 'rank';
+    if (cell.span === 'run' && !cell.since && !cell.until) cell.span = null;
+    updateCell();
+    acrossNote(ctx.region ? REGION_LABEL[ctx.region] : null);
+  }
   // A reading drawn for one country, asked without one, gets one chosen before anything
   // else looks at the cell. It used to fall through to the refusal below, which meant
   // typing a question and pressing enter produced a line of grey text and no answer.
@@ -5546,6 +5713,10 @@ function sendCell() {
   // a ranking over a run of years is the biggest movers across countries, which is a
   // reading that wants no place at all: only a plain line needs somewhere to follow
   if (cell.span === 'run' && !cell.place && !ctx.region && !ctx.pool && !cell.view
+      && !['rank', 'least', 'spread', 'tiers', 'break'].includes(cell.form) && typedNoPlace()) {
+    cell.form = 'rank'; updateCell(); acrossNote(null);
+  }
+  if (cell.span === 'run' && !cell.place && !ctx.region && !ctx.pool && !cell.view
       && !['rank', 'least', 'spread', 'tiers', 'break'].includes(cell.form)) {
     showNotice('Over the years needs somewhere to follow. Add a place, or a region.');
     const rib = document.getElementById('rib-place');
@@ -5553,6 +5724,12 @@ function sendCell() {
     return;
   }
   if (cell.raw) { const q = cell.raw; ask(q); return; }
+  // a measure on its own, typed, with no country: every country ranked on it, or the
+  // countries of the region the question named
+  if (cellNeedsPlace() && typedNoPlace() && !cell.view && cell.form !== 'lorenz') {
+    cell.form = 'rank'; updateCell();
+    acrossNote(ctx.region ? REGION_LABEL[ctx.region] : null);
+  }
   if (cellNeedsPlace()) {
     // the old behaviour here was a silent world ranking. this says what it read and asks
     // choose one rather than stopping. the pill says which, and the fold is open.
@@ -6690,10 +6867,10 @@ function drawChart() {
       xaxis2: { domain: [0.54, 1], type: 'linear', autorange: true, gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: 'income Gini', font: { size: 12 } } },
       yaxis: { type: 'linear', autorange: true, gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', title: { text: my.label, font: { size: 12 } }, ticksuffix: my.fmt === pc ? '%' : '' },
     }), CFG);
-    title.textContent = `${cap(my.label)}, against ${isGdp ? 'prosperity' : wPctAxis ? 'wealth concentration' : 'wealth inequality'} and income` + (c.region ? ` (${REGION_LABEL[c.region]})` : '');
+    title.textContent = `${cap(my.label)}, against ${isGdp ? 'prosperity' : wPctAxis ? 'the top 1% wealth share' : 'wealth inequality'} and income` + (c.region ? ` (${REGION_LABEL[c.region]})` : '');
     src.textContent = isGdp
       ? `One country per dot. Left: against GDP per person (log scale), a level of prosperity, the national twin of local home values. Right: against income Gini. GDP: OWID. Income: World Bank PIP.`
-      : `One country per dot: the same measure against wealth concentration on the left, income on the right. Income Gini: World Bank PIP.`;
+      : `One country per dot: the same measure against the top 1% wealth share on the left, income on the right. Income Gini: World Bank PIP.`;
   }
 
   else if (mode === 'divergence') {
