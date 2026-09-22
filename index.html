@@ -5140,8 +5140,12 @@ function rollOnceInner() {
 // below the fold on a laptop, the eye is still on the cube, and a roll or a new
 // question reads as nothing having happened.
 let revealT = null;
+let revealLater = [];
 function revealAnswer(sel) {
+  // every look-again from the last reveal goes too: left running, a second roll within a
+  // couple of seconds was scrolled back to where the first answer had been
   clearTimeout(revealT);
+  revealLater.forEach(clearTimeout); revealLater = [];
   revealT = setTimeout(() => {
     const el = document.querySelector(sel || '#answer');
     if (!el) return;
@@ -5174,10 +5178,19 @@ function revealAnswer(sel) {
       window.scrollTo({ top: Math.max(0, window.scrollY + box.top - top),
         behavior: smooth ? 'smooth' : 'auto' });
     };
-    go();
+    // on a phone the deck scrolls with the page, so its shrink moves the answer: the first
+    // scroll waits for it rather than aiming at where the answer was and overshooting
+    if (window.matchMedia('(max-width: 720px)').matches) revealLater.push(setTimeout(go, 420)); else go();
     // the cube shrinks once there is an answer, which pulls everything up under the
-    // scroll that just ran, so the position is taken again after it has settled
-    setTimeout(go, 520);
+    // scroll that just ran, so the position is taken again while it settles. one second
+    // look was not enough on a phone: the shrink outlasted it and the answer ended above
+    // the top of the screen. later looks correct only a real drift, and without easing
+    const settle = () => {
+      const box = el.getBoundingClientRect(), top = clear();
+      if (box.top < top - 24 || box.top > window.innerHeight * 0.7)
+        window.scrollTo({ top: Math.max(0, window.scrollY + box.top - top), behavior: 'auto' });
+    };
+    revealLater.push(setTimeout(go, 900), setTimeout(settle, 1300), setTimeout(settle, 1700));
   }, 140);
 }
 function shakeCube() {
@@ -5637,6 +5650,12 @@ const NOT_HELD = [
   [/\bwealth tax\b|\btax(es)? (the rich|rates?|polic\w*|on wealth)\b|\btaxing\b|\btaxation\b|\bpolicy\b|\bpolicies\b|\bredistribut\w*\b/,
     'The atlas describes how things are shared; it does not model taxes or what a policy would do. What it can show is how concentrated wealth is, and where it has moved.',
     ['what does the top 1% own?', 'has inequality gone up since 2008?']],
+  [/\brigged\b|\bunfair system\b|\bconspiracy\b/,
+    'Whether anything is rigged is a judgement the atlas cannot make. What it can show is where the money has gone and how fast.',
+    ['has inequality gone up since 2008?', 'what does the top 1% own?']],
+  [/\bgary stevenson\b|\bgarys? economics\b|\bpodcast\b|\byoutube\b/,
+    'The atlas does not follow people or shows. It does cover what those conversations keep coming back to: how much the richest own, what is left for everyone else, and houses against pay.',
+    ['what does the top 1% own in the UK?', 'what does the bottom half own in the UK?', 'have houses pulled away from pay?']],
   [/\bminimum wage\b|\bbasic income\b|\bubi\b|\bunions?\b|\bwhat (reduces|causes|would reduce|fixes|drives)\b|\bhow (do we|to|can we|could we) (fix|reduce|solve|end|lower|tackle)\b|\bnordic model\b|\bsolutions?\b|\bcauses? of\b/,
     'The atlas shows how things are shared and how that has moved. It does not test what causes it or what would change it, so it cannot say whether a policy works. What it can show is where inequality is lower and where it has fallen.',
     ['which countries are most equal?', 'is inequality falling anywhere?']],
@@ -5673,14 +5692,37 @@ const METHOD = [
     'The full table, and the release files as CSV and Parquet, are on the data page.',
     [['open the data page', 'db']]],
 ];
+// the vague questions left over in the second usability run, each turned into the
+// nearest question the atlas answers. the answer says what it was read as
+const REWRITES = [
+  [/^(which|what) (country|place) is (the )?(fairest|most fair)\b|^(the )?fairest countr(y|ies)\b/, 'which country is most equal'],
+  [/^(which|what) (country|place) is (the )?(least fair|unfairest|most unfair)\b/, 'which country is most unequal'],
+  [/^how bad (is|are) (it|things|inequality|the gap)\b/, 'which country is most unequal'],
+  [/^debts?$|^(who|how many) (is|are|people) in debt$/, 'how many people own less than nothing'],
+  [/^(money|cash|pay|salary|salaries)$/, 'what does the average person earn'],
+];
+const ABOUT = /^(what is this|what s this|whats this|what is (this|the) (site|page|thing|atlas)|what does (this|it) do|how does (this|it) work|help|about|what can (this|it) do)$/;
 let noteNext = null;   // one line said with the next answer, about how the question was read
 function previewQuestion(typed) {
   hideNotice();   // the last question's complaint is not about this one
   const faceBefore = curFacet;
   // the words are read after the slips are taken out; the box keeps what was typed
   const fix = spellFix(typed);
-  const q = fix.text;
+  let q = fix.text;
   noteNext = readAsNote(fix.changes) || null;
+  if (ABOUT.test(norm(q))) {
+    showNotice('The atlas answers questions about how wealth, income and opportunity are shared: country by country, over time, ' +
+      'and county by county in the United States. Ask in your own words, roll the die for a question, or start with one of these: ' +
+      ['how unequal is the UK?', 'what does the bottom half own in the US?', 'which country is most unequal?']
+        .map(c => `<button type="button" class="opt-near" data-q="${esc(c)}">${esc(c)}</button>`).join(', ') + '.');
+    wireNear();
+    return false;
+  }
+  for (const [re, to] of REWRITES) if (re.test(norm(q))) {
+    q = to;
+    noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">Read as: ${esc(to)}.</em>`;
+    break;
+  }
   const nq = norm(q);
   const defining = /^(what is|what s|whats|what are|what does .* mean|define|explain|meaning of)\b/.test(nq);
   if (defining) for (const [re, text, next] of GLOSSARY) if (re.test(nq)) {
@@ -5688,8 +5730,9 @@ function previewQuestion(typed) {
     wireNear();
     return false;
   }
+  const quoted = `<strong class="asked">\u201c${esc(typed.trim().slice(0, 80))}\u201d</strong><br>`;
   for (const [re, text, go] of METHOD) if (re.test(nq)) {
-    showNotice(esc(text) + ' ' + go.map(([lab, view]) => `<button type="button" class="opt-view" data-view="${view}">${esc(lab)} \u203a</button>`).join(' '));
+    showNotice(quoted + esc(text) + ' ' + go.map(([lab, view]) => `<button type="button" class="opt-view" data-view="${view}">${esc(lab)} \u203a</button>`).join(' '));
     wireNear();
     return false;
   }
@@ -5701,7 +5744,7 @@ function previewQuestion(typed) {
     return true;
   }
   for (const [re, text, next] of NOT_HELD) if (re.test(nq)) {
-    showNotice(esc(text) + ' Try: ' + next.map(c => `<button type="button" class="opt-near" data-q="${esc(c)}">${esc(c)}</button>`).join(', ') + '.');
+    showNotice(quoted + esc(text) + ' Try: ' + next.map(c => `<button type="button" class="opt-near" data-q="${esc(c)}">${esc(c)}</button>`).join(', ') + '.');
     wireNear();
     return false;
   }
@@ -5738,7 +5781,11 @@ function previewQuestion(typed) {
     // a question about countries, or the world, is not about US counties whatever it shares with one
     const namesAbroad = (there.isos || []).some(i => i !== 'USA') || (there.iso && there.iso !== 'USA') ||
       (/\bcountr(y|ies)\b|\bworld\b|\bnations?\b|\bglobal\b/.test(nq) && there.kind !== 'unknown');
-    if ((here && !namesAbroad) || there.kind === 'unknown' || there.kind === 'pending') {
+    // "housing affordability" asked on the opportunity face was answered with mortgage debt
+    // by parents' income, because the US reader knows the word mortgage. the layer keeps a
+    // question the country faces can also read only when it uses the layer's own words
+    const layerWords = /\b(parents?|children|child|kids?|credit|climb\w*|mobility|county|counties|zones?|neighbou?rhood|friends?|delinquen\w*|arrears|grow(ing)? up|poor kids)\b/.test(nq);
+    if ((here && !namesAbroad && (layerWords || there.kind === 'unknown')) || there.kind === 'unknown' || there.kind === 'pending') {
       resetCell(); cell.raw = q; cell.asked = typed; updateCell(); return true;
     }
     const mk = there.metric || there.x || (there.metrics && there.metrics[0]);
@@ -5981,6 +6028,9 @@ function syncDeck() {
   // which put the scroll back under 90, which grew the deck again, and it settled in
   // whichever state came last, sometimes tall and over the first line of the answer
   let want = view.classList.contains('engaged') && window.scrollY > (deckCondensed ? 30 : 90);
+  // on a phone the deck scrolls away rather than staying, so condensing it did nothing but
+  // shrink the page under a scroll in progress and carry the answer past the top
+  if (getComputedStyle(deck).position !== 'sticky') want = false;
   // while an answer is being scrolled into place the deck holds the size the scroll was
   // measured against; growing it mid-scroll left the page where it started
   if (deckCondensed && !want && view.classList.contains('engaged') && Date.now() < deckHoldUntil) want = true;
@@ -8956,6 +9006,10 @@ function boot() {
     setHelp(false);
     const asked = (cell.asked || '').trim();
     if (stage === 'chain' && (!v || v === asked)) { sendCell(); return; }   // the same one, send it
+    // asking to be shown anything is asking for the die
+    if (/^(show me )?(something|anything)( interesting| random| good)?$|^surprise me$|^random$|^roll( the die| the dice| me one)?$|^pick (one|something)( for me)?$|^i don t know$|^idk$/.test(norm(v))) {
+      el.value = ''; shakeCube(); return;
+    }
     // a question that could not be read must not fall through to the answer already on
     // screen: that answer is to a different question, and showing it again under this
     // one is worse than showing nothing. the notice says what it could not read
