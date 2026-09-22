@@ -669,6 +669,24 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .answer .t em { font-style: normal; color: var(--ink-3); }
 /* the facts first; the working one tap away */
 .answer .t .lead { margin: 0; }
+/* a notice flashes when it is set, so the same words twice still read as an answer */
+@keyframes notice-fresh { from { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); } to { background: var(--surface); } }
+.notice.fresh { animation: notice-fresh .9s ease-out; }
+@media (prefers-reduced-motion: reduce) { .notice.fresh { animation: none; } }
+/* a fold with nothing to change for this reading is drawn as fixed, and says why when touched */
+.rib.fixed .rib-head { cursor: default; }
+.rib.fixed .rib-head .dim, .rib.fixed .rib-head .val { opacity: .5; }
+.rib.fixed .rib-step, .rib.fixed .rib-x { display: none; }
+.fold-fixed { margin: 0; padding: 10px 14px; font-size: 13px; color: var(--ink-2); }
+/* on a touch screen every control is at least 40px to hit, whatever it looks like */
+@media (pointer: coarse), (max-width: 720px) {
+  #theme, #deeper, #share, #clear, #homebtn, #ask-new, #shake, .qsteps button, .helpbtn {
+    position: relative; }
+  .rib-step::after, .rib-x::after, #theme::after, #share::after, #clear::after, #homebtn::after, #ask-new::after,
+  #shake::after, .qsteps button::after, #fillhint::after, .helpbtn::after, #deeper::after {
+    content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 40px); height: max(100%, 40px);
+    transform: translate(-50%, -50%); }
+}
 .notice .opt-view { font: 500 12.5px 'Inter', system-ui, sans-serif; color: var(--accent); background: none; cursor: pointer;
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 100px; padding: 5px 12px; margin: 6px 6px 0 0; }
 .notice .opt-view:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
@@ -1965,6 +1983,7 @@ function multiplePair(iso) {
 // nobody asked for.
 function setLabel(n) {
   if (ctx.region) return `the ${n} countries in ${REGION_LABEL[ctx.region]}`;
+  if (ctx.pool && ctx.pool.all) return `all ${n} countries`;
   if (ctx.pool) return `the ${n} ${ctx.pool.label}`;
   if (rankNarrowed()) return `the ${n} countries in the richer third`;
   return `${n} countries`;
@@ -2068,8 +2087,13 @@ function focusIsos() {
 /* ── Pool: the ambient "who counts as everyone" condition (the AMONG move) ── */
 // ctx.pool = { label, metric, dir } → a tercile of some metric; null = all countries.
 let POOL_SET = null;   // Set of allowed isos, or null for all
+// "the whole world" as a set of its own. with no set chosen, rankings use the richer
+// third; "all countries" used to clear the set and so landed back on the richer third,
+// while every ranking told the reader to ask for the whole world to widen it
+const ALL_POOL = { label: 'all countries', all: true, dir: 'all', metric: null };
+const poolKey = pool => pool.all ? 'all' : pool.dir === 'high' ? 'rich' : 'poor';
 function computePool() {
-  if (!ctx.pool) { POOL_SET = null; medianCache.gen = (medianCache.gen || 0) + 1; return; }
+  if (!ctx.pool || ctx.pool.all) { POOL_SET = null; medianCache.gen = (medianCache.gen || 0) + 1; return; }
   const pool = poolOf(ctx.pool.metric).slice().sort((a, b) => b.val - a.val);
   const n = pool.length, cut = Math.floor(n / 3);
   const keep = ctx.pool.dir === 'high' ? pool.slice(0, cut) : pool.slice(n - cut);
@@ -2159,7 +2183,21 @@ function regionIn(raw) {
   return null;
 }
 const REGION_IN_NAME = /\bsouth africa\b|\bcentral african republic\b|\bamerican samoa\b|\bsouth sudan\b/;
+// "the whole world" said inside a question applies to that question. it used to be read
+// as a question of its own that re-ran the last one, so "whole world ranking of wealth
+// concentration" came back as "could not read that one"
+const WHOLE_WORLD = /\b(among |across |in )?(all|every) (the )?countr(y|ies)\b|\b(in )?(the )?whole world\b|\bin the world\b|\bworldwide\b|\bglobally\b|\beveryone\b/;
 function parse(raw) {
+  const t = norm(raw);
+  if (!WHOLE_WORLD.test(t)) return parseCore(raw);
+  const rest = t.replace(WHOLE_WORLD, ' ').replace(/\s+/g, ' ').trim();
+  const says = rest.split(' ').filter(w => w.length > 2 && !STOP.has(w)).length || findCountries(rest).isos.length;
+  const p = says ? parseCore(rest) : { kind: 'unknown' };
+  if (p.kind === 'unknown' || p.kind === 'pending') return { kind: 'among', pool: ALL_POOL };
+  p.pool = ALL_POOL; if (p.region) p.region = null;
+  return p;
+}
+function parseCore(raw) {
   let text = norm(raw);
   let region = null;
   const shielded = text.replace(REGION_IN_NAME, ' ');
@@ -2292,7 +2330,7 @@ function parse(raw) {
 
   // AMONG: change the pool. "among rich countries", "all countries" (region is handled above)
   if (/\ball countries\b|\beveryone\b|\bwhole world\b|\bdrop the (filter|condition|pool)\b|\bunrestrict\w*\b|\bworldwide\b/.test(r) && !isos.length)
-    return { kind: 'among', pool: null };
+    return { kind: 'among', pool: ALL_POOL };
   {
     const cue = /\bamong\b|\bonly\b|\brestrict\w*\b|\bjust the\b|\bconditional\b/.test(r);
     const rich = /\brich(er|est)?\b|\bhigh[- ]?income\b|\bwealthy\b|\bdeveloped\b|\baffluent\b/.test(r);
@@ -2709,7 +2747,7 @@ function syncCellFromFact(f) {
     : f.kind === 'tiers' ? 'tiers' : f.kind === 'break' ? 'break' : null;
   cell.view = ['reach', 'ratio', 'triple', 'tables', 'turn', 'peers', 'houses',
     'multiple', 'basket', 'three', 'owns', 'wmultiple', 'made', 'underwater', 'weather', 'have'].includes(f.kind) ? f.kind : null;
-  cell.scope = ctx.pool ? ('pool:' + (ctx.pool.dir === 'high' ? 'rich' : 'poor'))
+  cell.scope = ctx.pool ? ('pool:' + poolKey(ctx.pool))
     : ctx.region ? ('r:' + ctx.region) : null;
   cell.span = ['time', 'divergence', 'path', 'delta_rank'].includes(f.kind) ? 'run'
     : f.kind === 'point' ? 'moment' : null;
@@ -2864,6 +2902,7 @@ function setScope(val) {
   cell.scope = val || null;
   if (!val) { setRegion(null); ctx.pool = null; computePool(); }
   else if (val.slice(0, 2) === 'r:') { setRegion(val.slice(2)); ctx.pool = null; computePool(); }
+  else if (val === 'pool:all') { setRegion(null); ctx.pool = ALL_POOL; computePool(); }
   else if (val.slice(0, 5) === 'pool:') {
     setRegion(null);
     const rich = val.slice(5) === 'rich';
@@ -3929,7 +3968,7 @@ function buildAnswer(p, q) {
 
   else if (p.kind === 'among') {
     ctx.pool = p.pool; computePool();
-    if (p.pool === null) setRegion(null);   // "all countries" also drops any region
+    if (!p.pool || p.pool.all) setRegion(null);   // "all countries" also drops any region
     // always apply the pool to a real question: the last one, or the everyday health cut
     const base = ctx.lastQuery || (ctx.lastAspect && ASPECT_CHIP[ctx.lastAspect]) || 'life expectancy and inequality';
     const inner = answer(base);
@@ -4748,8 +4787,8 @@ function dimGroups(dim, filter) {
     return g;
   }
   if (dim === 'scope') {
-    g.push({ k: 'the set', opts: [['the whole world', ''],
-      ['richer countries', 'pool:rich'], ['poorer countries', 'pool:poor']] });
+    g.push({ k: 'the set', opts: [['the richer third (the default)', ''], ['the whole world', 'pool:all'],
+      ['the poorer third', 'pool:poor']] });
     g.push({ k: 'a region', opts: REGION_KEYS.map(k => [REGION_LABEL[k], 'r:' + k]) });
     return g;
   }
@@ -5180,12 +5219,40 @@ function stepDim(dim, dir) {
   }
   applyDim(dim, flat[(at + dir + flat.length) % flat.length]);
 }
+// A fold with nothing it can change for this reading: 23 of 74 opened in the usability
+// runs offered only greyed options. It is drawn as fixed and says why when touched.
+function foldDead(dim) {
+  if (!['scope', 'against'].includes(dim)) return null;
+  if (curFacet === 'opportunity') return 'The US layer is one country, read against its own measures, so this does not apply to it.';
+  if (!chain.length && stage !== 'chain') return null;
+  const cur = dimCurrent(dim);
+  const opts = (dimGroups(dim, '') || []).flatMap(g => g.opts || []).map(o => o[1]).filter(v => v != null);
+  if (opts.some(v => v !== cur && !whyNot(dim, v))) return null;
+  const first = opts.find(v => v !== cur);
+  return (first != null && whyNot(dim, first)) || 'Nothing here changes this reading.';
+}
+function markFixedFolds() {
+  for (const dim of ['scope', 'against']) {
+    const rib = document.getElementById('rib-' + dim); if (!rib) continue;
+    const why = foldDead(dim);
+    rib.classList.toggle('fixed', !!why);
+    const head = rib.querySelector('.rib-head');
+    if (head) { if (why) head.setAttribute('title', why); else head.removeAttribute('title'); }
+  }
+}
 function toggleRib(dim) {
   const rib = document.getElementById('rib-' + dim); if (!rib) return;
   const drawer = document.getElementById('rib-drawer'); if (!drawer) return;
   const wasOpen = rib.classList.contains('expanded');
   closeDrawer();
   if (wasOpen) return;             // touching the open pleat folds it back
+  const dead = foldDead(dim);
+  if (dead) {
+    drawer.innerHTML = `<p class="opt-note fold-fixed">${esc(dead)}</p>`;
+    drawer.hidden = false; rib.classList.add('expanded');
+    const h = rib.querySelector('.rib-head'); if (h) h.setAttribute('aria-expanded', 'true');
+    return;
+  }
   renderDrawer(dim, rib, drawer, '');
   drawer.hidden = false;
   rib.classList.add('expanded');
@@ -5442,8 +5509,10 @@ function whyNot(dim, val) {
     // a reading that puts one country against a pack takes both: the place picks the
     // country and the set picks the pack it is being measured against
     const usesSet = cell.view && (VIEW_DEF[cell.view].uses || []).includes('among');
-    if (cell.place && val && !usesSet)
-      return 'A country is already named, so narrowing the set changes nothing. Clear the place first.';
+    // a plain reading of one country states its rank, and the rank is within the set
+    const plain = !cell.form && !cell.span && !cell.against && !cell.view;
+    if (cell.place && val && !usesSet && !plain)
+      return 'A country is already named and this reading does not rank it, so the set changes nothing. Clear the place first.';
     return null;
   }
   if (dim === 'place') {
@@ -5607,6 +5676,7 @@ const METHOD = [
 let noteNext = null;   // one line said with the next answer, about how the question was read
 function previewQuestion(typed) {
   hideNotice();   // the last question's complaint is not about this one
+  const faceBefore = curFacet;
   // the words are read after the slips are taken out; the box keeps what was typed
   const fix = spellFix(typed);
   const q = fix.text;
@@ -5696,8 +5766,16 @@ function previewQuestion(typed) {
   if (p.kind === 'divergence' && !findCountries(q).isos.length && !(lastWasOnePlace && /\b(here|there|it|its|same|this country|that country)\b/.test(nq)))
     noteNext = (noteNext ? noteNext + ' ' : '') + '<em class="readas">No country was named, so this is the United States, ' +
       'which has the longest run of both records. Name a country to read it there.</em>';
+  if (p.kind === 'among') {
+    // the answer on screen, over the new set. it used to re-run the last question from
+    // its internal label ("the ranking"), which does not parse, and said it could not read it
+    setScope(p.pool ? 'pool:' + poolKey(p.pool) : null);
+    if (!chain.length || curFacet === 'opportunity') { resetCell(); cell.form = 'rank'; cell.scope = p.pool ? 'pool:' + poolKey(p.pool) : null; }
+    cell.asked = typed; cell.raw = null; updateCell();
+    return true;
+  }
   if (p.kind === 'unknown' || p.kind === 'pending') {
-    offerNearest(q, 'Could not read that.');
+    offerNearest(q, `Could not read "${typed.trim().slice(0, 80)}".`);
     return false;
   }
   resetCell();
@@ -5718,7 +5796,7 @@ function previewQuestion(typed) {
   // ("wealth inequality in europe" ranked the richer third); the words are checked here
   const regionNamed = p.region || regionIn(q);
   if (regionNamed) setScope('r:' + regionNamed);
-  if (p.pool) setScope('pool:' + (p.pool.dir === 'high' ? 'rich' : 'poor'));
+  if (p.pool) setScope('pool:' + poolKey(p.pool));
   if (p.kind === 'time') { cell.span = 'run'; cell.since = p.year || null; cell.until = p.until || null; }
   else if (p.kind === 'point') { cell.span = 'moment'; cell.year = p.year || null; }
   else if (p.kind === 'correlate') cell.against = p.y || null;
@@ -5781,6 +5859,10 @@ function previewQuestion(typed) {
   if (RAW_KINDS.includes(p.kind) || (p.kind === 'rank' && p.metric && !faceHas(p.metric))) cell.raw = qRead;
   cell.asked = typed;
   updateCell();
+  // a question turned the cube a quarter of the time in the usability runs, and nothing
+  // said so; the cube is the biggest thing on the page
+  if (curFacet !== faceBefore && faceBefore !== 'opportunity' && !rolling && FACETS[curFacet])
+    noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">The cube turned to the ${curFacet} face, which is where this is measured.</em>`;
   return true;
 }
 // only now is anything computed
@@ -5931,7 +6013,17 @@ function initCube() {
   scene.addEventListener('pointerup', end);
   scene.addEventListener('pointercancel', end);
   document.querySelectorAll('.fchip').forEach(el =>
-    el.addEventListener('click', () => chooseFacet(el.dataset.facet)));
+    el.addEventListener('click', () => {
+      const name = el.dataset.facet;
+      // over a reading that brings its own measures, tapping a face changed only the cube
+      // and read as broken. it drops the reading for that face's own, for the same place
+      if (chain.length && cell.view && VIEW_DEF[cell.view] && (VIEW_DEF[cell.view].ignores || []).includes('facet') &&
+          name !== curFacet && FACETS[name] && !FACETS[name].soon && name !== 'opportunity') {
+        cell.view = null; cell.form = null; cell.span = null;
+        if (stage === 'result') { paintFacet(name); faceToFront(name); settle(); updateChips(); runCell(); return; }
+      }
+      chooseFacet(name);
+    }));
   scene.setAttribute('tabindex', '0');
   scene.setAttribute('role', 'group');
   scene.setAttribute('aria-label', 'The inequality cube. Arrow keys turn it to another face.');
@@ -6602,7 +6694,11 @@ function splitLead(html) {
     const c = body[i];
     if (c === '<') {
       inTag = true;
-      if (body.startsWith('<em', i) && depth === 0 && i > 0) { cut = i; break; }
+      if (body.startsWith('<em', i) && depth === 0 && i > 0) {
+        const close = body.indexOf('</em>', i);
+        const len = close > 0 ? body.slice(i, close).replace(/<[^>]*>/g, '').trim().split(/\s+/).length : 99;
+        if (len >= 8) { cut = i; break; }
+      }
       if (/^<(strong|em|span|button)\b/.test(body.slice(i, i + 8))) depth++;
       if (/^<\/(strong|em|span|button)>/.test(body.slice(i, i + 10))) depth--;
       continue;
@@ -6673,6 +6769,7 @@ function render() {
   drawChart();
   buildNext(last);   // and where this answer can be taken next
   updateCell();   // the cube stays on the facet you chose; only the cell coordinates move
+  markFixedFolds();
   syncUrl();
 }
 
@@ -6711,7 +6808,7 @@ function updateCell() {
     : named.length === 2 ? named.join(' and ')
     : `${named.length} countries`;
   setSlot('place', place, 'add');
-  setSlot('scope', ctx.pool ? esc(ctx.pool.label) : ctx.region ? REGION_LABEL[ctx.region] : null, 'all');
+  setSlot('scope', ctx.pool ? esc(ctx.pool.label) : ctx.region ? REGION_LABEL[ctx.region] : null, 'the richer third');
   setSlot('form', cell.view ? VIEW_DEF[cell.view].label : (FORM_DEF[cell.form] || null), 'as is');
   // A view brings its own measures. Leaving the facet pill on "top 1% share" while the
   // chart draws a median told the reader the wrong thing about what they were looking at,
@@ -6827,11 +6924,26 @@ function stepAnswers(step, here) {
     if (whyNot('form', shape)) return false;
     // the sharpest years and the peers read the face's own measure, so that is the one
     // that has to have a record here (Hong Kong has wealth but no income series)
-    if ((shape === 'turn' || shape === 'peers') && iso) return seriesOf(facetIneqDefault(), iso).length >= 6;
+    // the sharpest years and the peers depend on other countries too (peers needs enough
+    // comparable ones over the same years), so they are built quietly and must answer
+    if ((shape === 'turn' || shape === 'peers') && iso) return seriesOf(facetIneqDefault(), iso).length >= 6 && dryRun({ kind: shape, iso });
     return true;
   } catch (err) { return false; }
   finally { cell.places = saved.places; cell.against = saved.against; curFacet = saved.face; }
 }
+// build a reading without showing it: nothing on screen, nothing in the context, changes
+function dryRun(p) {
+  const savedCtx = Object.assign({}, ctx), savedNotice = showNotice, seq = factSeq;
+  let ok = false;
+  try {
+    showNotice = () => {};
+    ctx.metric = facetIneqDefault();
+    ok = !!buildAnswer(p, 'dry run');
+  } catch (err) { ok = false; }
+  finally { showNotice = savedNotice; Object.assign(ctx, savedCtx); factSeq = seq; }
+  return ok;
+}
+
 // the steps that follow from one answer, at most three, each already checked
 function nextSteps(f) {
   const here = (f.isos && f.isos.length === 1) ? f.isos[0] : (cell.place || null);
@@ -8279,6 +8391,8 @@ function updateChips() {
 function showNotice(html) {
   const n = document.getElementById('notice');
   n.innerHTML = html; n.hidden = false;
+  // the same words twice looked like nothing had happened: it flashes each time it is set
+  n.classList.remove('fresh'); void n.offsetWidth; n.classList.add('fresh');
 }
 function hideNotice() { document.getElementById('notice').hidden = true; }
 
