@@ -193,8 +193,11 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
   font-family: var(--mono); font-size: 11px; color: var(--ink-3);
   border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
-  background: var(--bg); pointer-events: none;
+  background: var(--bg); cursor: pointer; line-height: 1.5;
 }
+.slash:hover { color: var(--ink); border-color: var(--ink-3); }
+/* a long example ends in an ellipsis instead of being cut mid-word on a phone */
+#q { text-overflow: ellipsis; }
 /* the hints belong to the empty box only; once you type, they step aside */
 #q:not(:placeholder-shown) ~ .slash, #q:not(:placeholder-shown) ~ .qsteps { visibility: hidden; }
 .helpbtn {
@@ -303,8 +306,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   header .deeper { padding: 4px 10px; font-size: 12px; }
   header .theme-toggle { padding: 6px; }
 }
-/* there is no tab key on a phone */
-@media (hover: none) and (pointer: coarse) { .askbox .slash { display: none; } }
+
 /* the cube is smaller than the scene, so it has to be centred in it rather than
    left to sit in the top corner where a block element lands by default */
 .scene { position: relative; width: 232px; height: 232px; perspective: 760px; touch-action: none; cursor: grab;
@@ -848,7 +850,7 @@ footer a { color: inherit; }
           <button type="button" id="q-up" aria-label="previous question">&#9650;</button>
           <button type="button" id="q-dn" aria-label="next question">&#9660;</button>
         </span>
-        <span class="slash" id="fillhint">tab to fill</span>
+        <button type="button" class="slash" id="fillhint" aria-label="Put the example question in the box to edit it">edit this</button>
         <button type="button" class="sendbtn" id="send-compose" aria-label="Send">&#8594;</button>
       </form>
       <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">what can I ask?</button>
@@ -1468,6 +1470,9 @@ function findCountries(text) {
 const g2 = v => v == null ? 'n/a' : v.toFixed(2);
 const g3 = v => v == null ? 'n/a' : v.toFixed(3);
 const pc = v => v == null ? 'n/a' : (v * 100).toFixed(1) + '%';
+// a change in a share is a change in points: 21.3% to 23.9% is 2.6 points, not 2.6%,
+// which would be a rise of about half a point. every difference on a share uses this
+const pts = v => v == null ? 'n/a' : (v * 100).toFixed(1) + (Math.abs(v * 100).toFixed(1) === '1.0' ? ' point' : ' points');
 const yrs1 = v => v == null ? 'n/a' : v.toFixed(1) + ' years';
 const t1 = v => v == null ? 'n/a' : v.toFixed(1) + ' t';
 const usd0 = v => v == null ? 'n/a' : '$' + Math.round(v).toLocaleString('en-US');
@@ -1510,19 +1515,19 @@ const META = {
   },
   poverty_rate: {
     label: 'extreme poverty', topic: 'wellbeing', series: true, file: 'data/poverty_rate.json',
-    higherWorse: true, fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    higherWorse: true, fmt: pc, fmtD: pts, hover: '%{y:.1%}',
     lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. The share of people living on less than $2.15 a day in 2017 purchasing power dollars, which is the line for surviving, not the line for getting by. In the richer third of countries the median reading is a quarter of one per cent and eight countries read exactly zero, so this measure says almost nothing about a rich country. A relative line, half of what the middle person has, would say something, and the atlas does not hold one.',
     poolSrc: 'Source: World Bank PIP via OWID. The share below $2.15 a day in 2017 purchasing power dollars, latest survey per country. This is the survival line: across the richer third of countries the median reading is a quarter of one per cent, so a ranking of rich countries on it is a ranking of rounding.',
   },
   wealth_top1: {
     label: 'wealth concentration', topic: 'wealth', series: true, giniFam: true, concFam: true, file: 'data/wealth_top1.json',
-    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    fmt: pc, fmtD: pts, hover: '%{y:.1%}',
     lineSrc: 'Source: WID. Share of household net wealth held by the top 1%.',
     poolSrc: 'Source: WID, top 1% wealth share, latest year per country.',
   },
   wealth_bottom50: {
     label: 'bottom 50% wealth share', topic: 'wealth', series: true, file: 'data/wealth_bottom50.json',
-    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    fmt: pc, fmtD: pts, hover: '%{y:.1%}',
     lineSrc: 'Source: WID. Share of household net wealth held by the bottom 50%.',
     poolSrc: 'Source: WID, bottom 50% wealth share, latest year per country.',
   },
@@ -1531,25 +1536,25 @@ const META = {
   // comparable here. Not comparable to the PIP income Gini, which is post-tax survey.
   income_top1: {
     label: 'top 1% income share', topic: 'income', series: true, concFam: true, file: 'data/income_top1.json',
-    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    fmt: pc, fmtD: pts, hover: '%{y:.1%}',
     lineSrc: 'Source: WID. Share of pretax national income taken by the top 1%, per adult, split equally within the couple.',
     poolSrc: 'Source: WID, top 1% pretax income share, latest year per country.',
   },
   income_top10: {
     label: 'top 10% income share', topic: 'income', series: true, concFam: true, file: 'data/income_top10.json',
-    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    fmt: pc, fmtD: pts, hover: '%{y:.1%}',
     lineSrc: 'Source: WID. Share of pretax national income taken by the top 10%, per adult, split equally within the couple.',
     poolSrc: 'Source: WID, top 10% pretax income share, latest year per country.',
   },
   income_middle40: {
     label: 'middle 40% income share', topic: 'income', series: true, file: 'data/income_middle40.json',
-    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    fmt: pc, fmtD: pts, hover: '%{y:.1%}',
     lineSrc: 'Source: WID. Share of pretax national income taken by the middle 40%, the people between the median and the top tenth.',
     poolSrc: 'Source: WID, middle 40% pretax income share, latest year per country.',
   },
   income_bottom50: {
     label: 'bottom 50% income share', topic: 'income', series: true, file: 'data/income_bottom50.json',
-    fmt: pc, fmtD: pc, hover: '%{y:.1%}',
+    fmt: pc, fmtD: pts, hover: '%{y:.1%}',
     lineSrc: 'Source: WID. Share of pretax national income taken by the bottom 50%, per adult, split equally within the couple.',
     poolSrc: 'Source: WID, bottom 50% pretax income share, latest year per country.',
   },
@@ -1577,9 +1582,9 @@ const META = {
     lineSrc: 'Source: Maddison Project Database 2023, via the Global Carbon Budget dataset at Our World in Data. GDP per person in international dollars at 2011 prices, a different base year and a different accounting basis from the 2017 purchasing power dollars the daily income figures use.',
     poolSrc: 'Source: Maddison Project Database 2023 via OWID. GDP per person, 2011 international dollars, latest year per country.',
   },
-  top1_wealth_share: { label: 'top 1% share', topic: 'wealth', snap: true, fmt: pc, fmtD: pc },
-  top10_wealth_share: { label: 'top 10% share', topic: 'wealth', snap: true, fmt: pc, fmtD: pc },
-  bottom50_wealth_share: { label: 'bottom 50% share', topic: 'wealth', snap: true, fmt: pc, fmtD: pc },
+  top1_wealth_share: { label: 'top 1% share', topic: 'wealth', snap: true, fmt: pc, fmtD: pts },
+  top10_wealth_share: { label: 'top 10% share', topic: 'wealth', snap: true, fmt: pc, fmtD: pts },
+  bottom50_wealth_share: { label: 'bottom 50% share', topic: 'wealth', snap: true, fmt: pc, fmtD: pts },
 };
 
 // how each series came to exist. this is stated on every chart that draws it.
@@ -3465,7 +3470,7 @@ function buildAnswer(p, q) {
     f.isos = [iso]; f.mode = 'turn'; f.metricUsed = key;
     f.turn = { iso, key, ser, a: best.a, b: best.b, dv: best.dv, span: SPAN, events: ev };
     const dir = best.dv >= 0 ? 'rose' : 'fell';
-    f.text = `The sharpest ${SPAN} years for ${m.label} in <strong>${esc(BY_ISO[iso].name)}</strong> ` +
+    f.text = `The sharpest ${SPAN} years for ${m.label} in <strong>${esc(theName(iso))}</strong> ` +
       `were <strong>${best.a} to ${best.b}</strong>, when it ${dir} ` +
       `<strong>${m.fmtD(Math.abs(best.dv))}</strong>. ` +
       (ev.length
@@ -3517,7 +3522,7 @@ function buildAnswer(p, q) {
     const sgn = v => (v >= 0 ? '+' : '-') + m.fmtD(Math.abs(v));
     const bandName = myBand === 0 ? 'the richest third of countries'
       : myBand === 1 ? 'the middle third by income per person' : 'the poorest third of countries';
-    f.text = `From ${a} to ${b}, ${m.label} in <strong>${esc(BY_ISO[iso].name)}</strong> moved ` +
+    f.text = `From ${a} to ${b}, ${m.label} in <strong>${esc(theName(iso))}</strong> moved ` +
       `<strong>${sgn(mine.dv)}</strong>. Across ${moves.length - 1} comparable countries the middle ` +
       `one moved <strong>${sgn(med)}</strong>, which puts it <strong>${ordinal(rank)} of ` +
       `${moves.length}</strong>. The gap against the middle is <strong>${sgn(mine.dv - med)}</strong>. ` +
@@ -8252,11 +8257,16 @@ function boot() {
     qEl.value = qEl.placeholder.replace(/^\w+:\s*/, '');
     qEl.focus(); qEl.setSelectionRange(qEl.value.length, qEl.value.length);
   }
-  // the example stays a grey placeholder; Tab drops it in to complete, arrows flick between them
+  // the example stays a grey placeholder. Tab used to drop it in, which took Tab away from
+  // everyone moving through the page by keyboard: tabbing past the box filled it with a
+  // question they never wrote. Tab moves on now. The right arrow, or the "edit this"
+  // button, drops the example in; Enter on the empty box asks it as it stands.
+  const fh = document.getElementById('fillhint');
+  if (fh) fh.addEventListener('click', fillPrompt);
   qEl.addEventListener('keydown', e => {
     const hp = document.getElementById('help');
     const items = (hp && !hp.hidden) ? [...hp.querySelectorAll('.q-item')] : [];
-    if (e.key === 'Tab' && !qEl.value) { e.preventDefault(); fillPrompt(); return; }
+    if (e.key === 'ArrowRight' && !qEl.value) { e.preventDefault(); fillPrompt(); return; }
     if ((e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
       if (items.length) {           // a list is open: the arrows walk it
         e.preventDefault();
