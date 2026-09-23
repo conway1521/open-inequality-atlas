@@ -47,7 +47,7 @@ so the raw file stays checkable against the source.
 | `bis_property_prices.csv` | long residential property price series, about 60 countries | BIS, only if the OECD file disappoints |
 
 The first would turn the two-country house price chart on the Why page into a real
-international one. The third is what would let the health face reopen.
+international one. The third is what would take the health face past the United States, which is all it covers for now.
 
 ## dfa-networth-levels.csv
 

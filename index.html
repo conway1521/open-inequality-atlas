@@ -887,7 +887,7 @@ footer a { color: inherit; }
             <div class="face f-wealth" data-facet="wealth"><span class="lab">wealth</span><div class="q">The wealth held by the richest one percent.</div></div>
             <div class="face f-income" data-facet="income"><span class="lab">income</span><div class="q">How unevenly income is shared out.</div></div>
             <div class="face f-opportunity" data-facet="opportunity"><span class="lab">opportunity &middot; US only</span><div class="q">How much your parents' income sets your own, across 741 US commuting zones</div></div>
-            <div class="face f-health soon" data-facet="health"><span class="lab">health &middot; coming soon</span><div class="q">A national average cannot show the gap between rich and poor. We are waiting on data that can.</div></div>
+            <div class="face f-health" data-facet="health"><span class="lab">health &middot; US only</span><div class="q">How much longer the rich live.</div></div>
             <div class="face f-link" data-facet="link"><span class="lab">link</span><div class="q">One face read alongside another</div></div>
             <div class="face f-extend" data-facet="extend"><span class="lab">extend</span><div class="q">The same face through time and across geography</div></div>
           </div>
@@ -898,7 +898,7 @@ footer a { color: inherit; }
           <button class="fchip w" data-facet="wealth" aria-pressed="true">wealth</button>
           <button class="fchip i" data-facet="income" aria-pressed="false">income</button>
           <button class="fchip o" data-facet="opportunity" aria-pressed="false">opportunity<span class="scope-tag">US</span></button>
-          <button class="fchip h" data-facet="health" aria-pressed="false">health<span class="scope-tag">soon</span></button>
+          <button class="fchip h" data-facet="health" aria-pressed="false">health<span class="scope-tag">US</span></button>
         </div>
       </div>
       <form class="askbox" id="ask-form">
@@ -1043,10 +1043,11 @@ footer a { color: inherit; }
   <div id="view-wellbeing" class="wrap db" hidden>
     <h1>Health</h1>
     <p class="sub">
-      Closed as a face of the cube, on purpose. Life expectancy across countries is a national
-      average, which cannot show the gap between rich and poor inside one, and no source
-      publishes that gap in a form that compares across borders. Rather than fill the face with
-      an average we have left it shut and said why.
+      A face of the cube for the United States only, on purpose. Life expectancy across countries
+      is a national average, which cannot show the gap between rich and poor inside one, and no
+      source publishes that gap in a form that compares across borders. The one place it is
+      measured, by household income, is the United States, so that is what the face shows,
+      labelled the way opportunity is, rather than an average dressed up as an inequality.
     </p>
     <div class="grid3">
       <div class="block">
@@ -1056,7 +1057,7 @@ footer a { color: inherit; }
         place, 5.6 years for women. No zone has no gap. These are measured from age forty rather
         than from birth, so they are not the figures quoted for a whole country, which run
         lower.</p>
-        <p class="try" data-qs="how much longer do the rich live here?"></p>
+        <p class="try" data-qs="how much longer do the rich live here?;where do poor people live longest?;life expectancy gap in Detroit"></p>
       </div>
       <div class="block">
         <h2>What is still held</h2>
@@ -1068,7 +1069,7 @@ footer a { color: inherit; }
         <p class="try" data-qs="does life expectancy track inequality?;how do wealth, income and life expectancy sit together?"></p>
       </div>
       <div class="block">
-        <h2>What would open it</h2>
+        <h2>What would take it past the US</h2>
         <p>Life expectancy by income group, published the same way in more than one country.
         The WHO has child deaths by wealth quintile for poorer countries and the OECD has life
         expectancy by education for richer ones. They were built differently and do not join.</p>
@@ -2165,7 +2166,8 @@ const FACET_MEASURES = {
            ['house_price', 'house prices']],
   income: [['income_top1', 'top 1% share'], ['income_top10', 'top 10% share'], ['income_middle40', 'the middle 40%'], ['income_gini', 'income Gini'],
            ['median_income', 'median income'], ['poverty_rate', 'living on under $2.15 a day']],
-  health: [['life_exp', 'life expectancy'], ['life_satisfaction', 'life satisfaction']],
+  // health has no measure of its own among these: its face reads the US life gap, and a
+  // national life expectancy is something to hold inequality against, not inequality
 };
 const facetMeasureIdx = { wealth: 0, income: 0, health: 0 };
 function facetMeasure(name) {
@@ -2435,6 +2437,8 @@ function parseCore(raw) {
   // a country, a year, and a named series metric: read that one cell ("wealth gini France 2010")
   if (metric && isos.length === 1 && years.length && META[metric].series)
     return { kind: 'point', iso: isos[0], year: years[0], metric };
+  // a measure and two or more countries is a comparison on that measure
+  if (metric && isos.length >= 2) return { kind: 'compare', isos: isos.slice(0, 4), metric };
   if (metric) {
     // a series measure named with no country and no ranking words: the honest answer is
     // "which country?", not a world median and never the old US-only chart
@@ -2661,7 +2665,7 @@ function urlState() {
   if (cell.scope) s.set('among', cell.scope);
   // a free-text reading and the opportunity face are rebuilt from the words; the rest
   // from the folds, which is what the accordion edits
-  if (curFacet === 'opportunity' || RAW_KINDS.includes(last.kind) || last.kind === 'opp') {
+  if (onUs() || RAW_KINDS.includes(last.kind) || last.kind === 'opp') {
     s.set('q', last.query || '');
     return s.toString();
   }
@@ -2769,7 +2773,7 @@ function syncCellFromFact(f) {
 }
 // build the answer straight from the cell's coordinates, keeping the others intact
 function runCell() {
-  if (curFacet === 'opportunity') return;   // the US-zone facet has its own path
+  if (onUs()) return;   // the US-zone facet has its own path
   ctx.metric = facetIneqDefault();
   ctx.lastIso = cell.place; ctx.lastAspect = cell.against;
   let p, q;
@@ -2962,9 +2966,10 @@ function applyDim(dim, val) {
 // re-read the current cell under a changed facet or measure (never drops back to the landing)
 function rerunCurrent() {
   if (!chain.length) return;
-  if (curFacet === 'opportunity') {
+  if (onUs()) {
     if (!US_CZ) return;
-    const f = oppAnswer('upward mobility');   // a global cell doesn't translate, so open the zone view
+    // a global cell doesn't translate, so open the face's own view of the zones
+    const f = oppAnswer(curFacet === 'health' ? 'how much longer do the rich live here?' : 'upward mobility');
     if (f) { chain.length = 0; chain.push(f); render(); }
     return;
   }
@@ -4108,7 +4113,8 @@ function buildAnswer(p, q) {
   }
 
   else if (p.kind === 'compare') {
-    const key = META[ctx.metric].series || META[ctx.metric].snap ? ctx.metric : 'wealth_gini';
+    const named = p.metric && META[p.metric] && (META[p.metric].series || META[p.metric].snap) ? p.metric : null;
+    const key = named || (META[ctx.metric].series || META[ctx.metric].snap ? ctx.metric : 'wealth_gini');
     const m = META[key];
     const rows = p.isos.map(i => ({ iso: i, lv: latestValOf(key, i) })).filter(x => x.lv);
     if (rows.length < 2) return miss();
@@ -4450,12 +4456,12 @@ function askNeedsPlace(q) {
 function ask(q) {
   hideNotice();
   stopIdle(false);   // the cube stops drifting once you ask
-  if (curFacet !== 'opportunity' && askNeedsPlace(q)) {
+  if (!onUs() && askNeedsPlace(q)) {
     const box = document.getElementById('q');
     if (box) box.value = q;
     if (previewQuestion(q)) { setStage('chain'); return; }
   }
-  const f = (curFacet === 'opportunity' && US_CZ) ? oppAnswer(q) : runQuery(q);
+  const f = (onUs() && US_CZ) ? oppAnswer(q) : runQuery(q);
   if (!f) return;
   // one editable cell: a new question refines it in place, it doesn't pile up
   chain.length = 0;
@@ -4474,7 +4480,7 @@ function recomputeChain() {
   chain.length = 0;
   for (const it of items) {
     // route by the facet the cube is on now; questions that don't translate drop out
-    const nf = (curFacet === 'opportunity' && US_CZ) ? oppAnswer(it.query, true) : runQuery(it.query);
+    const nf = (onUs() && US_CZ) ? oppAnswer(it.query, true) : runQuery(it.query);
     if (!nf) continue;                    // query no longer resolves under new state: drop it
     nf.id = it.id;
     nf.changed = nf.text !== it.oldText;
@@ -4500,22 +4506,22 @@ const FACETS = {
                  note: 'Opportunity is not measured the way the other three are. It is 741 United States commuting zones, ' +
                    'for children born in the early 1980s: one country, one cohort, no run of years. ' +
                    'It is here because it is the clearest picture of the mechanism that exists anywhere, not because it is global.' },
-  // Closed on purpose. Life expectancy is a national average, so it cannot show a gap
-  // between rich and poor inside a country, which is what a face of this cube claims to
-  // do. Nobody publishes health inequality in a form that compares across borders: the
-  // WHO has child deaths by wealth quintile for poorer countries, the OECD has life
-  // expectancy by education for richer ones, and the two were built differently and do
-  // not join. So the face says what it is waiting for instead of showing an average.
-  // Life expectancy itself stays in the atlas as something to hold inequality against.
-  health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'coming soon',
-                 soon: true,
-                 note: 'Health is not open as a face of its own. Life expectancy across countries ' +
-                   'is a national average, which cannot show the gap between rich and poor inside ' +
-                   'one, and no source publishes that gap in a way that compares across borders. ' +
-                   'Where it can be seen is the opportunity layer: ask "how much longer do the rich ' +
-                   'live here?" for 595 US commuting zones. You can also hold any measure against ' +
-                   'national life expectancy from the "against" fold.' },
+  // Open, and US only, on purpose. Life expectancy by country is a national average, so it
+  // cannot show a gap between rich and poor inside a country, which is what a face of this
+  // cube claims to do. Nobody publishes health inequality in a form that compares across
+  // borders: the WHO has child deaths by wealth quintile for poorer countries, the OECD
+  // life expectancy by education for richer ones, and the two do not join. The one place
+  // the gap itself is measured, by household income, is the United States, so that is
+  // what this face shows, labelled the way opportunity is. The national average stays in
+  // the atlas as something to hold inequality against, never as this face's measure.
+  health:      { i: 3, side: true, color: 'var(--health)', metric: null, sub: 'the rich-poor life gap, US',
+                 note: 'Health, measured where the gap between rich and poor can be seen: life expectancy by ' +
+                   'household income across 595 US commuting zones, and the gap county by county. No source ' +
+                   'measures that gap the same way across countries, so this face is the United States only.' },
 };
+// the faces that read the US layer rather than the country panels
+const US_FACES = ['opportunity', 'health'];
+function onUs(face) { return US_FACES.includes(face === undefined ? curFacet : face); }
 // the two poles of the cube are not faces of inequality: they are what you do to a
 // face. link holds it against another face; extend takes the same face somewhere finer.
 const INTERACTIONS = { link: 'link', extend: 'extend' };
@@ -4547,6 +4553,11 @@ const PROMPT_SETS = {
     'how has Brazil changed over time?',
     'who breaks the pattern?',
     'what about among rich countries?',
+  ],
+  health: [
+    'how much longer do the rich live here?',
+    'where do poor people live longest?',
+    'life expectancy gap in Detroit',
   ],
   opportunity: [
     'if you grow up poor here, what do you earn later?',
@@ -4604,6 +4615,10 @@ const QUESTIONS = [
     'what happened to the middle here?',
     'did the growth reach the typical person?',
   ] },
+  { k: 'health, US only', facet: 'health', qs: [
+    'how much longer do the rich live here?',
+    'where do poor people live longest?',
+    'life expectancy gap in Detroit'] },
   { k: 'opportunity, US counties only', facet: 'opportunity', qs: [
     'do the four faces agree inside one country?',
     'if you grow up poor here, what do you earn later?',
@@ -4612,8 +4627,7 @@ const QUESTIONS = [
     'does the income gap track climbing?',
     "does credit depend on your parents' income?",
     "who owns a home, by their parents' income?",
-    "who falls behind on payments, by their parents' income?",
-    'how much longer do the rich live here?'] },
+    "who falls behind on payments, by their parents' income?"] },
 ];
 let promptIdx = 0;
 function nextPrompt(jump) {
@@ -4748,7 +4762,13 @@ function dimCurrent(dim) {
 }
 function dimGroups(dim, filter) {
   const g = [];
-  if (curFacet === 'opportunity') {
+  if (onUs()) {
+    if (dim === 'facet' && curFacet === 'health') {
+      g.push({ k: 'measure', rows: [['the rich-poor life gap', 'how much longer do the rich live here?', '595 US commuting zones']] });
+      g.push({ k: 'not in the atlas', gaps: [['the gap outside the US',
+        'No source measures life expectancy by income the same way across countries, so this face is the United States only.', null]] });
+      return g;
+    }
     if (dim === 'facet') {
       g.push({ k: 'measure', rows: [['upward mobility', 'upward mobility', '741 US commuting zones']] });
       g.push({ k: 'not in the atlas', gaps: [['mobility outside the US',
@@ -4973,7 +4993,7 @@ function renderDrawer(dim, rib, opts, filter) {
   const capped = dim === 'place' ? pills
     : filter ? pills.slice(0, 20) : pills.slice(0, heads ? 14 : 8);
   let html = '';
-  if (dim === 'place' && curFacet !== 'opportunity')
+  if (dim === 'place' && !onUs())
     html += `<input type="text" class="opt-find" id="opt-q" autocomplete="off" spellcheck="false" placeholder="find a country" value="${esc(filter || '')}">`;
   html += `<div class="opt-wrap${dim === 'place' ? ' opt-scroll' : ''}">` + capped.map(o =>
     (o[0][0] === '\u0001'
@@ -5009,7 +5029,7 @@ function renderDrawer(dim, rib, opts, filter) {
       if (offNote) { offNote.textContent = btn.dataset.why; offNote.hidden = false; }
       return;
     }
-    if (curFacet === 'opportunity' && dim !== 'facet') { closeDrawer(); ask(v); return; }
+    if (onUs() && dim !== 'facet') { closeDrawer(); ask(v); return; }
     if (dim === 'place' && v) { keepOpen = dim; applyDim(dim, v); keepOpen = null; return; }
     closeDrawer();
     applyDim(dim, v);
@@ -5142,7 +5162,7 @@ function rollOnceInner() {
     if (FACETS[face] && !FACETS[face].soon && face !== curFacet) { paintFacet(face); faceToFront(face); }
     hideNotice();
     chain.length = 0;
-    if (face === 'opportunity') {                 // that layer answers in one step
+    if (US_FACES.includes(face)) {                 // that layer answers in one step
       ask(pick.q);
       if (chain.length) { lastRolled = pick.q; return pick.q; }
       continue;
@@ -5264,7 +5284,7 @@ function stepDim(dim, dir) {
 // runs offered only greyed options. It is drawn as fixed and says why when touched.
 function foldDead(dim) {
   if (!['scope', 'against'].includes(dim)) return null;
-  if (curFacet === 'opportunity') return 'The US layer is one country, read against its own measures, so this does not apply to it.';
+  if (onUs()) return 'The US layer is one country, read against its own measures, so this does not apply to it.';
   if (!chain.length && stage !== 'chain') return null;
   const cur = dimCurrent(dim);
   const opts = (dimGroups(dim, '') || []).flatMap(g => g.opts || []).map(o => o[1]).filter(v => v != null);
@@ -5461,7 +5481,7 @@ const VIEW_DEF = {
 // greyed option beats hiding it: hiding teaches nothing, greying shows the shape of
 // what is possible and names the one thing standing in the way.
 function whyNot(dim, val) {
-  if (curFacet === 'opportunity') return null;   // that layer runs its own rules
+  if (onUs()) return null;   // that layer runs its own rules
   const held = cell.against && META[cell.against];
   const n = cell.places.length;
   if (dim === 'form') {
@@ -5702,7 +5722,10 @@ const TO_OPP = [
   [/\bwhere should (i|we) (move|live|raise)\b|\bbest places? to (grow up|raise|live)\b|\bsocial mobility\b|\bupward mobility\b|\bmobility\b|\bpoor kids\b|\bpoor children\b|\bgrow(ing)? up poor\b|\bborn poor\b|\bget out of poverty\b|\bclimb the ladder\b|\bcan (the )?poor\b.*\b(get rich|make it|climb)\b/,
     'if you grow up poor here, what do you earn later?'],
   [/\blife expectancy gap\b|\bgap in life expectancy\b|\blongevity gap\b|\bhow much longer\b.*\blive\b|\b(rich|poor|richer|poorer|richest|poorest|wealthy) (people|folk|families)?\s*(live|die)\b|\brich (vs|versus|and) poor\b.*\b(life|live|die|death)\w*\b|\b(life expectancy|live|die)\w*\b.*\brich (vs|versus|and) poor\b|\bpoor (people )?die younger\b|\bdo (the )?(poor|rich)\b.*\b(die|live)\b/,
-    'how much longer do the rich live here?'],
+    'how much longer do the rich live here?', 'health'],
+  // health on its own, or health against rich and poor, is the gap the health face shows
+  [/^health$|^health (inequality|inequalities|gap|gaps)$|\bhealth (inequality|gap)\b|\bhealth\b.*\b(rich|poor)\b|\b(rich|poor)\b.*\bhealth\b/,
+    'how much longer do the rich live here?', 'health'],
 ];
 // what the skeptic and the data person type. 16 of 33 of the skeptic's questions went
 // unread in the usability runs, and most of the data person's
@@ -5767,7 +5790,9 @@ function previewQuestion(typed) {
   // a US state, county or city
   const usp = US_CZ ? usPlaceFind(q) : null;
   if (usp) {
-    if (curFacet !== 'opportunity') chooseFacet('opportunity');
+    // a place asked about in terms of living and dying opens on health
+    if (/\b(life|lives|live|living|lifespan|longevity|die|dies|dying|death|health\w*)\b/.test(nq)) { if (curFacet !== 'health') chooseFacet('health'); }
+    else if (!onUs()) chooseFacet('opportunity');
     resetCell(); cell.raw = q; cell.asked = typed; updateCell();
     return true;
   }
@@ -5779,28 +5804,29 @@ function previewQuestion(typed) {
   // an opportunity question typed from another face: "does knowing better-off people
   // help you climb" went to a ranking of wealth risers, because "climb" reads as rising.
   // the words are held against the layer's own questions first
-  if (US_CZ && curFacet !== 'opportunity') {
+  if (US_CZ && !onUs()) {
     const content = s => norm(s).split(' ').filter(w => w.length > 3 && !STOP.has(w));
     const typedW = new Set(content(q));
-    for (const g of QUESTIONS) if (g.facet === 'opportunity') for (const oq of g.qs) {
+    for (const g of QUESTIONS) if (US_FACES.includes(g.facet)) for (const oq of g.qs) {
       const want = content(oq);
       const got = want.filter(w => typedW.has(w)).length;
       if (want.length >= 2 && got / want.length >= 0.7) {
-        chooseFacet('opportunity');
+        chooseFacet(g.facet);
         resetCell(); cell.raw = oq; cell.asked = typed; updateCell();
         noteNext = (noteNext || '') + '<em class="readas">Only the United States publishes this, county by county, so this answer is the US.</em>';
         return true;
       }
     }
   }
-  if (US_CZ) for (const [re, asks] of TO_OPP) if (re.test(nq)) {
-    if (curFacet !== 'opportunity') chooseFacet('opportunity');
+  if (US_CZ) for (const [re, asks, toFace] of TO_OPP) if (re.test(nq)) {
+    const face = toFace || 'opportunity';
+    if (curFacet !== face) chooseFacet(face);
     resetCell(); cell.raw = asks; cell.asked = typed; updateCell();
     noteNext = (noteNext || '') + '<em class="readas">Only the United States publishes this, county by county, so this answer is the US. ' +
       'Read as: ' + esc(asks) + '</em>';
     return true;
   }
-  if (curFacet === 'opportunity') {
+  if (onUs()) {
     // the US layer reads its own questions. one it cannot read, that the country faces
     // can, goes back to them rather than being answered with a US county chart
     let here = null, there = { kind: 'unknown' };
@@ -5818,8 +5844,9 @@ function previewQuestion(typed) {
     }
     const mk = there.metric || there.x || (there.metrics && there.metrics[0]);
     const face = (mk && META[mk] && META[mk].topic === 'income') ? 'income' : 'wealth';
+    const curFacetWas = curFacet;
     chooseFacet(face);
-    noteNext = (noteNext || '') + `<em class="readas">The opportunity layer covers US counties only, so this was read on the ${face} face.</em>`;
+    noteNext = (noteNext || '') + `<em class="readas">The ${curFacetWas} face covers the United States only, so this was read on the ${face} face.</em>`;
   }
   let p;
   try { p = parse(q); } catch (e) { p = { kind: 'unknown' }; }
@@ -5845,7 +5872,7 @@ function previewQuestion(typed) {
     // the answer on screen, over the new set. it used to re-run the last question from
     // its internal label ("the ranking"), which does not parse, and said it could not read it
     setScope(p.pool ? 'pool:' + poolKey(p.pool) : null);
-    if (!chain.length || curFacet === 'opportunity') { resetCell(); cell.form = 'rank'; cell.scope = p.pool ? 'pool:' + poolKey(p.pool) : null; }
+    if (!chain.length || onUs()) { resetCell(); cell.form = 'rank'; cell.scope = p.pool ? 'pool:' + poolKey(p.pool) : null; }
     cell.asked = typed; cell.raw = null; updateCell();
     return true;
   }
@@ -5931,7 +5958,11 @@ function previewQuestion(typed) {
   // a ranking by a measure the face does not carry (the poorest country, the happiest)
   // is read from the words: the cell would put the face's own measure in its place
   const faceHas = m => Object.values(FACET_MEASURES).some(l => l.some(x => x[0] === m));
-  if (RAW_KINDS.includes(p.kind) || (p.kind === 'rank' && p.metric && !faceHas(p.metric))) cell.raw = qRead;
+  // the same for a country asked about a measure no face carries: "life expectancy in japan"
+  // answered with Japan's top 1% wealth share, because the cell put the face's measure in
+  const namedPlace = p.iso || (p.isos && p.isos.length);
+  if (RAW_KINDS.includes(p.kind) || (p.kind === 'rank' && p.metric && !faceHas(p.metric)) ||
+      (p.metric && META[p.metric] && !faceHas(p.metric) && namedPlace && ['metric', 'profile', 'point', 'time'].includes(p.kind))) cell.raw = qRead;
   cell.asked = typed;
   updateCell();
   // a question turned the cube a quarter of the time in the usability runs, and nothing
@@ -5942,7 +5973,7 @@ function previewQuestion(typed) {
 }
 // only now is anything computed
 function cellNeedsPlace() {
-  if (curFacet === 'opportunity' || cell.place) return false;
+  if (onUs() || cell.place) return false;
   // a reading that ranks or spreads across countries wants no place at all
   const acrossCountries = ['rank', 'least', 'spread', 'tiers', 'break'].includes(cell.form);
   if (cell.view && !VIEW_DEF[cell.view].needsPlace) return false;
@@ -6061,7 +6092,12 @@ function syncDeck() {
   if (getComputedStyle(deck).position !== 'sticky') want = false;
   // while an answer is being scrolled into place the deck holds the size the scroll was
   // measured against; growing it mid-scroll left the page where it started
-  if (deckCondensed && !want && view.classList.contains('engaged') && Date.now() < deckHoldUntil) want = true;
+  if (deckCondensed && !want && view.classList.contains('engaged') && Date.now() < deckHoldUntil) {
+    want = true;
+    // and look again when the hold ends, or a jump to the top inside it left the deck
+    // condensed with the face chips hidden until the next scroll
+    clearTimeout(syncDeck.later); syncDeck.later = setTimeout(syncDeck, deckHoldUntil - Date.now() + 30);
+  }
   if (want !== deckCondensed) {
     deckCondensed = want;
     deck.classList.toggle('condensed', want);
@@ -6234,18 +6270,25 @@ function usPlaceAnswer(pl, q) {
     const gaps = Object.fromEntries(Object.entries(US_CZ).map(([id, r]) => [id, gapOf(r)]));
     const gp = usPos(gaps, gapOf(z));
     f.opp.placeName = `${pl.name} (commuting zone)`;
-    let t = `In the <strong>${esc(pl.name)}</strong> commuting zone, a child from a family in the poorest quarter reaches the ` +
+    const climbS = `a child from a family in the poorest quarter reaches the ` +
       `<strong>${ord(Math.round(z.mob * 100))} percentile</strong> of income by adulthood. The middle of the ${mob.n} zones is the ` +
       `${ord(Math.round(mob.med * 100))}, so ${esc(pl.name)} is ${ord(mob.rankHigh)} of ${mob.n} for how far poor children climb.`;
-    if (gapOf(z) != null) t += ` A man of forty in the poorest quarter here lives to <strong>${z.leq1M.toFixed(1)}</strong> and one in the ` +
-      `richest to ${z.leq4M.toFixed(1)}, a gap of <strong>${gapOf(z).toFixed(1)} years</strong> against ${gp.med.toFixed(1)} in the middle zone.`;
-    if (z.cr25 != null) t += ` Children of the poorest quarter have a credit score of ${Math.round(z.cr25)} by their mid thirties, ` +
+    const lifeS = gapOf(z) != null ? `a man of forty in the poorest quarter lives to <strong>${z.leq1M.toFixed(1)}</strong> and one in the ` +
+      `richest to ${z.leq4M.toFixed(1)}, a gap of <strong>${gapOf(z).toFixed(1)} years</strong> against ${gp.med.toFixed(1)} in the middle zone` +
+      (z.leq1F != null && z.leq4F != null ? `; for women the gap is ${(z.leq4F - z.leq1F).toFixed(1)} years.` : '.') : null;
+    const health = curFacet === 'health';
+    let t = `In the <strong>${esc(pl.name)}</strong> commuting zone, `;
+    if (health) t += lifeS ? lifeS + ` Poor children here reach the ${ord(Math.round(z.mob * 100))} percentile by adulthood (the middle zone: ${ord(Math.round(mob.med * 100))}).`
+      : `there is no life expectancy by income: the source measures it only in the 595 zones large enough. ` + climbS;
+    else t += climbS + (lifeS ? ' ' + cap(lifeS) : '');
+    if (z.cr25 != null && !health) t += ` Children of the poorest quarter have a credit score of ${Math.round(z.cr25)} by their mid thirties, ` +
       `children of the richest ${Math.round(z.cr75)}.`;
     t += ` <em>A commuting zone is a local job market, the counties people travel between for work. Children born in the early ` +
       `1980s, measured in their mid thirties, from Opportunity Insights. Life expectancy covers the ${Object.keys(gaps).filter(k => gaps[k] != null).length} zones large enough to measure it.</em>`;
     f.text = t;
+    if (curFacet === 'health') bar('rich-poor life gap at forty', gp, 'lower');
     bar('how far poor children climb', mob, 'higher'); bar('credit score, poorest quarter', cr, 'higher');
-    bar('behind on payments, poorest quarter', dq, 'lower'); bar('rich-poor life gap at forty', gp, 'lower');
+    bar('behind on payments, poorest quarter', dq, 'lower'); if (curFacet !== 'health') bar('rich-poor life gap at forty', gp, 'lower');
     f.opp.unit = 'commuting zones';
   } else {
     const src = pl.type === 'county' ? US_COUNTY : US_STATE;
@@ -6264,7 +6307,11 @@ function usPlaceAnswer(pl, q) {
       `${pl.type === 'county' ? 'the county' : pl.name} is ${ord(mob.rankHigh)} of ${mob.n} for how far poor children climb.`;
     if (v('us_econ_conn') != null) t += ` People on low incomes here have <strong>${v('us_econ_conn').toFixed(2)}</strong> times as many ` +
       `better-off friends as they would if friendship ignored income (the middle ${unit.replace(/ies$/, 'y').replace(/s$/, '')} has ${ec.med.toFixed(2)}).`;
-    if (v('us_le_gap') != null) t += ` At forty the rich outlive the poor by <strong>${v('us_le_gap').toFixed(1)} years</strong> (middle: ${lg.med.toFixed(1)}).`;
+    if (v('us_le_gap') != null) {
+      const gapS = `At forty the rich outlive the poor by <strong>${v('us_le_gap').toFixed(1)} years</strong> here (the middle of the ${unit}: ${lg.med.toFixed(1)}).`;
+      // on the health face the gap leads
+      t = curFacet === 'health' ? `In <strong>${esc(name)}</strong>, ` + gapS[0].toLowerCase() + gapS.slice(1) + ' ' + t.replace(/^In <strong>[^<]*<\/strong>, a /, 'A ') : t + ' ' + gapS;
+    } else if (curFacet === 'health') t = `The source has no life expectancy by income for ${esc(name)}. ` + t;
     if (pl.sharedZone) t += ` <em>${pl.sharedN} commuting zones are called ${esc(pl.sharedZone)} and the source does not say which state each is in, so this is ${esc(pl.name)} as a whole.</em>`;
     t += ` <em>Upward mobility is for children born in the early 1980s, measured in their mid thirties (Opportunity Insights); ` +
       `friendships are from Facebook's social capital study.</em>`;
@@ -6276,9 +6323,14 @@ function usPlaceAnswer(pl, q) {
   return f;
 }
 function oppAnswer(q, strict) {
-  const r = norm(q);
+  let r = norm(q);
   const usp = usPlaceFind(q);
   if (usp) return usPlaceAnswer(usp, q);
+  // on the health face a question that does not ask for another reading of the layer
+  // is about the gap in how long people live, which is the one thing that face shows
+  if (curFacet === 'health' && !/\b(mobility|climb\w*|credit|mortgages?|delinquen\w*|behind on|owns? a home|friends?|connect\w*|mix\w*|faces|agree)\b/.test(r)) {
+    q = 'how much longer do the rich live here?'; r = norm(q);
+  }
   const f = { id: ++factSeq, query: q, kind: 'opp', isos: [], mode: 'opp', text: '', opp: {} };
   const zones = Object.values(US_CZ);
   const fin = OPP_FIN.find(x => x.re.test(r));
@@ -6878,7 +6930,8 @@ function updateCell() {
     setSlot('scope', null, 'all');
     setSlot('form', OPP_SHOWN[o.kind] || 'one reading of the zones', 'as is');
     const vf = document.getElementById('v-facet');
-    if (vf) vf.innerHTML = `opportunity<span class="fmeasure">${esc(OPP_READS[o.kind] || '741 US commuting zones')}</span>`;
+    const reads = curFacet === 'health' && o.kind === 'place' ? 'lifespan, then climbing' : (OPP_READS[o.kind] || '741 US commuting zones');
+    if (vf) vf.innerHTML = `${esc(curFacet)}<span class="fmeasure">${esc(reads)}</span>`;
     return;
   }
   const named = cell.places.filter(i => BY_ISO[i]).map(i => esc(BY_ISO[i].name));
@@ -6984,7 +7037,7 @@ function stepRuns(step, here) {
 // Each step is read the way pressing it would read it and put to the same rules the
 // folds grey out by, against the country it would run on. Only steps that pass are shown.
 function stepAnswers(step, here) {
-  if (step.face === 'opportunity') {
+  if (US_FACES.includes(step.face)) {
     try { return !!(US_CZ && oppAnswer(step.q, true)); } catch (err) { return false; }
   }
   let p;
@@ -6996,7 +7049,7 @@ function stepAnswers(step, here) {
   if (!shape) return true;
   const saved = { places: cell.places.slice(), against: cell.against, face: curFacet };
   try {
-    if (curFacet === 'opportunity') curFacet = VIEW_FACE[shape] || 'wealth';   // where pressing it will turn
+    if (onUs()) curFacet = VIEW_FACE[shape] || 'wealth';   // where pressing it will turn
     cell.places = iso ? [iso] : [];
     cell.against = p.kind === 'break' ? ((p.metrics || []).find(m => META[m] && !isIneq(m)) || null)
       : p.kind === 'tiers' ? (p.aspect || null) : null;
@@ -7205,8 +7258,8 @@ function buildNext(f) {
       ? chain[chain.length - 1].isos[0] : cell.place);
     hideNotice();
     if (s.face && s.face !== curFacet) { chooseFacet(s.face); faceToFront(s.face); settle(); }
-    else if (!s.face && curFacet === 'opportunity') { chooseFacet('wealth'); faceToFront('wealth'); settle(); }
-    if (s.face === 'opportunity') { ask(s.q); revealAnswer(); return; }
+    else if (!s.face && onUs()) { chooseFacet('wealth'); faceToFront('wealth'); settle(); }
+    if (US_FACES.includes(s.face)) { ask(s.q); revealAnswer(); return; }
     setStage('compose'); resetCell(); chain.length = 0;
     if (!previewQuestion(s.q)) return;
     if (keep) cell.place = keep;
@@ -8457,6 +8510,7 @@ const FACET_CHIPS = {
   wealth: ['wealth vs income in the US', 'France', 'most concentrated', 'life expectancy and inequality'],
   income: ['most unequal', 'France', 'median income and inequality', 'poverty and inequality'],
   opportunity: ['upward mobility', "credit by parents' income", "mortgages by parents' income", 'mobility and income'],
+  health: ['how much longer do the rich live here?', 'life expectancy gap in Detroit', 'does life expectancy track inequality?'],
 };
 
 function updateChips() {
@@ -8465,7 +8519,7 @@ function updateChips() {
   let list;
   const avail = Object.keys(ASPECT_CHIP).filter(k => SERIES[k]);
   const otherAspects = cur => avail.filter(k => k !== cur).map(k => ASPECT_CHIP[k]);
-  if (typeof curFacet !== 'undefined' && curFacet === 'opportunity') list = FACET_CHIPS.opportunity;
+  if (typeof curFacet !== 'undefined' && onUs()) list = FACET_CHIPS[curFacet];
   else if (!chain.length) list = (typeof curFacet !== 'undefined' && FACET_CHIPS[curFacet]) || START_CHIPS;
   else {
     const last = chain[chain.length - 1];
@@ -8996,7 +9050,7 @@ function setHelp(open, filter) {
         setHelp(false);
         const want = b.dataset.facet;                    // a question belonging to another face turns to it first
         if (want && want !== curFacet) chooseFacet(want);
-        else if (!want && curFacet === 'opportunity') chooseFacet('wealth');
+        else if (!want && onUs()) chooseFacet('wealth');
         // one click answers. it used to fill the strip and wait for "show me", which read
         // as the list not working; the strip is still there to change afterwards
         if (runPrompt(b.textContent)) sendCell();
@@ -9115,7 +9169,7 @@ function boot() {
         setHelp(false); setView('ask');
         const wants = faceFor(b.textContent);
         if (wants && curFacet !== wants) chooseFacet(wants);
-        else if (!wants && curFacet === 'opportunity') chooseFacet('wealth');
+        else if (!wants && onUs()) chooseFacet('wealth');
         ask(b.textContent);
       }));
   });
@@ -9182,7 +9236,7 @@ function boot() {
       if (sel) { e.preventDefault(); setHelp(false);
         const want = sel.dataset.facet;
         if (want && want !== curFacet) chooseFacet(want);
-        else if (!want && curFacet === 'opportunity') chooseFacet('wealth');
+        else if (!want && onUs()) chooseFacet('wealth');
         if (runPrompt(sel.textContent)) sendCell(); }
     }
   });
@@ -9220,7 +9274,7 @@ function boot() {
   const wto = document.getElementById('why-to-opp');
   if (wto) wto.addEventListener('click', () => {
     setView('ask');
-    if (curFacet !== 'opportunity') chooseFacet('opportunity');
+    if (!onUs()) chooseFacet('opportunity');
     window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
   });
   document.getElementById('clear').addEventListener('click', resetAll);

@@ -358,19 +358,25 @@ two we cannot measure.
 |---|---|---|---|
 | wealth | top 1% share, bottom 50% share, Gini | WID plus the harmonised release | core |
 | income | top 1% / middle 40% / bottom 50% share, Gini, median | WID and World Bank PIP | core |
-| health | closed | | **not open as a face** |
+| health | the rich-poor gap in life expectancy at 40, 595 US commuting zones and US counties | Health Inequality Project, Opportunity Insights | **open, US only** |
 | opportunity | mobility, credit, debt and life expectancy by income, 741 US commuting zones | Opportunity Insights, Health Inequality Project | **beta, US only** |
 
-Health is closed as a face and that is the honest position. Life expectancy across
-countries is a national average, which cannot show a gap between rich and poor inside
-one, and no source publishes that gap in a form that compares across borders. The face
-says so and hands the cube back rather than setting a measure.
+Health is open as a face for the United States only, and that is the honest position.
+Life expectancy across countries is a national average, which cannot show a gap between
+rich and poor inside one, and no source publishes that gap in a form that compares across
+borders. The one place the gap itself is measured, by household income, is the United
+States, so the face shows that and is labelled US, the way opportunity is. It does not
+use national life expectancy as its measure: that stays in the atlas as something to hold
+inequality against. It was closed until September 2026, saying what it was waiting for; a
+closed face on the cube everyone sees first read as unfinished, and the US gap was already
+in the atlas.
 
 The gap itself is now visible, in the only place it can be: 595 US commuting zones,
 life expectancy at 40 by household income quarter, race-adjusted, from the Health
-Inequality Project. It lives inside the opportunity layer because that is the same
-geography and the same kind of claim, about people in one place rather than between
-countries. National life expectancy stays available to hold any measure against.
+Inequality Project. It is read by the same US layer as opportunity, because that is the
+same geography and the same kind of claim, about people in one place rather than between
+countries, and the health face is where it now opens. National life expectancy stays
+available to hold any measure against.
 
 ## 7. Opportunity is a beta layer
 
