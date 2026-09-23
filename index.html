@@ -687,6 +687,13 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
     content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 40px); height: max(100%, 40px);
     transform: translate(-50%, -50%); }
 }
+/* how the box will read what is being typed, before it is sent */
+.readline { max-width: 560px; margin: 6px auto 0; text-align: left; font-size: 12.5px; line-height: 1.5; color: var(--ink-2); }
+.readline .rl-k { font: 500 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-right: 4px; }
+.readline.unsure .rl-k { color: var(--ink-3); }
+.readline .rl-fix { color: var(--ink-3); margin-left: 6px; }
+.readline button { font: 500 12px 'Inter', system-ui, sans-serif; color: var(--accent); background: none; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 100px; padding: 2px 9px; margin: 2px 2px 0 4px; }
 .notice .opt-view { font: 500 12.5px 'Inter', system-ui, sans-serif; color: var(--accent); background: none; cursor: pointer;
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 100px; padding: 5px 12px; margin: 6px 6px 0 0; }
 .notice .opt-view:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
@@ -746,7 +753,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 }
 
 /* database view */
-.db { padding: 48px 0 72px; }
+.db { padding: 48px 20px 72px; }   /* keeps the side gutter .wrap gives; the reference pages ran to the screen edge on a phone */
 .db h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
 .db .sub { color: var(--ink-2); max-width: 620px; margin-bottom: 28px; }
 /* the one sentence the whole page is for, sat directly under the figure that earns it */
@@ -905,6 +912,7 @@ footer a { color: inherit; }
         <button type="button" class="slash" id="fillhint" aria-label="Put the example question in the box to edit it">edit this</button>
         <button type="button" class="sendbtn" id="send-compose" aria-label="Send">&#8594;</button>
       </form>
+      <p class="readline" id="readline" aria-live="polite" hidden></p>
       <button type="button" class="helpbtn" id="helpbtn" aria-label="What can I ask">what can I ask?</button>
       <div class="help" id="help" role="listbox" aria-label="Questions you can ask" hidden></div>
       <div class="cell" id="cell">
@@ -6247,7 +6255,8 @@ function usPlaceAnswer(pl, q) {
     const pos = k => src[k] ? usPos(src[k], v(k)) : null;
     const name = pl.type === 'county' ? `${pl.name} County, ${pl.stateName}` : pl.name;
     const unit = pl.type === 'county' ? 'counties' : 'states';
-    f.opp.placeName = name; f.opp.unit = unit;
+    const abbr = (usPlaces().states.find(s => s.fips === pl.state) || {}).abbr;
+    f.opp.placeName = pl.type === 'county' && abbr ? `${pl.name} County, ${abbr}` : name; f.opp.unit = unit;
     const mob = pos('us_mobility'), ec = pos('us_econ_conn'), gi = pos('us_income_gini'), lg = pos('us_le_gap');
     if (v('us_mobility') == null) { showNotice(`The source carries no figures for ${esc(name)}.`); return null; }
     let t = `In <strong>${esc(name)}</strong>, a child from a low-income family reaches the <strong>${ord(Math.round(v('us_mobility') * 100))} ` +
@@ -8881,6 +8890,85 @@ function resetAll() {
   if (!restoring && location.hash) history.pushState(null, '', location.pathname);   // Back brings the answer back
 }
 
+// "how rich is norwey" narrowed the list to nothing, because no question contains those
+// exact letters. the words are corrected first and a question matches on any real word
+// it shares, so what is typed and what is offered meet halfway
+let catalogueWords = null, catalogueFor = '';
+function catalogueMatch(q, f) {
+  if (norm(q).includes(f)) return true;
+  if (catalogueFor !== f) {
+    catalogueFor = f;
+    catalogueWords = new Set(norm(spellFix(f).text).split(' ').filter(w => w.length > 3 && !STOP.has(w)));
+  }
+  return norm(q).split(' ').some(w => catalogueWords.has(w));
+}
+/* ── what the box will read ─────────────────────────────────────────────
+   As you type, a line under the box says how the question will be read: the country,
+   the measure, the shape of the answer, and any word it took to be a slip. A slip can be
+   fixed with one tap before anything is sent. Nothing leaves the page: it is the same
+   reading the answer uses, run early. */
+function describeRead(raw) {
+  const t = (raw || '').trim();
+  if (t.length < 3) return null;
+  const fix = spellFix(t), q = fix.text, nq = norm(q);
+  const out = { fixes: fix.changes, fixed: fix.changes.length ? q : null, say: '', unsure: false, near: [] };
+  const names = isos => isos.map(i => BY_ISO[i] ? theName(i) : i).join(' and ');
+  if (ABOUT.test(nq)) { out.say = 'what the atlas is and how to ask it'; return out; }
+  for (const [re, to] of REWRITES) if (re.test(nq)) { out.say = 'read as: ' + to; return out; }
+  if (METHOD.some(([re]) => re.test(nq))) { out.say = 'sources and method, with a link to the page'; return out; }
+  if (NOT_HELD.some(([re]) => re.test(nq))) { out.say = 'something the atlas does not hold; it will say so and offer the nearest'; return out; }
+  if (GLOSSARY.some(([re]) => re.test(nq)) && /^(what is|what s|whats|what are|what does|define|explain|meaning of)\b/.test(nq)) { out.say = 'a short definition'; return out; }
+  const usp = US_CZ ? usPlaceFind(q) : null;
+  if (usp) {
+    out.say = usp.type === 'shared-zone' ? `several US places are called ${usp.name}: add the county or state`
+      : usp.type === 'shared-county' ? `there is a ${usp.name} County in several states: add the state`
+      : 'the US layer, ' + (usp.type === 'county' ? `${usp.name} County, ${usp.stateName}` : usp.type === 'zone' ? `the ${usp.name} area` : usp.name);
+    return out;
+  }
+  if (TO_OPP.some(([re]) => re.test(nq))) { out.say = 'the US layer, county by county'; return out; }
+  let p;
+  try { p = parse(q); } catch (err) { p = { kind: 'unknown' }; }
+  if (!p || p.kind === 'unknown' || p.kind === 'pending') {
+    out.unsure = true; out.say = 'not sure how to read this yet'; out.near = nearestQuestions(q, 2); return out;
+  }
+  const isos = findCountries(q).isos;
+  const k = p.kind;
+  const m = p.metric || (p.metrics && p.metrics[0]) || null;
+  // with no measure named, rankings and single countries use the face's own
+  const mk = m || (['rank', 'delta_rank', 'profile', 'metric', 'time', 'point', 'compare'].includes(k) ? facetIneqDefault() : null);
+  const mlab = mk && META[mk] ? META[mk].label : null;
+  const set = p.pool && p.pool.all ? 'every country' : p.region ? REGION_LABEL[p.region] : null;
+  const shape = VIEW_DEF[k] ? VIEW_DEF[k].label
+    : k === 'rank' ? `a ranking, ${p.dir === 'low' ? 'lowest' : 'highest'} first`
+    : k === 'delta_rank' ? `who ${p.dir === 'down' ? 'fell' : 'rose'} most${p.year ? ' since ' + p.year : ''}`
+    : k === 'time' ? `over time${p.year ? ' from ' + p.year : ''}`
+    : k === 'point' ? `in ${p.year}` : k === 'compare' ? 'side by side' : k === 'correlate' ? 'one measure against another, across countries'
+    : k === 'divergence' ? 'wealth and income, pulling apart or not' : k === 'owngap' ? 'owning against earning, every country'
+    : k === 'lorenz' ? 'a Lorenz curve' : k === 'spread' ? 'the spread across countries' : k === 'tiers' ? 'countries in three groups'
+    : k === 'among' ? 'the same answer over a different set of countries' : '';
+  out.say = [isos.length ? names(isos) + (set ? ', among ' + set : '') : (set || (['profile', 'metric'].includes(k) ? 'every country, ranked' : '')), mlab, shape]
+    .filter(Boolean).join(' \u00b7 ');
+  return out;
+}
+let readT = null, readSent = null;
+function showRead() {
+  const box = document.getElementById('q'), line = document.getElementById('readline');
+  if (!box || !line) return;
+  const d = describeRead(box.value);
+  if (!d || !box.value.trim() || box.value.trim() === readSent) { line.hidden = true; return; }
+  const nice = t => { const hit = NAME_INDEX.find(n => n.norm === t); return hit && BY_ISO[hit.iso] ? BY_ISO[hit.iso].name : t; };
+  const fixes = d.fixes.length ? ' <span class="rl-fix">' + d.fixes.map(([a, b]) => `${esc(a)} \u2192 ${esc(nice(b))}`).join(', ') +
+    ` <button type="button" class="rl-use" data-text="${esc(d.fixed)}">fix it</button></span>` : '';
+  const near = d.near.length ? ' Nearest: ' + d.near.map(c => `<button type="button" class="rl-near" data-q="${esc(c)}">${esc(c)}</button>`).join(' ') : '';
+  line.innerHTML = `<span class="rl-k">${d.unsure ? 'hmm' : 'reads as'}</span> ${esc(d.say)}${fixes}${near}`;
+  line.classList.toggle('unsure', d.unsure);
+  line.hidden = false;
+  line.querySelectorAll('.rl-use').forEach(b => b.addEventListener('mousedown', ev => ev.preventDefault()));
+  line.querySelectorAll('.rl-use').forEach(b => b.addEventListener('click', () => {
+    box.value = b.dataset.text; box.focus(); showRead(); setHelp(true, box.value); }));
+  line.querySelectorAll('.rl-near').forEach(b => b.addEventListener('click', () => {
+    box.value = b.dataset.q; setHelp(false); if (runPrompt(b.dataset.q)) sendCell(); line.hidden = true; }));
+}
 function setHelp(open, filter) {
   const el = document.getElementById('help');
   if (open) {   // the whole catalogue, grouped, narrowed by whatever you've typed
@@ -8891,7 +8979,7 @@ function setHelp(open, filter) {
     let html = '', hits = 0;
     const listed = new Set();   // several groups share a question; the list shows it once
     for (const g of groups) {
-      const list = (f ? g.qs.filter(q => norm(q).includes(f)) : g.qs).filter(q => !listed.has(q));
+      const list = (f ? g.qs.filter(q => catalogueMatch(q, f)) : g.qs).filter(q => !listed.has(q));
       if (list.length && g.k) html += `<div class="help-g-k" role="presentation">${esc(g.k)}</div>`;
       for (const q of list) {
         listed.add(q);
@@ -9052,7 +9140,12 @@ function boot() {
     // screen: that answer is to a different question, and showing it again under this
     // one is worse than showing nothing. the notice says what it could not read
     if (runPrompt(v || el.placeholder.replace(/^\w+:\s*/, ''))) sendCell();
-    else if (stage !== 'compose') { stageFocus = false; setStage('compose'); stageFocus = true; revealAnswer('#notice'); }
+    else {
+      if (stage !== 'compose') { stageFocus = false; setStage('compose'); stageFocus = true; }
+      // from the first screen too: on a phone the notice sat below the fold and the
+      // question looked unanswered
+      revealAnswer('#notice');
+    }
   });
   // pull the cycling example into the box to complete it: Tab, or click the empty prompt
   const qEl = document.getElementById('q');
@@ -9097,7 +9190,12 @@ function boot() {
   // the questions are a list you pick from, not just a reel you watch go by
   let blurT = null;
   qEl.addEventListener('focus', () => { clearTimeout(blurT); setHelp(true, qEl.value); });
-  qEl.addEventListener('input', () => setHelp(true, qEl.value));
+  qEl.addEventListener('input', () => { setHelp(true, qEl.value); clearTimeout(readT); readT = setTimeout(showRead, 300); });   // after a pause, so a screen reader is not talked over
+  // the line is about what is being typed, not what was answered
+  // sent is sent: the typing timer must not bring the line back under the answer
+  document.getElementById('ask-form').addEventListener('submit', () => {
+    clearTimeout(readT); readSent = qEl.value.trim();
+    const l = document.getElementById('readline'); if (l) l.hidden = true; });
   qEl.addEventListener('blur', () => { blurT = setTimeout(() => setHelp(false), 160); });
   qEl.addEventListener('keydown', e => { if (e.key === 'Escape') { setHelp(false); qEl.blur(); } });
   const qup = document.getElementById('q-up'), qdn = document.getElementById('q-dn');
