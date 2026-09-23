@@ -9170,7 +9170,11 @@ function boot() {
         const wants = faceFor(b.textContent);
         if (wants && curFacet !== wants) chooseFacet(wants);
         else if (!wants && onUs()) chooseFacet('wealth');
-        ask(b.textContent);
+        // the same road a typed question takes: a reading that needs a country used to
+        // stop at the strip and wait for "show me" when asked from a reference page
+        if (onUs()) { ask(b.textContent); revealAnswer(); }
+        else if (runPrompt(b.textContent)) sendCell();
+        else revealAnswer('#notice');
       }));
   });
   document.getElementById('helpbtn').addEventListener('click', () =>
@@ -9244,6 +9248,9 @@ function boot() {
   // the questions are a list you pick from, not just a reel you watch go by
   let blurT = null;
   qEl.addEventListener('focus', () => { clearTimeout(blurT); setHelp(true, qEl.value); });
+  // a click into a box that already has the cursor (after "start over", say) fires no focus,
+  // and the list stayed shut however often it was clicked
+  qEl.addEventListener('click', () => { if (document.getElementById('help').hidden) setHelp(true, qEl.value); });
   qEl.addEventListener('input', () => { setHelp(true, qEl.value); clearTimeout(readT); readT = setTimeout(showRead, 300); });   // after a pause, so a screen reader is not talked over
   // the line is about what is being typed, not what was answered
   // sent is sent: the typing timer must not bring the line back under the answer

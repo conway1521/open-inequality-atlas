@@ -1,0 +1,26 @@
+# Drives the atlas in a real browser on every push and pull request, and fails the run
+# if anything a reader would see has broken. See tests/run.mjs for what it checks.
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  atlas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: install playwright
+        run: npm ci --no-audit --no-fund
+      - name: install chromium
+        run: npx playwright install --with-deps chromium
+      - name: run the checks
+        run: npm test

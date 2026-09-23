@@ -3,6 +3,7 @@
 #   make            fetch the sources, check them, rebuild every data file
 #   make check      confirm the sources are the ones this repository was built from
 #   make serve      serve the page at http://localhost:8744
+#   make test       drive the page in a real browser and check what is on screen
 #   make clean      remove the fetched sources, keeping the built data files
 #
 # The page is one HTML file that loads data/*.json and nothing else. Everything below
@@ -15,7 +16,7 @@ BUILDS := build_manifest.py build_cz.py build_us.py build_us_deep.py build_socia
           build_income_shares.py build_house_prices.py build_composition.py \
           build_hfcs.py build_scf.py
 
-.PHONY: all data check serve clean deps release-archive release-curl help
+.PHONY: all data check serve test clean deps release-archive release-curl help
 
 all: data
 
@@ -47,6 +48,11 @@ check:
 serve:
 	@echo "http://localhost:$(PORT)"
 	@$(PY) -m http.server $(PORT)
+
+## drive the page in a real browser and check what is on screen (Node 18 or later)
+test:
+	@cd tests && ([ -d node_modules ] || npm ci --no-audit --no-fund) && \
+	  (npx playwright install chromium >/dev/null 2>&1 || true) && npm test
 
 ## remove the fetched sources; data/*.json and data/raw/README.md stay
 clean:

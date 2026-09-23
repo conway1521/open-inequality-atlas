@@ -18,6 +18,25 @@ make serve          # http://localhost:8744
 That is the whole thing. `index.html` and `data/*.json` are all a browser needs, and
 both are in the repository.
 
+## Checking it
+
+```
+make test           # about six minutes
+```
+
+This opens the page in a real browser and uses it the way a person does: it types
+questions, rolls the die, presses the suggestions and next steps, opens copied links,
+presses Back, tries it on a phone-sized screen and by keyboard alone, and checks what
+ends up on screen. Around three hundred checks, each one something that was broken at
+some point: an unread misspelling, an answer that landed off screen, a suggestion that
+refused when pressed, a chart hidden under its own title. It also checks that no file
+has an em or en dash in it, that every data file parses and that the script compiles.
+
+It runs on every push and pull request through `.github/workflows/test.yml`, so a
+change that breaks something a reader would see shows up as a red cross on the commit.
+`node tests/run.mjs typed phone` runs only the suites named. The suites are in
+`tests/suites`, one file each, and read like a list of what the atlas promises.
+
 ## Rebuilding the data
 
 ```
@@ -62,6 +81,7 @@ version is that a raw file goes in `data/raw/`, a build script turns it into
 | `build_*.py` | one script per source, each saying what it reads and what it drops |
 | `fetch_raw.py` | fetch and verify the sources |
 | `FOUNDATION.md` | what the atlas may claim and at what strength |
+| `tests/` | the page driven in a real browser, run on every push |
 
 ## FOUNDATION.md
 
