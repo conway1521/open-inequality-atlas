@@ -32,6 +32,14 @@ MODULES = {
         "source": "World Bank PIP via OWID"},
     "life_satisfaction": {"metric": "life_satisfaction", "label": "life satisfaction", "topic": "wellbeing",
         "source": "World Happiness Report via OWID"},
+    "poverty_relative": {"metric": "poverty_relative", "label": "relative poverty", "topic": "wellbeing",
+        "source": "World Bank WDI SI.DST.50MD"},
+    "house_prices":  {"metric": "house_price",   "label": "real house prices", "topic": "wealth",
+        "source": "OECD Analytical house price indicators"},
+    "house_income":  {"metric": "house_income",  "label": "house prices against income", "topic": "wealth",
+        "source": "OECD Analytical house price indicators"},
+    "gdp_hour":      {"metric": "gdp_hour",      "label": "output per hour worked", "topic": "income",
+        "source": "OECD Productivity database"},
 }
 
 HERE = os.path.dirname(os.path.abspath(__file__))

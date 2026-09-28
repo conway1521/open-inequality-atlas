@@ -2,11 +2,6 @@
  "archive": "raw-sources.tar.gz",
  "files": [
   {
-   "bytes": 256480,
-   "path": "OECD.ECO.MPD,DSD_AN_HOUSE_PRICES@DF_HOUSE_PRICES,+.Q.RHP..csv",
-   "sha256": "4fd5561020208912669fe8558a004aebe9aeb507fa084cf9dc4749cb6147c354"
-  },
-  {
    "bytes": 12775,
    "path": "bis_dp_search_export_20260901-163344.csv",
    "sha256": "d7d4cc6ba41458aa342c3588fa05daa476dc2e27bc4a009647b59a5d5dc588c4"
@@ -75,7 +70,27 @@
    "bytes": 4358,
    "path": "scf/scf-data-definitions.txt",
    "sha256": "89184b3ecf8410c66ec4ff8aefb41218e227cdbcb038810e4bafada35a8a5f51"
+  },
+  {
+   "bytes": 5186679,
+   "path": "cty_covariates.csv",
+   "sha256": "ba230c03a32d8376e939a4e3e3dbb7bd8c1bbd78b35336f96e69248d7c53469b"
+  },
+  {
+   "bytes": 3225233,
+   "path": "oecd_house_prices.csv",
+   "sha256": "b3c4aa152be97c7625dcf98695f4f16e6600d28f6e63256a235fb276d9a9fa56"
+  },
+  {
+   "bytes": 3917513,
+   "path": "oecd_productivity.csv",
+   "sha256": "117bfa4b1e04208f0977723bbd886b44449a69fab33abf5b377a99ddb30a07de"
+  },
+  {
+   "bytes": 89453,
+   "path": "wdi_relative_poverty.csv",
+   "sha256": "25186b5b43b1b9ecd4d6eac5809f35404a4f85ac975e2bb53f727960246a00bd"
   }
  ],
- "total_bytes": 12278024
+ "total_bytes": 24440422
 }

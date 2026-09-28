@@ -12,9 +12,10 @@
 PY ?= python3
 PORT ?= 8744
 
-BUILDS := build_manifest.py build_cz.py build_us.py build_us_deep.py build_social.py \
-          build_income_shares.py build_house_prices.py build_composition.py \
-          build_hfcs.py build_scf.py
+BUILDS := build_cz.py build_us.py build_us_deep.py build_social.py \
+          build_income_shares.py build_house_prices.py build_productivity.py \
+          build_relative_poverty.py build_composition.py build_hfcs.py build_scf.py \
+          build_manifest.py
 
 .PHONY: all data check serve test clean deps release-archive release-curl help
 

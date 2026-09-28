@@ -32,6 +32,16 @@
       "source": "World Bank PIP via OWID"
     },
     {
+      "id": "gdp_hour",
+      "label": "output per hour worked",
+      "topic": "income",
+      "file": "data/gdp_hour.json",
+      "countries": 41,
+      "year_min": 1975,
+      "year_max": 2024,
+      "source": "OECD Productivity database"
+    },
+    {
       "id": "wealth_bottom50",
       "label": "bottom 50% wealth share",
       "topic": "wealth",
@@ -40,6 +50,26 @@
       "year_min": 1990,
       "year_max": 2024,
       "source": "WID"
+    },
+    {
+      "id": "house_income",
+      "label": "house prices against income",
+      "topic": "wealth",
+      "file": "data/house_income.json",
+      "countries": 40,
+      "year_min": 1960,
+      "year_max": 2025,
+      "source": "OECD Analytical house price indicators"
+    },
+    {
+      "id": "house_price",
+      "label": "real house prices",
+      "topic": "wealth",
+      "file": "data/house_prices.json",
+      "countries": 47,
+      "year_min": 1960,
+      "year_max": 2025,
+      "source": "OECD Analytical house price indicators"
     },
     {
       "id": "wealth_top1",
@@ -100,6 +130,16 @@
       "year_min": 1967,
       "year_max": 2021,
       "source": "World Bank PIP via OWID"
+    },
+    {
+      "id": "poverty_relative",
+      "label": "relative poverty",
+      "topic": "wellbeing",
+      "file": "data/poverty_relative.json",
+      "countries": 171,
+      "year_min": 1963,
+      "year_max": 2025,
+      "source": "World Bank WDI SI.DST.50MD"
     }
   ]
 }

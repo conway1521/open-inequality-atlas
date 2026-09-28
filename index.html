@@ -996,7 +996,7 @@ footer a { color: inherit; }
         American households own is the house they live in and the car and the furniture in it,
         against 6% in shares, and they owe 58 cents on every dollar of it. For the richest
         thousandth it is 7% housing, 54% shares, one cent of debt. Which is why the price of a
-        house is a wealth question: British houses rose 280% after inflation between 1969 and
+        house is a wealth question: British houses rose 381% after inflation between 1969 and
         2017 while the typical household's income rose 223%.</p>
         <p class="try" data-qs="what is that wealth actually made of?;have houses pulled away from pay?;where is wealth most concentrated?"></p>
       </div>
@@ -1063,9 +1063,10 @@ footer a { color: inherit; }
         <h2>What is still held</h2>
         <p>National life expectancy, life satisfaction, poverty and emissions, all as things to
         hold inequality up against rather than as inequalities themselves. The correlation is
-        weak across countries and the chart says so. The poverty figure is the $2.15 a day line,
-        which reads under one per cent across nearly every rich country and so says almost
-        nothing about one.</p>
+        weak across countries and the chart says so. Poverty comes two ways: the $2.15 a day
+        line, which reads under one per cent across nearly every rich country and so says almost
+        nothing about one, and the relative line, half of what the person in the middle has,
+        which is the one rich countries use for themselves.</p>
         <p class="try" data-qs="does life expectancy track inequality?;how do wealth, income and life expectancy sit together?"></p>
       </div>
       <div class="block">
@@ -1216,9 +1217,12 @@ footer a { color: inherit; }
       to hold.
     </p>
     <p class="sub">
-      In 1995 the average British house cost about £102,000 in today's money. By 2007 it cost
-      about £289,000. Wages did not do anything remotely like that. The United States has the
-      same shape but its version burst in 2008 and partly came back down. Britain's never did.
+      Between 1995 and 2007 the price of a British house, after inflation, rose to 2.7 times what
+      it had been, and against income it more than doubled. Wages did nothing remotely like that.
+      The crash took about a fifth off, and by 2022 prices were above the 2007 peak again. In the
+      United States the price of a house against income fell by nearly a third after 2006, and by
+      2025 had climbed back to where it stood in 1970. Ask about houses and name a country to see
+      any of about forty-five.
     </p>
     <div class="chart-card">
       <div class="chart-title" id="why-house-title">Houses and pay</div>
@@ -1304,9 +1308,10 @@ footer a { color: inherit; }
       </div>
       <div class="block">
         <h2>What is still missing</h2>
-        <p>Houses are two countries here, not sixty, because the international series
-        sits behind sources we cannot reach yet. Health is closed for the same reason:
-        no one publishes the rich-poor gap in a way that compares across borders.</p>
+        <p>Health is the United States only, because no one publishes the rich-poor gap in
+        life expectancy in a way that compares across borders. How unequal happiness is inside
+        a country is not held at all. Everything the atlas does not hold is
+        <a href="https://github.com/conway1521/open-inequality-atlas/blob/main/FOUNDATION.md#9-what-version-1-does-not-hold" target="_blank" rel="noopener" style="color:var(--accent)">listed with the reason</a>.</p>
       </div>
     </div>
   </div>
@@ -1319,7 +1324,8 @@ footer a { color: inherit; }
       Fed's Distributional Financial Accounts. The release files carry 10,783 rows with a
       non-null Gini on ISO3 keys, 1800 to 2025. What this page ships is the slice it can draw:
       7,455 rows, 213 countries, 1990 to 2024. Around it sit WID income shares for 154 countries,
-      World Bank survey measures for 165, real house prices for two, and the United States at
+      World Bank survey measures for 165, relative poverty for 171, house prices and output per
+      hour worked from the OECD for about forty-five, and the United States at
       commuting zone and county resolution for mobility, debt, life expectancy by income and
       social capital. Every build script in the repo names its source and what it drops.
     </p>
@@ -1691,7 +1697,7 @@ const META = {
   poverty_rate: {
     label: 'extreme poverty', topic: 'wellbeing', series: true, file: 'data/poverty_rate.json',
     higherWorse: true, fmt: pc, fmtD: pts, hover: '%{y:.1%}',
-    lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. The share of people living on less than $2.15 a day in 2017 purchasing power dollars, which is the line for surviving, not the line for getting by. In the richer third of countries the median reading is a quarter of one per cent and eight countries read exactly zero, so this measure says almost nothing about a rich country. A relative line, half of what the middle person has, would say something, and the atlas does not hold one.',
+    lineSrc: 'Source: World Bank Poverty and Inequality Platform, via Our World in Data. The share of people living on less than $2.15 a day in 2017 purchasing power dollars, which is the line for surviving, not the line for getting by. In the richer third of countries the median reading is a quarter of one per cent and eight countries read exactly zero, so this measure says almost nothing about a rich country. A relative line, half of what the middle person has, says something everywhere, and the atlas holds that too as relative poverty.',
     poolSrc: 'Source: World Bank PIP via OWID. The share below $2.15 a day in 2017 purchasing power dollars, latest survey per country. This is the survival line: across the richer third of countries the median reading is a quarter of one per cent, so a ranking of rich countries on it is a ranking of rounding.',
   },
   wealth_top1: {
@@ -1734,10 +1740,28 @@ const META = {
     poolSrc: 'Source: WID, bottom 50% pretax income share, latest year per country.',
   },
   house_price: {
-    label: 'house prices', topic: 'wealth', series: true, file: 'data/house_prices.json',
+    label: 'real house prices (2015 = 100)', topic: 'wealth', series: true, file: 'data/house_prices.json',
     fmt: v => v == null ? 'n/a' : v.toFixed(0), fmtD: v => v == null ? 'n/a' : v.toFixed(0), hover: '%{y:.0f}',
-    lineSrc: 'Source: Nationwide for the United Kingdom, S&P Case-Shiller for the United States, deflated by World Bank consumer prices. An index after inflation, 2015 = 100: only the growth means anything, not the level.',
-    poolSrc: 'Source: Nationwide and Case-Shiller, real house price index, two countries only.',
+    lineSrc: 'Source: OECD Analytical house price indicators. Real house prices, deflated by what households spend, 2015 = 100: only the growth means anything, not the level.',
+    poolSrc: 'Source: OECD Analytical house price indicators, real house price index, 2015 = 100, latest year per country. About forty-five countries, mostly OECD members.',
+  },
+  house_income: {
+    label: 'house prices against income (2015 = 100)', topic: 'wealth', series: true, higherWorse: true, file: 'data/house_income.json',
+    fmt: v => v == null ? 'n/a' : v.toFixed(0), fmtD: v => v == null ? 'n/a' : v.toFixed(0), hover: '%{y:.0f}',
+    lineSrc: 'Source: OECD Analytical house price indicators. The price of a house divided by disposable income per person, both before inflation, 2015 = 100. Above 100, a house costs more years of income than it did in 2015. The income here is the national accounts average, not the full-time earnings figure the press ratio uses: same direction, different denominator.',
+    poolSrc: 'Source: OECD, price to income ratio, 2015 = 100, latest year per country. Each country is measured against its own 2015, so this ranks how far houses have moved against pay since then, not which country is dearest.',
+  },
+  gdp_hour: {
+    label: 'output per hour worked', topic: 'income', series: true, file: 'data/gdp_hour.json',
+    fmt: v => v == null ? 'n/a' : '$' + v.toFixed(0), fmtD: v => v == null ? 'n/a' : '$' + v.toFixed(1), hover: '$%{y:.0f}',
+    lineSrc: 'Source: OECD Productivity database. GDP per hour worked, whole economy, US dollars at 2020 prices and 2020 purchasing power.',
+    poolSrc: 'Source: OECD Productivity database, GDP per hour worked in 2020 dollars at 2020 purchasing power, latest year per country.',
+  },
+  poverty_relative: {
+    label: 'relative poverty', topic: 'wellbeing', series: true, higherWorse: true, file: 'data/poverty_relative.json',
+    fmt: pc, fmtD: pts, hover: '%{y:.1%}',
+    lineSrc: 'Source: World Bank, World Development Indicators (SI.DST.50MD), from the Poverty and Inequality Platform surveys. The share of people living on less than half of what the person in the middle has, the line rich countries use for themselves. One point per survey year, nothing filled in between.',
+    poolSrc: 'Source: World Bank WDI, share below half the national median, latest survey per country.',
   },
   life_satisfaction: {
     label: 'life satisfaction', topic: 'wellbeing', series: true, file: 'data/life_satisfaction.json',
@@ -1774,7 +1798,8 @@ const BASIS = {
   modelled:  'modelled, with annual values imputed for most countries from the smaller set that has tax records',
   estimated: 'an estimated annual series, interpolated between benchmark years',
   dina:      'built from tax records, surveys and national accounts together, in a snapshot taken from WID in September 2022',
-  deflated:  'a market price index put into constant money with that country\'s own consumer price inflation, and held for two countries only',
+  oecd:      'an index the OECD builds from each country\'s own house price statistics, 2015 = 100, so each country is measured against itself',
+  accounts:  'from national accounts, one value a year',
 };
 const SERIES_BASIS = {
   wealth_gini: 'modelled', wealth_top1: 'modelled', wealth_bottom50: 'modelled',
@@ -1782,7 +1807,7 @@ const SERIES_BASIS = {
   life_exp: 'estimated', co2_pc: 'estimated', gdp_pc: 'estimated',
   life_satisfaction: 'survey',
   income_top1: 'dina', income_top10: 'dina', income_middle40: 'dina', income_bottom50: 'dina',
-  house_price: 'deflated',
+  house_price: 'oecd', house_income: 'oecd', gdp_hour: 'accounts', poverty_relative: 'survey',
 };
 // the last year the series actually carries, read from the data rather than assumed
 const vintageCache = {};
@@ -1815,10 +1840,41 @@ function fitnessFlag(fit, note) {
   const cls = fit.level === 'refuse' ? 'bad' : 'thin';
   return ` <span class="flag ${cls}">${esc(note)}</span>`;
 }
+// the house price series is the OECD's, which is its members and a few more; a country
+// outside it is named, with how many are held, rather than left as a blank
+// the OECD's own price to income ratio: both sides from national accounts, one value a
+// year, so unlike the survey median it has no gaps to draw across. said beside the chart
+// rather than instead of it, because it answers the same question a second way
+function houseRatio(iso) {
+  const r = seriesOf('house_income', iso);
+  if (r.length < 2) return '';
+  const last = r[r.length - 1], lo = r.reduce((a, d) => d.v < a.v ? d : a), hi = r.reduce((a, d) => d.v > a.v ? d : a);
+  const since = r.find(d => d.year >= 2000) || r[0];
+  const move = (last.v / since.v - 1) * 100;
+  return ` On the OECD's own measure, a house against disposable income per person, ${esc(theName(iso))} ` +
+    `stood at <strong>${last.v.toFixed(0)}</strong> in ${last.year} against 100 in 2015` +
+    (since.year < last.year ? `, ${move >= 0 ? 'up' : 'down'} ${Math.abs(move).toFixed(0)}% since ${since.year}` : '') +
+    `. Its dearest year on that measure was ${hi.year} (${hi.v.toFixed(0)}), its cheapest ${lo.year} (${lo.v.toFixed(0)}).`;
+}
+function housesMissing(iso) {
+  const n = Object.keys(SERIES.house_price || {}).filter(i => BY_ISO[i]).length;
+  return `No house price series for ${esc(theName(iso))}. The atlas holds ${n} countries from the ` +
+    `OECD, which are its members and a few others, and ${esc(theName(iso))} is not among them.`;
+}
 // A measure sitting on its floor everywhere in the set being read is not answering the
 // question, and the reading should say so rather than print a confident 0.0%. Extreme
 // poverty is the case the atlas actually has: across the richer third of countries the
 // median reading is a quarter of one per cent.
+// the line a rich country uses for itself, said where the survival line reads zero
+function relativeLine(isos) {
+  const got = isos.map(i => { const s = seriesOf('poverty_relative', i); return s.length ? { i, d: s[s.length - 1] } : null; }).filter(Boolean);
+  if (!got.length) return ' What the person in the middle lives on carries more.';
+  if (got.length === 1) return ` The line rich countries use, half of what the person in the middle has, ` +
+    `counts <strong>${(got[0].d.v * 100).toFixed(1)}%</strong> of ${esc(theName(got[0].i))} below it in ${got[0].d.year}.`;
+  const lo = got.reduce((a, b) => b.d.v < a.d.v ? b : a), hi = got.reduce((a, b) => b.d.v > a.d.v ? b : a);
+  return ` The line rich countries use, half of what the person in the middle has, runs from ` +
+    `${(lo.d.v * 100).toFixed(1)}% in ${esc(theName(lo.i))} to ${(hi.d.v * 100).toFixed(1)}% in ${esc(theName(hi.i))}.`;
+}
 function floorNote(f) {
   if (!f || !f.text) return f;
   if ((f.metricUsed || ctx.metric) !== 'poverty_rate') return f;
@@ -1829,8 +1885,7 @@ function floorNote(f) {
   f.text += ` <em>This counts people living on under $2.15 a day, which is the line for surviving ` +
     `rather than the line for getting by. ${isos.length === 1 ? 'Here it runs' : 'For every one of these it runs'} ` +
     `under one per cent, as it does across nearly every rich country, so what you are reading is the ` +
-    `floor of the measure and not the state of the place. What the person in the middle lives on ` +
-    `carries more.</em>`;
+    `floor of the measure and not the state of the place.` + relativeLine(isos) + `</em>`;
   return f;
 }
 function provenance(keys) {
@@ -1924,7 +1979,7 @@ function rankedPool(metric, dir, region, year) {
 }
 // 1st, 2nd, 3rd, 11th: a rank reads as a position, not as a bare number
 // "in the United Kingdom", not "in United Kingdom": the names that take an article
-const THE = new Set(['GBR', 'USA', 'NLD', 'PHL', 'ARE', 'CZE', 'DOM', 'BHS', 'MDV', 'COD', 'COG', 'CAF', 'GMB', 'COM', 'SYC', 'SLB', 'MHL']);
+const THE = new Set(['GBR', 'USA', 'NLD', 'PHL', 'ARE', 'DOM', 'BHS', 'MDV', 'COD', 'COG', 'CAF', 'GMB', 'COM', 'SYC', 'SLB', 'MHL']);
 // Six names arrive inverted or parenthesised from the source file, which is right for a
 // table and wrong in a sentence: "the Congo, Democratic Republic lives on $1.46 a day".
 // The table keeps the source spelling; only prose uses these.
@@ -2124,10 +2179,13 @@ function detectMetrics(r) {
   push(/\bbottom\s*(50|half)\b|\b50%|\bpoor(est)?\s*half\b|\bordinary people\b|\beveryone else\b/, 'wealth_bottom50');
   push(/\bmiddle class\b|\bmiddle 40\b|\bthe middle\b(?! income)/, 'income_middle40');
   push(/\blife expectancy\b|\blongevity\b|\blifespan\b|\bhealth\b|\blive longer\b|\blive long\w*\b|\bhow long .*\blive\b|\bdie (young|earl\w*|soon\w*)\b|\bdying\b|\byears of life\b/, 'life_exp');
+  push(/\bprice[- ]to[- ]income\b|\bhouse prices? (against|to|vs\.?|versus) (income|pay|earnings|wages)\b|\bhousing affordability\b/, 'house_income');
   push(/\bhous(e|es|ing)\b|\bhome ?prices?\b|\bproperty\b|\bmortgage\b|\brent\w*\b|\bafford\w*\b|\bon the ladder\b|\bget on the ladder\b/, 'house_price');
   push(/\bco2\b|\bcarbon\b|\bemissions?\b|\benvironment\w*\b|\bclimate\b/, 'co2_pc');
+  push(/\brelative poverty\b|\bhalf (of )?the median\b|\bbelow half\b|\bpoverty line\b.*\bmedian\b/, 'poverty_relative');
   push(/\bpoverty\b|\bpoor\b(?!\s*(est\s*)?half)/, 'poverty_rate');
   push(/\bmedian income\b|\bmedian\b|\btypical income\b|\bmiddle income\b/, 'median_income');
+  push(/\bproductiv\w*\b|\bper hour\b|\ban hour\b.*\b(worth|produce\w*|output)\b/, 'gdp_hour');
   push(/\bgdp\b|\boutput\b|\bprosper\w*\b|\beconomic size\b/, 'gdp_pc');
   push(/\bincome inequality\b|\bincome gini\b/, 'income_gini');
   push(/\bwealth gini\b/, 'wealth_gini');                                   // explicit Gini, for experts
@@ -2163,9 +2221,9 @@ function isIneq(key) { return INEQ_METRICS.includes(key); }
 // each facet offers a few measures; the accordion lets you click between them
 const FACET_MEASURES = {
   wealth: [['wealth_top1', 'top 1% share'], ['wealth_gini', 'wealth Gini'], ['wealth_bottom50', 'bottom 50% share'],
-           ['house_price', 'house prices']],
+           ['house_price', 'house prices'], ['house_income', 'houses against income']],
   income: [['income_top1', 'top 1% share'], ['income_top10', 'top 10% share'], ['income_middle40', 'the middle 40%'], ['income_gini', 'income Gini'],
-           ['median_income', 'median income'], ['poverty_rate', 'living on under $2.15 a day']],
+           ['median_income', 'median income'], ['poverty_relative', 'below half the median'], ['poverty_rate', 'living on under $2.15 a day']],
   // health has no measure of its own among these: its face reads the US life gap, and a
   // national life expectancy is something to hold inequality against, not inequality
 };
@@ -2264,7 +2322,9 @@ function parseCore(raw) {
     return Object.assign({ kind: 'owns', isos, iso: isos[0] || null }, win);
   // the two divisions side by side. an owning word sends "how many times" to wealth;
   // without one it is about pay, which is the MULTIPLE below.
-  const perPerson = /\bone person\b|\bsomeone at the top\b|\bper[- ]person\b|\bhow many times more\b|\bfor every\b.*\bpound|\bfor every\b.*\bdollar/.test(r);
+  // "gdp per person" and "co2 per person" are a measure's own name, not the multiple
+  const perPerson = /\bone person\b|\bsomeone at the top\b|\bper[- ]person\b|\bhow many times more\b|\bfor every\b.*\bpound|\bfor every\b.*\bdollar/.test(r) &&
+    !/\b(gdp|output|co2|carbon|emissions?)\b[\w\s]{0,12}\bper[- ]person\b/.test(r);
   if (perPerson && /\bowns?\b|\bowning\b|\bwealth\b|\bholds?\b|\bassets?\b|\bhave\b/.test(r))
     return { kind: 'wmultiple', isos, iso: isos[0] || null };
   if (/\bowning gap\b|\bearning gap\b|\bown against .*earn\b|\bwealth gap .*(income|pay|earn)\w* gap\b/.test(r))
@@ -2328,7 +2388,7 @@ function parseCore(raw) {
   if (trend && !isos.length && !mine && !/\bhous|\bhome|\brent|\bmortgage|\bpropert/.test(r))
     return { kind: 'delta_rank', dir: fallingWords.test(r) ? 'down' : 'up', year: years[0] || 1995, region, metric };
   // houses: the price of one against what people earn, which is the picture the
-  // question is actually asking for. two countries carry it and the fold shows which.
+  // question is actually asking for. the OECD's countries carry it and the fold shows which.
   if (/\bhous(e|es|ing)\b|\bhome ?prices?\b|\bproperty\b|\bmortgage\b|\brent\w*\b|\bafford\w*\b|\bon the ladder\b/.test(r))
     return { kind: 'houses', isos, iso: isos[0] || null };
   // "my country", with none named: nothing is computed, the place fold opens and asks
@@ -3079,10 +3139,15 @@ function buildAnswer(p, q) {
   }
 
   else if (p.kind === 'reach') {
-    // output per person against the income of the person in the middle
+    // output against the income of the person in the middle. per hour worked where the
+    // OECD measures it, because that is what the productivity and pay argument is about
+    // and it does not move when people retire early or work shorter weeks; per person
+    // everywhere else, and the answer says which it used
     const iso = p.iso || ctx.lastIso || (focusIsos()[0] || null);
     if (!iso || !BY_ISO[iso]) { showNotice('Name a country: this one holds a country\'s growth against its own median income.'); return null; }
-    const g = seriesOf('gdp_pc', iso), m = seriesOf('median_income', iso);
+    const m = seriesOf('median_income', iso), gh = seriesOf('gdp_hour', iso);
+    const hour = gh.length >= 2 && m.length >= 2 && gh.filter(d => d.year >= m[0].year).length >= 2 && gh[0].year <= m[m.length - 2].year;
+    const g = hour ? gh : seriesOf('gdp_pc', iso);
     if (g.length < 2 || m.length < 2) return miss();
     const base = Math.max(g[0].year, m[0].year);
     const gs = g.filter(d => d.year >= base), ms = m.filter(d => d.year >= base);
@@ -3091,13 +3156,16 @@ function buildAnswer(p, q) {
     const mPct = (ms[ms.length - 1].v / ms[0].v - 1) * 100;
     ctx.lastIso = iso; f.isos = [iso];
     f.mode = 'reach';
-    f.reach = { iso, base, gs, ms, gPct, mPct };
+    f.reach = { iso, base, gs, ms, gPct, mPct, hour,
+      labels: hour ? { top: 'output per hour worked', mid: 'the income in the middle' } : null };
     const pc1 = v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%';
-    f.text = `In <strong>${esc(theName(iso))}</strong> from ${base}, output per person grew ` +
+    f.text = `In <strong>${esc(theName(iso))}</strong> from ${base}, output ${hour ? 'per hour worked' : 'per person'} grew ` +
       `<strong>${pc1(gPct)}</strong> to ${gs[gs.length - 1].year}. The income of the person in the middle grew ` +
       `<strong>${pc1(mPct)}</strong> to ${ms[ms.length - 1].year}.` +
       (gPct - mPct > 5 ? ' The growth did not arrive in the middle.' : '') +
-      ` <em>The median rests on ${ms.length} survey${ms.length === 1 ? '' : 's'} between ${ms[0].year} and ${ms[ms.length - 1].year}.</em>`;
+      ` <em>The median rests on ${ms.length} survey${ms.length === 1 ? '' : 's'} between ${ms[0].year} and ${ms[ms.length - 1].year}.` +
+      (hour ? ' Output is per hour worked, from the OECD.' :
+        ' Output is per person, because the OECD does not measure output per hour here.') + `</em>`;
   }
 
   else if (p.kind === 'have') {
@@ -3606,8 +3674,7 @@ function buildAnswer(p, q) {
     if (!iso || !BY_ISO[iso]) { showNotice('Name a country: this holds house prices against what people there earn.'); return null; }
     const h = seriesOf('house_price', iso), m = seriesOf('median_income', iso);
     if (h.length < 2) {
-      const have = Object.keys(SERIES.house_price || {}).filter(i => BY_ISO[i]).map(i => BY_ISO[i].name);
-      showNotice(`No house price series for ${esc(BY_ISO[iso].name)}. The atlas holds ${esc(have.join(' and '))} so far.`);
+      showNotice(housesMissing(iso));
       return null;
     }
     if (m.length < 2) return miss();
@@ -3626,6 +3693,7 @@ function buildAnswer(p, q) {
       `<strong>${pc1(gPct)}</strong> after inflation. What the typical household earns rose ` +
       `<strong>${pc1(mPct)}</strong>.` +
       (gPct - mPct > 20 ? ' Houses pulled away from pay.' : gPct - mPct < -20 ? ' Pay pulled away from houses.' : '') +
+      houseRatio(iso) +
       ` <em>Pay here is median household income after transfers, not the individual earnings the usual ` +
       `house-price-to-earnings ratio divides by: same direction, smaller gap. The median rests on ` +
       `${ms.length} survey${ms.length === 1 ? '' : 's'}.</em>`;
@@ -4661,7 +4729,7 @@ const ACC = () => FACET_HEX[curFacet] || '#2a78d6';   // the UI accent follows t
 const METRIC_HEX = {
   wealth_top1: '#2a78d6', wealth_gini: '#2a78d6', wealth_bottom50: '#2a78d6',
   income_gini: '#2f9e8f', median_income: '#2f9e8f', gdp_pc: '#2f9e8f', poverty_rate: '#2f9e8f',
-  house_price: '#2a78d6',
+  house_price: '#2a78d6', house_income: '#2a78d6', gdp_hour: '#2f9e8f', poverty_relative: '#2f9e8f',
   income_top1: '#2f9e8f', income_top10: '#2f9e8f', income_middle40: '#2f9e8f', income_bottom50: '#2f9e8f',
   life_exp: '#c0607a', life_satisfaction: '#c0607a', co2_pc: '#c98a2b',
 };
@@ -4719,6 +4787,7 @@ function paintFacet(name) {
 const AGAINST_FAMILY = {
   life_exp: 'health', life_satisfaction: 'health',
   income_gini: 'income', median_income: 'income', gdp_pc: 'income', poverty_rate: 'income',
+  gdp_hour: 'income', poverty_relative: 'income',
   income_top1: 'income', income_top10: 'income', income_middle40: 'income', income_bottom50: 'income',
   wealth_top1: 'wealth', wealth_gini: 'wealth', wealth_bottom50: 'wealth',
   co2_pc: 'environment',
@@ -5497,7 +5566,7 @@ function whyNot(dim, val) {
         const have = Object.keys(SERIES.house_price || {}).filter(i => BY_ISO[i]);
         if (!have.length) return 'No house price series is loaded.';
         if (cell.place && !have.includes(cell.place))
-          return `House prices are held for ${have.map(i => BY_ISO[i].name).join(' and ')} so far, ` +
+          return `House prices are held for ${have.length} countries from the OECD, ` +
             `not for ${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place}.`;
       }
       if (val === 'have' && cell.place && cell.place !== 'USA')
@@ -5604,7 +5673,7 @@ function whyNot(dim, val) {
     if (cell.view === 'houses' && val) {
       const iso = val[0] === '+' ? val.slice(1) : val;
       if (iso && !seriesOf('house_price', iso).length)
-        return `No house price series for ${BY_ISO[iso] ? BY_ISO[iso].name : iso}. Two countries carry it so far.`;
+        return `No house price series for ${BY_ISO[iso] ? BY_ISO[iso].name : iso}. The OECD series covers ${Object.keys(SERIES.house_price || {}).filter(i => BY_ISO[i]).length} countries and it is not one of them.`;
     }
     return null;
   }
@@ -5692,6 +5761,11 @@ const GLOSSARY = [
 // things people ask about that the atlas does not hold, said plainly, with the nearest
 // thing that it does
 const NOT_HELD = [
+  // every house price series is an index against the country's own 2015, so nothing in
+  // the atlas can say where a house costs most; what it can say is where they have moved
+  [/\b(most|least) (expensive|affordable|unaffordable)\b.*\b(hous\w*|homes?|property|rent\w*)\b|\b(dearest|cheapest)\b.*\b(hous\w*|homes?|property)\b|\bwhere (are|is)\b.*\b(hous\w*|homes?)\b.*\b(expensive|cheap|dear)\w*\b/,
+    'The atlas holds house prices as an index, each country measured against its own 2015, so it cannot say where a house costs most. What it can say is where houses have risen furthest against income since then, and how far they have pulled away from pay in any one country.',
+    ['price to income ratio', 'have houses pulled away from pay in the UK?']],
   [/\bbillionaires?\b|\bmillionaires?\b|\bforbes\b|\brich list\b|\belon\b|\bmusk\b|\bbezos\b/,
     'The atlas has no count of billionaires or rich lists. The closest thing it holds is how much of all the wealth the top 1% own, country by country.',
     ['what does the top 1% own?', 'which country is most unequal?']],
@@ -7623,19 +7697,23 @@ function drawChart() {
       : `${cap(theName(rc.iso))}: the economy and the middle, since ${rc.base}`;
     src.textContent = rc.houses
       ? `Both after inflation and both starting at 100, so what matters is how far apart they get. ` +
-        `Houses are ${rc.iso === 'GBR' ? 'the Nationwide average price' : 'the Case-Shiller index'}, ` +
-        `deflated by consumer prices. Pay is median household income from the World Bank, after ` +
+        `Houses are the OECD real house price index. Pay is median household income from the World Bank, after ` +
         `transfers, which is not the individual earnings figure the usual house-price-to-earnings ratio ` +
         `uses: same direction, smaller gap. Markers show where a survey landed; the line between them is ` +
-        `drawn, not measured. Two countries hold this so far. ` + provenance(['house_price', 'median_income'])
+        `drawn, not measured. ` + provenance(['house_price', 'median_income'])
       : `Both indexed to ${rc.base} = 100, so the gap between them is the answer. ` +
-      `These are not like for like. Output per person is the Maddison Project series in international ` +
-      `dollars at 2011 prices, built from national accounts; the median is a household survey in 2017 ` +
-      `purchasing power dollars. Different base years, different definitions, different collectors. ` +
-      `Indexing is what lets them share an axis at all, and it is why the shape of the gap is the ` +
-      `reading and the exact percentages are not. ` +
+      (rc.hour
+        ? `Output per hour worked is the OECD's, in 2020 dollars, from national accounts; the median is ` +
+          `a household survey in 2017 purchasing power dollars. Per hour is the like for like side of the ` +
+          `productivity and pay argument, but the two still come from different collectors, so the shape ` +
+          `of the gap is the reading and the exact percentages are not. `
+        : `These are not like for like. Output per person is the Maddison Project series in international ` +
+          `dollars at 2011 prices, built from national accounts; the median is a household survey in 2017 ` +
+          `purchasing power dollars. Different base years, different definitions, different collectors. ` +
+          `Indexing is what lets them share an axis at all, and it is why the shape of the gap is the ` +
+          `reading and the exact percentages are not. `) +
       `Markers show where a survey actually landed; the line between them is drawn, not measured. ` +
-      provenance(['gdp_pc', 'median_income']);
+      provenance([rc.hour ? 'gdp_hour' : 'gdp_pc', 'median_income']);
   }
 
   else if (mode === 'have') {
@@ -8845,8 +8923,8 @@ function drawWhyPay() {
     provenance(['income_bottom50', 'wealth_bottom50']);
 }
 
-// Step three: houses against pay. Two countries only, and the caption says so, because
-// the sixty-country series sits behind sources this build cannot reach.
+// Step three: houses against pay, drawn for the United Kingdom. The OECD series holds
+// about forty-five countries and the question box reads any of them.
 function drawWhyHouse() {
   const el = document.getElementById('why-house');
   if (!el || !window.Plotly || !SERIES.house_price) return;
@@ -8884,13 +8962,12 @@ function drawWhyHouse() {
   const src = document.getElementById('why-house-src');
   if (src) src.textContent =
     `Both lines are after inflation and both start at 100, so what matters is how far apart they ` +
-    `get. Houses are the Nationwide average UK price, deflated by consumer prices. Pay is median ` +
+    `get. Houses are the OECD real house price index for the United Kingdom. Pay is median ` +
     `household income from the World Bank, which is not the same as the wage figures used in the ` +
     `usual house-price-to-earnings ratio: it is income after transfers, for a whole household. ` +
     `The direction is the same, the denominator is not, and the gap here is the smaller of the two. ` +
-    `Only the United Kingdom and the United States are held, because the international series is ` +
-    `published by the BIS and the OECD and neither could be reached to build this. ` +
-    provenance(['median_income']);
+    `The same reading exists for about forty-five countries: ask about houses and name one. ` +
+    provenance(['house_price', 'median_income']);
 }
 
 function setView(name) {
@@ -9417,8 +9494,11 @@ Promise.all([
   opt('data/hfcs_negative.json'),
   opt('data/hfcs_resilience.json'),
   opt('data/us_networth.json'),
+  opt('data/house_income.json'),
+  opt('data/gdp_hour.json'),
+  opt('data/poverty_relative.json'),
 ]).then(([latest, ts, geoNames, income, life, co2, pov, medinc, gdp, sat, wtop1, wbot50,
-  itop1, itop10, imid40, ibot50, hprice, usCounty, usState, usNames, usManifest, usCz, usComp, hfcsNeg, hfcsRes, scfNw]) => {
+  itop1, itop10, imid40, ibot50, hprice, usCounty, usState, usNames, usManifest, usCz, usComp, hfcsNeg, hfcsRes, scfNw, hinc, ghour, povrel]) => {
   LATEST = latest;
   // spine is the union of every country any module knows, named from geo_names
   const names = geoNames && Object.keys(geoNames).length ? geoNames : {};
@@ -9446,6 +9526,9 @@ Promise.all([
   if (imid40 && Object.keys(imid40).length) SERIES.income_middle40 = toSeries(imid40);
   if (ibot50 && Object.keys(ibot50).length) SERIES.income_bottom50 = toSeries(ibot50);
   if (hprice && Object.keys(hprice).length) SERIES.house_price = toSeries(hprice);
+  if (hinc && Object.keys(hinc).length) SERIES.house_income = toSeries(hinc);
+  if (ghour && Object.keys(ghour).length) SERIES.gdp_hour = toSeries(ghour);
+  if (povrel && Object.keys(povrel).length) SERIES.poverty_relative = toSeries(povrel);
   if (usCounty && Object.keys(usCounty).length) { US_COUNTY = scrubUs(usCounty); US_NAMES = usNames; }
   if (usCz && Object.keys(usCz).length) US_CZ = usCz;
   if (usState && Object.keys(usState).length) US_STATE = scrubUs(usState);

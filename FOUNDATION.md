@@ -424,14 +424,32 @@ Comparative Political Data Set all publish clean government-composition series. 
 it as a band beneath the chart so a reader can see what was in office. Never a
 number, never a claim, for the reason in section 4.
 
-## 9. What is missing, in priority order
+## 9. What version 1 does not hold
 
-The atlas can currently show that the inequalities disagree. It cannot yet show
-what that does to a person, which is the entire point of claim 4 and the reason a
-Gary listener would come.
+Version 1 was closed in September 2026. This section began as a list of what was
+missing, in priority order, and it is kept in that order so the record shows what
+was asked for, what came in and what did not. Items struck through are in. Anything
+still missing says why, and what would bring it in, so a gap is on the record rather
+than found by a reader.
 
-1. **Housing cost to income.** BIS and OECD both publish long series. This is the
-   single most requested fact about inequality in daily life and we do not hold it.
+1. ~~**Housing cost to income.**~~ **Done, for 47 countries.** The OECD's Analytical
+   house price indicators replace the two-country series built by hand from
+   Nationwide and Case-Shiller. Two measures come in: real house prices, and the
+   OECD's own price to income ratio, both 2015 = 100. Houses against pay now reads
+   any of the 47, sets the house line against the survey median as before, and quotes
+   the OECD ratio beside it, which divides by disposable income per person from
+   national accounts and so has no survey gaps to draw across.
+
+   What it shows: 28 of the 40 countries with the ratio stand above their 2015 level.
+   Of the 25 whose ratio reaches back to 2000, 19 have seen houses rise against income
+   since then, by a median of 24 per cent; Canada doubled, and Australia and New
+   Zealand rose by three quarters. Korea, Finland, Japan and Germany went the other
+   way. The United States is the surprise: its ratio in 2025 is 127, the same as in
+   1970, having peaked at 131 in 2006.
+
+   What it cannot show is where a house costs most. Every series is an index against
+   the country's own 2015, so it ranks movement, not price levels, and the app says so
+   when asked for the dearest or cheapest country.
 2. ~~**Household debt and financial resilience.**~~ **Half done.** The headcount is in:
    the ECB's HFCS table F3 counts households whose debts exceed everything they hold,
    for the euro area and a few neighbours, over four waves, cut by housing status and
@@ -472,11 +490,17 @@ Gary listener would come.
    One thing the source does that the app now repeats: it lists Finland and publishes no
    saving figure for it. That is a different absence from a country the survey does not
    reach, and the two do not read the same.
-3. **Productivity against pay.** OECD GDP per hour worked. The productivity and pay
-   gap is the clearest single picture of ownership beating earning, and it is what
-   ties the atlas to the argument the reader arrived with. Right now `reach` uses
-   GDP per person against median survey income, which is not like for like and is
-   flagged as such. Productivity per hour would make it honest.
+3. ~~**Productivity against pay.**~~ **Done where the OECD measures it.** GDP per
+   hour worked, in 2020 dollars at 2020 purchasing power, for 41 countries. Growth
+   against the middle now uses output per hour wherever it is held and output per
+   person everywhere else, and the answer says which. Per hour is the side of the
+   argument that matters, because output per person also moves when people retire
+   earlier or work shorter weeks. It is still national accounts against a household
+   survey, and the chart says that too.
+
+   Across the 40 countries carrying both, output per hour outgrew the survey median
+   by more than five points in 19. Ireland, Poland and Slovakia are the widest; in
+   Estonia, Norway and Chile the middle grew faster than output per hour.
 4. ~~**Portfolio composition by wealth group.**~~ **Done for one country.** The Fed's
    DFA was already sitting in the wealth pipeline and is now in the atlas: what each
    group's assets are, and what they owe against them, per year from 1989. Two thirds
@@ -496,9 +520,13 @@ Gary listener would come.
    does carry, and the atlas does not yet, is the share of households with negative
    net wealth per country, which is the headcount behind claim 1's five countries
    whose poorest half owes more than it owns.
-5. **Within-country dispersion of life satisfaction.** Published by the World
-   Happiness Report. Turns a level we already hold into an inequality, and is the
-   only cheap route to a fifth real face.
+5. **Within-country dispersion of life satisfaction. Not in version 1.** It would
+   turn a level we already hold into an inequality, and it is still the only cheap
+   route to a fifth real face. The file fetched for it, the 2019 report's chapter 2
+   data, holds one row per country with the headline score and six explanatory
+   factors, and no spread. What it needs is a panel with the standard deviation of the
+   ladder by country and year, which some earlier editions' chapter 2 data carried.
+   With that file the build is one short script; without it nothing is drawn.
 6. ~~**Comparability tiers, which we already have and throw away.**~~ **Checked, and
    they do not do the job.** This item used to say the release carries
    `comparability_tier` and `observed_vs_modeled` per row, that the JSON build drops
@@ -527,6 +555,14 @@ Gary listener would come.
    WID's own value rests on that country's tax records or on a regional imputation.
    That is upstream of this repo.
 
+7. ~~**Relative poverty.**~~ **Done.** The share of people below half of what the
+   person in the middle has, 171 countries, from the World Bank's SI.DST.50MD, which is
+   computed from the same surveys as the rest of its Poverty and Inequality Platform.
+   In the 64 countries where the $2.15 line reads under one per cent, the relative
+   line runs from 0.9 to 21.1 per cent, with a median of 10.9: 6.6 in Denmark, 11.7 in
+   the United Kingdom, 18.9 in the United States. Asked about poverty in a rich country,
+   the answer now gives both, and says which one is the floor.
+
 Item 4 is done for one country and is the reason the rest of the wealth face means
 anything: a share of a national total is abstract until you know it is a mortgaged
 house and a depreciating car. Item 2's headcount is in and turned out to disagree
@@ -544,7 +580,15 @@ That is the only figure in the atlas a reader can hold against their own bank
 balance, and it had been in the repository the whole time. The lesson is in section
 9a's spirit: check what you have before listing what you lack.
 
-Item 1, housing cost against income, is now the one a reader would notice missing.
+**What a reader would still notice missing, and why.**
+
+- Health outside the United States. Nobody publishes the rich-poor gap in life
+  expectancy in a form that compares across borders. Section 6 has the detail.
+- How unequal happiness is inside a country, item 5 above.
+- Where a house costs most, as a price rather than a movement. That needs price
+  levels in one currency, which neither the OECD nor the BIS publishes as a series.
+- Which countries' wealth figures are measured and which are imputed, item 6 above.
+  That has to be recorded upstream, in the pipeline that builds the WID release.
 
 ### 9a. Known defects in what we already hold
 
@@ -583,17 +627,25 @@ out, with the ones still open marked.
   `gini99`, the Gini excluding the top one per cent; the two impossible values above
   1 fit a Gini computed over incomes including capital losses. It is labelled
   "income gap" in the app rather than "income Gini" because that is what can be
-  defended. Re-exporting the source file with its header would settle it.
-- Relative poverty, a line at half the median, would say something about a rich
-  country where the $2.15 line says nothing. The PIP files in the mirror we can
-  reach are zero bytes.
-- The OECD housing export covers 2021-Q3 to 2026-Q2 on measure `RHP`, and the BIS
-  export is a single "advanced economies" aggregate. Neither is usable. House prices
-  remain two countries.
+  defended. **Narrowed in September 2026, not settled.** The Opportunity Atlas county
+  covariates (Table 8, now in `data/raw/cty_covariates.csv`) carry the census Gini of
+  household income for 1990, 2000 and 2010. Matched over 3,029 counties, none of the
+  three is it: the census Gini's median is 0.43 against our 0.37, and they correlate
+  at r = 0.60, which is two measures of the same thing and not one measure twice.
+  That rules out the census Gini and leaves `gini99` from the 2014 mobility paper's
+  county file as the likely source. That file would settle it.
+
+**Fixed in September 2026, recorded because they were open here.**
+
+- Relative poverty was missing because the PIP files in the mirror we could reach were
+  zero bytes. It came in from the World Bank's own download instead. Section 9, item 7.
+- The OECD housing export covered only 2021-Q3 to 2026-Q2 on one measure, and the BIS
+  export was a single "advanced economies" aggregate. A full annual OECD export replaced
+  both, and house prices are 47 countries. Section 9, item 1.
 
 **Checked and correct, recorded so nobody checks twice.** The three income shares
 sum to one in all 4,428 country-years. The top 1 per cent sits inside the top 10 per
-cent everywhere. House prices are 2015 = 100 in both countries. The commuting-zone
+cent everywhere. House prices and the price to income ratio are 2015 = 100 in every country, as the OECD publishes them. The commuting-zone
 credit, mortgage and delinquency columns are not topcoded. Negative bottom-50 wealth
 shares are real, not sign errors: eight countries have been below zero at some point
 and five are there now.

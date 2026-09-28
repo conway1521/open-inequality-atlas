@@ -1,135 +1,75 @@
 #!/usr/bin/env python3
-"""Real house prices, for holding against what people earn.
+"""House prices, and house prices against income, for about forty countries.
 
-The BIS and the OECD both publish house price to income ratios for about sixty
-countries. Neither is reachable from the build machine, so this script assembles
-what can be reached instead: two countries, from long public series, deflated by
-each country's own consumer price inflation.
+Reads data/raw/oecd_house_prices.csv, the OECD Analytical house price indicators,
+annual, every country and every measure, downloaded from the OECD Data Explorer
+(dataflow OECD.ECO.MPD, DSD_AN_HOUSE_PRICES@DF_HOUSE_PRICES). Two measures are used:
 
-Sources, all mirrored on GitHub because the primaries are unreachable:
-  github.com/datasets/house-prices-uk  Nationwide average UK house price, actual
-                                       pounds, quarterly from 1953
-  github.com/datasets/house-prices-us  S&P Case-Shiller national index, monthly
-                                       from 1975 (an index: only growth means
-                                       anything, the level does not)
-  github.com/datasets/cpi              World Bank annual consumer price inflation,
-                                       chained here into a price level
+  RHP      real house price index: nominal prices deflated by the private
+           consumption deflator, 2015 = 100. Only growth means anything.
+  HPI_YDH  price to income ratio: nominal house prices over nominal disposable
+           income per head, from national accounts, 2015 = 100.
 
-Writes data/house_prices.json as {ISO3: [[year, index], ...]} with the index in
-real terms, 2015 = 100. Two countries only. This is not a global series and the
-app must not present it as one.
+Writes
+  data/house_prices.json   {ISO3: [[year, RHP], ...]}
+  data/house_income.json   {ISO3: [[year, HPI_YDH], ...]}
 
-What it is NOT: the standard "house price to earnings" ratio, which divides by
-individual gross earnings. The atlas holds median household income from the World
-Bank PIP instead, so any ratio built from this is houses against household income.
-Directionally the same story, a different denominator, and the charts say so.
+The OECD's own aggregates (EA, EA17, OECD) are dropped: the atlas reads countries.
 
-Usage: python3 build_house_prices.py <scratch dir holding the three clones>
+Earlier versions of this script built a two-country series by hand from Nationwide,
+Case-Shiller and World Bank consumer prices, because the OECD could not be reached
+from where it was built. This replaces that. The OECD's real index is deflated by
+the consumption deflator rather than consumer prices, so the UK and US lines move a
+little against the old ones; the direction does not change.
+
+What HPI_YDH is not: the "house price to earnings" ratio quoted in the press, which
+divides by one full-time worker's gross pay. This divides by disposable income per
+person across the whole economy. Same direction, different denominator, and the app
+says so wherever it quotes it.
+
+Usage: python3 build_house_prices.py
 """
 import csv
 import json
 import os
-import statistics
 import sys
-from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, 'data')
-BASE_YEAR = 2015
+SRC = os.path.join(DATA, 'raw', 'oecd_house_prices.csv')
+AGGREGATES = {'EA', 'EA17', 'EA19', 'EA20', 'EU', 'EU27_2020', 'OECD'}
+OUT = {'RHP': 'house_prices.json', 'HPI_YDH': 'house_income.json'}
 
 
-def price_level(cpi_csv, code):
-    """World Bank publishes annual inflation, not a level. Chain it into one."""
-    rate = {}
-    with open(cpi_csv, newline='', encoding='utf-8') as fh:
+def main():
+    if not os.path.exists(SRC):
+        print('no OECD house price file at %s' % os.path.relpath(SRC, HERE))
+        print('skipped: nothing written, the existing data files are unchanged.')
+        print('See data/raw/README.md for where this file goes.')
+        return
+    names = json.load(open(os.path.join(DATA, 'geo_names.json')))
+    series = {m: {} for m in OUT}
+    dropped = set()
+    with open(SRC, encoding='utf-8-sig') as fh:
         for row in csv.DictReader(fh):
-            if row['Country Code'] != code or not row['CPI']:
+            m = row['MEASURE']
+            if m not in OUT or row['FREQ'] != 'A' or not row['OBS_VALUE']:
                 continue
-            try:
-                rate[int(row['Year'])] = float(row['CPI'])
-            except ValueError:
+            iso = row['REF_AREA']
+            if iso in AGGREGATES or iso not in names:
+                dropped.add(iso)
                 continue
-    level, cur = {}, 1.0
-    for year in sorted(rate):
-        cur *= (1 + rate[year] / 100.0)
-        level[year] = cur
-    return level
-
-
-def annual(path, date_col, value_cols):
-    """Monthly or quarterly rows collapsed to a yearly mean."""
-    buckets = defaultdict(list)
-    with open(path, newline='', encoding='utf-8') as fh:
-        for row in csv.DictReader(fh):
-            raw = None
-            for c in value_cols:
-                if row.get(c):
-                    raw = row[c]
-                    break
-            if raw is None:
-                continue
-            try:
-                buckets[int(row[date_col][:4])].append(float(raw))
-            except ValueError:
-                continue
-    return {y: statistics.mean(v) for y, v in buckets.items()}
-
-
-def deflate(nominal, level):
-    """Into constant money, then rebased so the two countries can share an axis."""
-    real = {y: v * level[BASE_YEAR] / level[y]
-            for y, v in nominal.items() if y in level}
-    if BASE_YEAR not in real:
-        raise SystemExit('no %d in the deflated series' % BASE_YEAR)
-    b = real[BASE_YEAR]
-    return {y: round(v / b * 100, 3) for y, v in sorted(real.items())}
-
-
-def main(scratch):
-    cpi = os.path.join(scratch, 'cpi', 'data', 'cpi.csv')
-    uk = os.path.join(scratch, 'hp_house-prices-uk', 'data', 'data.csv')
-    us = os.path.join(scratch, 'hp_house-prices-us', 'data', 'national-month.csv')
-    for p in (cpi, uk, us):
-        if not os.path.exists(p):
-            raise SystemExit('missing %s\n%s' % (p, __doc__))
-
-    out = {}
-    nom_uk = annual(uk, 'Date', ['Price (All)'])
-    out['GBR'] = list(deflate(nom_uk, price_level(cpi, 'GBR')).items())
-    nom_us = annual(us, 'Date', ['National-US', 'National-US-SA'])
-    out['USA'] = list(deflate(nom_us, price_level(cpi, 'USA')).items())
-
-    path = os.path.join(DATA, 'house_prices.json')
-    with open(path, 'w', encoding='utf-8') as fh:
-        json.dump(out, fh, separators=(',', ':'), sort_keys=True)
-
-    for iso, series in out.items():
-        yrs = [p[0] for p in series]
-        print('%s  %d years, %d to %d, real index %d = 100'
-              % (iso, len(series), min(yrs), max(yrs), BASE_YEAR))
-    print('\nwrote %s' % os.path.relpath(path, HERE))
-    print('two countries only. the sixty-country series needs BIS or OECD, '
-          'neither of which the build machine can reach.')
-
-    # the UK series is in real pounds before rebasing, which is worth stating
-    lvl = price_level(cpi, 'GBR')
-    hi = max(y for y in nom_uk if y in lvl)
-    for y in (1970, 1995, 2007, hi):
-        if y in nom_uk and y in lvl:
-            print('  UK %d: %s nominal, %s in %d money'
-                  % (y, '{:,.0f}'.format(nom_uk[y]),
-                     '{:,.0f}'.format(nom_uk[y] * lvl[hi] / lvl[y]), hi))
+            series[m].setdefault(iso, []).append([int(row['TIME_PERIOD']), round(float(row['OBS_VALUE']), 2)])
+    for m, fname in OUT.items():
+        out = {iso: sorted(v) for iso, v in series[m].items() if len(v) >= 2}
+        path = os.path.join(DATA, fname)
+        with open(path, 'w') as fh:
+            json.dump(out, fh, separators=(',', ':'), sort_keys=True)
+        yrs = [y for v in out.values() for y, _ in v]
+        print('%s  %s: %d countries, %d to %d, 2015 = 100' % (fname, m, len(out), min(yrs), max(yrs)))
+    if dropped:
+        print('dropped, not countries the atlas reads: ' + ', '.join(sorted(dropped)))
 
 
 if __name__ == '__main__':
-    # Take the path if given, otherwise look where fetch_raw.py puts things. Nothing
-    # there is not a build failure: the output already in the repository stays as it
-    # is, `make data` carries on, and the summary says what was skipped.
-    _here = os.path.dirname(os.path.abspath(__file__))
-    _arg = sys.argv[1] if len(sys.argv) == 2 else os.path.join(_here, 'data', 'raw', 'house_prices')
-    if not os.path.exists(_arg):
-        print('no house price sources at ' + _arg)
-        print('skipped: nothing written, the existing data files are unchanged.')
-        print('See data/raw/README.md for where this file goes.')
-        sys.exit(0)
-    main(_arg)
+    main()
