@@ -6,7 +6,7 @@
       "label": "GDP per person",
       "topic": "income",
       "file": "data/gdp_pc.json",
-      "countries": 164,
+      "countries": 163,
       "year_min": 1950,
       "year_max": 2022,
       "source": "OWID / Global Carbon Budget"
@@ -16,7 +16,7 @@
       "label": "income Gini",
       "topic": "income",
       "file": "data/income_gini.json",
-      "countries": 165,
+      "countries": 164,
       "year_min": 1967,
       "year_max": 2021,
       "source": "World Bank PIP via OWID"
@@ -26,7 +26,7 @@
       "label": "median income",
       "topic": "income",
       "file": "data/median_income.json",
-      "countries": 165,
+      "countries": 164,
       "year_min": 1967,
       "year_max": 2021,
       "source": "World Bank PIP via OWID"
@@ -36,7 +36,7 @@
       "label": "output per hour worked",
       "topic": "income",
       "file": "data/gdp_hour.json",
-      "countries": 41,
+      "countries": 40,
       "year_min": 1975,
       "year_max": 2024,
       "source": "OECD Productivity database"
@@ -46,7 +46,7 @@
       "label": "bottom 50% wealth share",
       "topic": "wealth",
       "file": "data/wealth_bottom50.json",
-      "countries": 213,
+      "countries": 212,
       "year_min": 1990,
       "year_max": 2024,
       "source": "WID"
@@ -56,7 +56,7 @@
       "label": "house prices against income",
       "topic": "wealth",
       "file": "data/house_income.json",
-      "countries": 40,
+      "countries": 39,
       "year_min": 1960,
       "year_max": 2025,
       "source": "OECD Analytical house price indicators"
@@ -66,7 +66,7 @@
       "label": "real house prices",
       "topic": "wealth",
       "file": "data/house_prices.json",
-      "countries": 47,
+      "countries": 46,
       "year_min": 1960,
       "year_max": 2025,
       "source": "OECD Analytical house price indicators"
@@ -76,7 +76,7 @@
       "label": "top 1% wealth share",
       "topic": "wealth",
       "file": "data/wealth_top1.json",
-      "countries": 213,
+      "countries": 212,
       "year_min": 1990,
       "year_max": 2024,
       "source": "WID"
@@ -86,7 +86,7 @@
       "label": "wealth Gini",
       "topic": "wealth",
       "file": "data/wealth_timeseries.json",
-      "countries": 213,
+      "countries": 212,
       "year_min": 1990,
       "year_max": 2024,
       "source": "WID"
@@ -96,7 +96,7 @@
       "label": "CO2 per person",
       "topic": "wellbeing",
       "file": "data/co2_per_capita.json",
-      "countries": 213,
+      "countries": 212,
       "year_min": 1950,
       "year_max": 2024,
       "source": "Global Carbon Budget via OWID"
@@ -106,7 +106,7 @@
       "label": "life expectancy",
       "topic": "wellbeing",
       "file": "data/life_expectancy.json",
-      "countries": 226,
+      "countries": 225,
       "year_min": 1950,
       "year_max": 2019,
       "source": "UN WPP, Clio Infra, Riley via OWID"
@@ -116,7 +116,7 @@
       "label": "life satisfaction",
       "topic": "wellbeing",
       "file": "data/life_satisfaction.json",
-      "countries": 164,
+      "countries": 163,
       "year_min": 2005,
       "year_max": 2022,
       "source": "World Happiness Report via OWID"
@@ -126,7 +126,7 @@
       "label": "poverty rate",
       "topic": "wellbeing",
       "file": "data/poverty_rate.json",
-      "countries": 165,
+      "countries": 164,
       "year_min": 1967,
       "year_max": 2021,
       "source": "World Bank PIP via OWID"
@@ -136,7 +136,7 @@
       "label": "relative poverty",
       "topic": "wellbeing",
       "file": "data/poverty_relative.json",
-      "countries": 171,
+      "countries": 170,
       "year_min": 1963,
       "year_max": 2025,
       "source": "World Bank WDI SI.DST.50MD"

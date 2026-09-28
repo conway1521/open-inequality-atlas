@@ -18,6 +18,11 @@ export default async function (t) {
     catch (e) { ok = false; why = e.message; }
     t.check(`data/${f} parses`, ok, why);
   }
+  // the countries the atlas does not include are in no data file the page loads
+  for (const f of readdirSync(join(t.root, 'data')).filter(f => f.endsWith('.json'))) {
+    const text = readFileSync(join(t.root, 'data', f), 'utf8');
+    t.check(`data/${f} carries no Israel`, !/"ISR"|"Israel"/.test(text));
+  }
   // every inline script compiles
   const html = readFileSync(join(t.root, 'index.html'), 'utf8');
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);

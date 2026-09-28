@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Open Inequality Atlas</title>
-<meta name="description" content="Wealth and income inequality, life expectancy, and emissions for 213 countries and territories. Ask short questions, chain the answers, take the data.">
+<meta name="description" content="Wealth and income inequality, life expectancy, and emissions for 212 countries and territories. Ask short questions, chain the answers, take the data.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1136,9 +1136,9 @@ footer a { color: inherit; }
       half of Sweden owes more than it owns.
     </p>
     <p class="sub">
-      This is not a British problem or an American one. Of the <span id="wn-all">213</span>
+      This is not a British problem or an American one. Of the <span id="wn-all">212</span>
       countries the atlas holds, the poorest half owns less than a tenth of the national wealth in
-      <span id="wn-thin">211</span> of them. The only exceptions are
+      <span id="wn-thin">210</span> of them. The only exceptions are
       <span id="wn-fat">Canada and Malta</span>. In <span id="wn-owing">5</span> the poorest half
       owns less than nothing at all. And in every single country, half the population owns less
       than the top one per cent does, though there are fifty times as many of them.
@@ -1323,8 +1323,8 @@ footer a { color: inherit; }
       survey (HFCS), the Luxembourg Wealth Study, the US Survey of Consumer Finances, and the
       Fed's Distributional Financial Accounts. The release files carry 10,783 rows with a
       non-null Gini on ISO3 keys, 1800 to 2025. What this page ships is the slice it can draw:
-      7,455 rows, 213 countries, 1990 to 2024. Around it sit WID income shares for 154 countries,
-      World Bank survey measures for 165, relative poverty for 171, house prices and output per
+      7,420 rows, 212 countries, 1990 to 2024. Around it sit WID income shares for 153 countries,
+      World Bank survey measures for 164, relative poverty for 170, house prices and output per
       hour worked from the OECD for about forty-five, and the United States at
       commuting zone and county resolution for mobility, debt, life expectancy by income and
       social capital. Every build script in the repo names its source and what it drops.
@@ -1447,11 +1447,11 @@ function assignColor(key) {
 const REGION_DEF = {
   europe:  'ALB AND AUT BEL BGR BIH BLR CHE CYP CZE DEU DNK ESP EST FIN FRA FRO GBR GGY GIB GRC HRV HUN IMN IRL ISL ITA JEY LIE LTU LUX LVA MCO MDA MKD MLT MNE NLD NOR POL PRT ROU RUS SMR SRB SVK SVN SWE UKR XKX',
   africa:  'AGO BDI BEN BFA BWA CAF CIV CMR COD COG COM CPV DJI DZA EGY ERI ESH ETH GAB GHA GIN GMB GNB GNQ KEN LBR LBY LSO MAR MDG MLI MOZ MRT MUS MWI MYT NAM NER NGA REU RWA SDN SEN SHN SLE SOM SSD STP SWZ SYC TCD TGO TUN TZA UGA ZAF ZMB ZWE',
-  asia:    'AFG ARE ARM AZE BGD BHR BRN BTN CHN GEO HKG IDN IND IRN IRQ ISR JOR JPN KAZ KGZ KHM KOR KWT LAO LBN LKA MAC MDV MMR MNG MYS NPL OMN PAK PHL PRK PSE QAT SAU SGP SYR THA TJK TKM TLS TUR TWN UZB VNM YEM',
+  asia:    'AFG ARE ARM AZE BGD BHR BRN BTN CHN GEO HKG IDN IND IRN IRQ JOR JPN KAZ KGZ KHM KOR KWT LAO LBN LKA MAC MDV MMR MNG MYS NPL OMN PAK PHL PRK PSE QAT SAU SGP SYR THA TJK TKM TLS TUR TWN UZB VNM YEM',
   oceania: 'ASM AUS COK FJI FSM GUM KIR MHL MNP NCL NIU NRU NZL PLW PNG PYF SLB TKL TON TUV VUT WLF WSM',
   latam:   'ABW AIA ARG ATG BES BHS BLZ BOL BRA BRB CHL COL CRI CUB CUW CYM DMA DOM ECU GLP GRD GTM GUF GUY HND HTI JAM KNA LCA MAF MEX MSR MTQ NIC PAN PER PRI PRY SLV SPM SUR SXM TCA TTO URY VCT VEN VGB',
   northam: 'BMU CAN GRL USA',
-  mideast: 'ARE BHR EGY IRN IRQ ISR JOR KWT LBN OMN PSE QAT SAU SYR TUR YEM',
+  mideast: 'ARE BHR EGY IRN IRQ JOR KWT LBN OMN PSE QAT SAU SYR TUR YEM',
 };
 REGION_DEF.americas = REGION_DEF.latam + ' ' + REGION_DEF.northam;
 const REGION_SET = {};
@@ -2081,7 +2081,7 @@ function ordinal(n) {
 }
 // A ranking compares like with like by default: the richer third of countries by GDP
 // per person, which is close to the set with tax records behind their wealth figures.
-// Against all 213 the United Kingdom ranks 207th on wealth concentration, which is true
+// Against all of them the United Kingdom ranks 207th on wealth concentration, which is true
 // and tells a British reader the opposite of what is true about their country, because
 // the 150 places above it are modelled. "the whole world" in the among fold widens it,
 // and every sentence a ranking touches says which set it ran on.
@@ -3060,7 +3060,7 @@ function buildAnswer(p, q) {
 
   if (p.kind === 'contrast') {
     const y = p.y, my = META[y];
-    // wealth axis is the top 1% share: real wealth concentration, measured across all 213 countries by WID
+    // wealth axis is the top 1% share: real wealth concentration, measured across all 212 countries by WID
     const wealthLens = SERIES.wealth_top1 ? 'wealth_top1' : 'wealth_gini';
     const wLog = false;
     const wPts = [], iPts = [];
@@ -3183,7 +3183,7 @@ function buildAnswer(p, q) {
     if (asked && asked !== 'USA') {
       showNotice(`What a family in each part of the country actually has, in money, comes from ` +
         `the Survey of Consumer Finances, which is the United States. The atlas holds nothing ` +
-        `like it for ${esc(theName(asked))}: the wealth shares run for 213 countries, but a share ` +
+        `like it for ${esc(theName(asked))}: the wealth shares run for 212 countries, but a share ` +
         `is not a bank balance.`);
       return null;
     }
@@ -3329,7 +3329,7 @@ function buildAnswer(p, q) {
       showNotice(`Counting the households below zero takes a household survey, and the one the ` +
         `atlas holds covers the euro area and a few of its neighbours, not ${esc(theName(named))}. ` +
         `Ask it without a country for the euro area, or ask what the poorest half owns, which ` +
-        `runs for 213.`);
+        `runs for 212.`);
       return null;
     }
     const iso = (named && B[named]) ? named : (standing && B[standing]) ? standing : null;
@@ -3414,7 +3414,7 @@ function buildAnswer(p, q) {
     if (iso && iso !== 'USA') {
       showNotice(`What wealth is made of is published by wealth group in the United States ` +
         `and nowhere else the atlas can reach, so it cannot be drawn for ` +
-        `${esc(theName(iso))}. The shares themselves run for 213 countries: ask what the ` +
+        `${esc(theName(iso))}. The shares themselves run for 212 countries: ask what the ` +
         `poorest half owns.`);
       return null;
     }
@@ -3710,7 +3710,7 @@ function buildAnswer(p, q) {
     // to quote: you cannot divide by a negative and get a number that means anything.
     // Those countries are named rather than dropped, because they are the far end of the
     // same question, not a gap in it.
-    // the same set every other ranking on this page uses: most of the 213 countries are
+    // the same set every other ranking on this page uses: most of the 212 countries are
     // regional fills rather than measurements, and a middle of the pack taken over those
     // describes the model, not the world
     const rt = rankNarrowed() ? richThird() : null;
@@ -4819,7 +4819,7 @@ function placePool() {
   const s = SERIES[key] || {};
   let isos = Object.keys(s).filter(i => BY_ISO[i] && s[i].length);
   // a measure the atlas holds for nowhere falls back to every country; a measure it
-  // holds for a few shows those few, because offering 213 for a series of 2 is a lie
+  // holds for a few shows those few, because offering 212 for a series of 2 is a lie
   if (!isos.length) isos = Object.keys(BY_ISO);
   return isos.map(i => [BY_ISO[i].name, i]).sort((a, b) => a[0].localeCompare(b[0]));
 }
@@ -5834,9 +5834,21 @@ const REWRITES = [
 ];
 const ABOUT = /^(what is this|what s this|whats this|what is (this|the) (site|page|thing|atlas)|what does (this|it) do|how does (this|it) work|help|about|what can (this|it) do)$/;
 let noteNext = null;   // one line said with the next answer, about how the question was read
+// countries the atlas does not include. their figures are removed from every data file by
+// apply_exclusions.py; asked for by name, the page says so rather than reading the name as
+// a slip for some other country or answering as if nothing had been asked
+const EXCLUDED_ASK = /\b(israel|israels|israeli|israelis|isreal|isreali|isrealis)\b/;
+const EXCLUDED_SAY = 'The atlas does not include Israel, so it has no figures for it.';
 function previewQuestion(typed) {
   hideNotice();   // the last question's complaint is not about this one
   const faceBefore = curFacet;
+  if (EXCLUDED_ASK.test(norm(typed))) {
+    showNotice(`<strong class="asked">\u201c${esc(typed.trim().slice(0, 80))}\u201d</strong><br>` + EXCLUDED_SAY + ' Try: ' +
+      ['which country is most unequal?', 'how unequal is the UK?']
+        .map(c => `<button type="button" class="opt-near" data-q="${esc(c)}">${esc(c)}</button>`).join(', ') + '.');
+    wireNear();
+    return false;
+  }
   // the words are read after the slips are taken out; the box keeps what was typed
   const fix = spellFix(typed);
   let q = fix.text;
@@ -9132,6 +9144,7 @@ function describeRead(raw) {
   if (ABOUT.test(nq)) { out.say = 'what the atlas is and how to ask it'; return out; }
   for (const [re, to] of REWRITES) if (re.test(nq)) { out.say = 'read as: ' + to; return out; }
   if (METHOD.some(([re]) => re.test(nq))) { out.say = 'sources and method, with a link to the page'; return out; }
+  if (EXCLUDED_ASK.test(norm(t))) { out.say = 'a country the atlas does not include; it will say so'; return out; }
   if (NOT_HELD.some(([re]) => re.test(nq))) { out.say = 'something the atlas does not hold; it will say so and offer the nearest'; return out; }
   if (GLOSSARY.some(([re]) => re.test(nq)) && /^(what is|what s|whats|what are|what does|define|explain|meaning of)\b/.test(nq)) { out.say = 'a short definition'; return out; }
   const usp = US_CZ ? usPlaceFind(q) : null;

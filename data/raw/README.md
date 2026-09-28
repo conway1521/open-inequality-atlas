@@ -84,5 +84,8 @@ spreadsheet.
 
 ## What the app actually loads
 
+Every build ends with `apply_exclusions.py`, which removes the countries the atlas does
+not include (Israel) from every `data/*.json`, whatever the builder wrote.
+
 Only `data/*.json`, and only the files named in the `Promise.all` block near the
 bottom of `index.html`. A new JSON file does nothing until it is added there.

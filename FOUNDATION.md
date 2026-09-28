@@ -79,15 +79,15 @@ and a range of 1.1 to 3.4.
 1 per cent is a fiftieth the size of the bottom half, so two shares cannot be set
 against each other as they stand. Divide each by the fraction of adults it covers
 and both become a figure for one person. Do that on wealth and on income and the
-gap in owning exceeds the gap in earning in **146 of the 146 countries** where both
+gap in owning exceeds the gap in earning in **145 of the 145 countries** where both
 can be worked out, with a median of 6 times wider. In 5 more the poorest half owes
 more than it owns, so the division has no value at all: the same pattern carried
 past the point the arithmetic survives.
 
-Unanimity across 146 countries is not 146 independent measurements. Most of these
+Unanimity across 145 countries is not 145 independent measurements. Most of these
 wealth figures are modelled by WID from the smaller set with tax records, so the
 count is partly the model's verdict. Two things make it worth stating anyway: the
-direction is the same in all 48 of the richer-third countries, where the underlying
+direction is the same in all 47 of the richer-third countries, where the underlying
 data is best, and the claim is about a level rather than a change, which is what
 survives modelling.
 
@@ -98,10 +98,10 @@ rounds to two figures above a hundred and says what a revision would do.
 
 Three claims sit near this one and are weaker. The bottom half's share of wealth
 *falling* is a steady majority and not a rule: 33 of the 54 richer-third countries
-since 1995, landing between 31 and 34 whichever of 1990, 1995 and 2000 you start
+since 1995, landing between 32 and 34 whichever of 1990, 1995 and 2000 you start
 from. The bottom half owning *less than a tenth* of its country is near-universal,
-211 of 213, the exceptions being Canada and Malta. The bottom half owning less than
-the top 1 per cent is universal, 213 of 213.
+210 of 212, the exceptions being Canada and Malta. The bottom half owning less than
+the top 1 per cent is universal, 212 of 212.
 
 ### Claim 2: the league tables disagree. STRONG. This is the atlas's best finding.
 
@@ -146,7 +146,7 @@ section 4.
 
 Across countries it is weak and the chart says so. Wealth top 1% against life
 expectancy, rich countries only, latest shared year: r = **-0.38**, n = 25, about
-p = 0.06. Income top 1% is weaker at -0.26. Across all 209 countries wealth falls
+p = 0.06. Income top 1% is weaker at -0.26. Across all 208 countries wealth falls
 to -0.14, because development swamps it.
 
 Inside the United States, where the data is by income group rather than a national
@@ -293,6 +293,12 @@ the euro area. Both are already in the wealth pipeline and neither reaches the a
 
 ## 5. The unit is the country
 
+**Israel is not included.** Since September 2026 it is removed from every data file
+the page loads: `apply_exclusions.py` runs after every build and strips it, so a
+rebuild cannot bring it back, and the page says the atlas does not include it when
+someone asks. Every count and statistic in this file is without it; where removing it
+moved a number, the number here is the new one.
+
 The user asked whether to explore this overall, by country, or by bloc. The data
 answers it. Change in wealth top 1%, 1995 to 2017:
 
@@ -432,17 +438,17 @@ was asked for, what came in and what did not. Items struck through are in. Anyth
 still missing says why, and what would bring it in, so a gap is on the record rather
 than found by a reader.
 
-1. ~~**Housing cost to income.**~~ **Done, for 47 countries.** The OECD's Analytical
+1. ~~**Housing cost to income.**~~ **Done, for 46 countries.** The OECD's Analytical
    house price indicators replace the two-country series built by hand from
    Nationwide and Case-Shiller. Two measures come in: real house prices, and the
    OECD's own price to income ratio, both 2015 = 100. Houses against pay now reads
-   any of the 47, sets the house line against the survey median as before, and quotes
+   any of the 46, sets the house line against the survey median as before, and quotes
    the OECD ratio beside it, which divides by disposable income per person from
    national accounts and so has no survey gaps to draw across.
 
-   What it shows: 28 of the 40 countries with the ratio stand above their 2015 level.
-   Of the 25 whose ratio reaches back to 2000, 19 have seen houses rise against income
-   since then, by a median of 24 per cent; Canada doubled, and Australia and New
+   What it shows: 27 of the 39 countries with the ratio stand above their 2015 level.
+   Of the 24 whose ratio reaches back to 2000, 18 have seen houses rise against income
+   since then, by a median of 25 per cent; Canada doubled, and Australia and New
    Zealand rose by three quarters. Korea, Finland, Japan and Germany went the other
    way. The United States is the surprise: its ratio in 2025 is 127, the same as in
    1970, having peaked at 131 in 2006.
@@ -491,14 +497,14 @@ than found by a reader.
    saving figure for it. That is a different absence from a country the survey does not
    reach, and the two do not read the same.
 3. ~~**Productivity against pay.**~~ **Done where the OECD measures it.** GDP per
-   hour worked, in 2020 dollars at 2020 purchasing power, for 41 countries. Growth
+   hour worked, in 2020 dollars at 2020 purchasing power, for 40 countries. Growth
    against the middle now uses output per hour wherever it is held and output per
    person everywhere else, and the answer says which. Per hour is the side of the
    argument that matters, because output per person also moves when people retire
    earlier or work shorter weeks. It is still national accounts against a household
    survey, and the chart says that too.
 
-   Across the 40 countries carrying both, output per hour outgrew the survey median
+   Across the 39 countries carrying both, output per hour outgrew the survey median
    by more than five points in 19. Ireland, Poland and Slovakia are the widest; in
    Estonia, Norway and Chile the middle grew faster than output per hour.
 4. ~~**Portfolio composition by wealth group.**~~ **Done for one country.** The Fed's
@@ -533,7 +539,7 @@ than found by a reader.
    them, and that carrying them through would let every chart say how solid each
    country's line is. Two of those three are true and the third is not.
 
-   Every one of the 7,455 rows the atlas draws reads `comparability_tier: B` and
+   Every one of the 7,420 rows the atlas draws reads `comparability_tier: B` and
    `observed_vs_modeled: imported`. The codebook defines B as "same broad concept,
    different source machinery (e.g. WID)" and imported as "published series ingested
    verbatim". Both describe the pipeline's relationship to WID. Neither describes
@@ -542,12 +548,12 @@ than found by a reader.
    that reads the same on every chart.
 
    `negative_wealth_share` and `median_net_wealth` are in the schema and empty for
-   all 7,455 rows, so neither is available either.
+   all 7,420 rows, so neither is available either.
 
    What does separate a measured country from an imputed one is the shape of the
-   file: all 213 countries carry a value for every year from 1990 to 2024 with no gap
+   file: all 212 countries carry a value for every year from 1990 to 2024 with no gap
    anywhere. No measurement programme produces that, and the income shares next to it
-   show what real coverage looks like, with gaps in 81 of 154 countries and series
+   show what real coverage looks like, with gaps in 80 of 153 countries and series
    running from 1 year to 135. Every wealth chart now says this, and says that the
    atlas cannot name which countries are which.
 
@@ -556,9 +562,9 @@ than found by a reader.
    That is upstream of this repo.
 
 7. ~~**Relative poverty.**~~ **Done.** The share of people below half of what the
-   person in the middle has, 171 countries, from the World Bank's SI.DST.50MD, which is
+   person in the middle has, 170 countries, from the World Bank's SI.DST.50MD, which is
    computed from the same surveys as the rest of its Poverty and Inequality Platform.
-   In the 64 countries where the $2.15 line reads under one per cent, the relative
+   In the 63 countries where the $2.15 line reads under one per cent, the relative
    line runs from 0.9 to 21.1 per cent, with a median of 10.9: 6.6 in Denmark, 11.7 in
    the United Kingdom, 18.9 in the United States. Asked about poverty in a rich country,
    the answer now gives both, and says which one is the floor.
@@ -641,10 +647,10 @@ out, with the ones still open marked.
   zero bytes. It came in from the World Bank's own download instead. Section 9, item 7.
 - The OECD housing export covered only 2021-Q3 to 2026-Q2 on one measure, and the BIS
   export was a single "advanced economies" aggregate. A full annual OECD export replaced
-  both, and house prices are 47 countries. Section 9, item 1.
+  both, and house prices are 46 countries. Section 9, item 1.
 
 **Checked and correct, recorded so nobody checks twice.** The three income shares
-sum to one in all 4,428 country-years. The top 1 per cent sits inside the top 10 per
+sum to one in all 4,412 country-years. The top 1 per cent sits inside the top 10 per
 cent everywhere. House prices and the price to income ratio are 2015 = 100 in every country, as the OECD publishes them. The commuting-zone
 credit, mortgage and delinquency columns are not topcoded. Negative bottom-50 wealth
 shares are real, not sign errors: eight countries have been below zero at some point
