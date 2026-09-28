@@ -17,3 +17,6 @@ __pycache__/
 
 # the test runner's dependencies
 tests/node_modules/
+
+# local chart sweeps, not part of the suite
+tests/.sweep/

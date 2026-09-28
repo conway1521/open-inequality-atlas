@@ -60,6 +60,20 @@ Not in version 1:
 | what `us_income_gini` is, settled | Table 8's census Gini is not it (FOUNDATION.md 9a) | the county file from the 2014 mobility paper, which carries `gini99` |
 | `bis_property_prices.csv` | not needed: the OECD file covers the same countries annually | only if a country outside the OECD set is wanted |
 
+## Two builders that cannot rebuild from the archive
+
+`make data` runs every builder and names these two as skipped. Their JSON is committed
+and correct, and the page uses it. What is missing is the source file, so they cannot be
+reproduced from `raw-sources.tar.gz` alone.
+
+| builder | writes | needs, in `data/raw/` | where from |
+|---|---|---|---|
+| `build_income_shares.py` | `income_top1.json`, `income_top10.json`, `income_middle40.json`, `income_bottom50.json` | `wid_pretax_income.csv` | the Our World in Data mirror of WID pretax income, `github.com/owid/owid-datasets`, dataset "World Inequality Database (WID) - Pretax income" |
+| `build_us.py` | `us_county.json`, `us_state.json`, `us_names.json` | the county outcomes file (its header carries `kfr_pooled_pooled_p25`), and the county file that carries `us_income_gini` | opportunityinsights.org/data, county level; the second is the one FOUNDATION.md 9a says would settle what that column is |
+
+`build_us.py` refuses to write a thinner file rather than dropping columns it cannot
+rebuild, which is why it leaves the committed one alone.
+
 ## Anything not in those tables
 
 Put it here under a name that says what it is, then tell the build script about it.

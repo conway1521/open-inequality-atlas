@@ -743,7 +743,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .facet.lens { border-color: #c9d9ec; }
 .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
 .chart-title::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 2px;
-  background: var(--accent); margin-right: 8px; vertical-align: baseline; transition: background .4s ease; }
+  background: var(--swatch, var(--accent)); margin-right: 8px; vertical-align: baseline; transition: background .4s ease; }
 #view-ask.engaged .chart-title { position: sticky; top: var(--deckh, 0px); z-index: 10;
   background: var(--bg); padding: 7px 0 9px; margin-bottom: 0; }
 #chart { width: 100%; height: 318px; }
@@ -893,7 +893,7 @@ footer a { color: inherit; }
           </div>
           <span class="cube-hint" aria-hidden="true"></span>
         </div>
-        <button type="button" class="shake" id="shake" aria-label="Roll a question and answer it"><span class="pip" id="die-pip">⚄</span> roll me one</button>
+        <button type="button" class="shake" id="shake" aria-label="Roll a question and answer it"><span class="pip" id="die-pip">⚄</span> roll me</button>
         <div class="facet-chips" id="facet-chips">
           <button class="fchip w" data-facet="wealth" aria-pressed="true">wealth</button>
           <button class="fchip i" data-facet="income" aria-pressed="false">income</button>
@@ -1752,7 +1752,7 @@ const META = {
     poolSrc: 'Source: OECD, price to income ratio, 2015 = 100, latest year per country. Each country is measured against its own 2015, so this ranks how far houses have moved against pay since then, not which country is dearest.',
   },
   gdp_hour: {
-    label: 'output per hour worked', topic: 'income', series: true, file: 'data/gdp_hour.json',
+    label: 'output per hour worked', topic: 'income', series: true, money: true, file: 'data/gdp_hour.json',
     fmt: v => v == null ? 'n/a' : '$' + v.toFixed(0), fmtD: v => v == null ? 'n/a' : '$' + v.toFixed(1), hover: '$%{y:.0f}',
     lineSrc: 'Source: OECD Productivity database. GDP per hour worked, whole economy, US dollars at 2020 prices and 2020 purchasing power.',
     poolSrc: 'Source: OECD Productivity database, GDP per hour worked in 2020 dollars at 2020 purchasing power, latest year per country.',
@@ -2411,7 +2411,12 @@ function parseCore(raw) {
   }
 
   // DIVERGENCE: the two inequalities pulling apart over time (the spine of the atlas)
-  const bothIneq = metrics.includes('wealth_gini') && metrics.includes('income_gini');
+  // "how does wealth inequality compare with income inequality in germany" named both and
+  // drew only income, because "wealth inequality" reads as the top 1% share. both named, for
+  // one country, is this reading whatever measure each word landed on
+  const bothIneq = (metrics.includes('wealth_gini') && metrics.includes('income_gini')) ||
+    (isos.length === 1 && /\bwealth (inequalit\w*|gini|gap)\b/.test(r) && /\bincome (inequalit\w*|gini|gap)\b/.test(r) &&
+     /\bcompar\w*\b|\bagainst\b|\bwith\b|\bvs\.?\b|\bversus\b|\band\b/.test(r));
   if (bothIneq || /\bdivergence\b|\btwo inequalit\w*\b|\bwealth (and|vs\.?|versus) income\b|\bincome (and|vs\.?|versus) wealth\b/.test(r)) {
     const iso = isos[0] || (ctx.lastIso && ctx.lastIso !== 'reg' ? ctx.lastIso : null) || 'USA';
     return { kind: 'divergence', iso };
@@ -4731,7 +4736,8 @@ const METRIC_HEX = {
   income_gini: '#2f9e8f', median_income: '#2f9e8f', gdp_pc: '#2f9e8f', poverty_rate: '#2f9e8f',
   house_price: '#2a78d6', house_income: '#2a78d6', gdp_hour: '#2f9e8f', poverty_relative: '#2f9e8f',
   income_top1: '#2f9e8f', income_top10: '#2f9e8f', income_middle40: '#2f9e8f', income_bottom50: '#2f9e8f',
-  life_exp: '#c0607a', life_satisfaction: '#c0607a', co2_pc: '#c98a2b',
+  // CO2 belongs to no face; amber would read as opportunity, so it takes the neutral slate
+  life_exp: '#c0607a', life_satisfaction: '#c0607a', co2_pc: '#6b7280',
 };
 const metricColor = key => METRIC_HEX[key] || '#7a7f88';
 // the mark for "this is the one you asked about". an orange that belongs to no face
@@ -5875,6 +5881,24 @@ function previewQuestion(typed) {
     wireNear();
     return false;
   }
+  // a question in the US layer's own words that its reader can answer as asked goes
+  // there as typed. TO_OPP below swaps the words for one canonical question, which is
+  // right for "social mobility" and wrong for "mobility and house value", where the
+  // second half is the question and was being thrown away for a ranking
+  if (US_CZ && /\b(count(y|ies)|commuting zones?|parents?|credit|delinquen\w*|who you know|better[- ]off|friends?|social capital|mobility|climb\w*|grow(ing)? up|poor kids|life gap|house values?)\b/.test(nq) &&
+      !(findCountries(q).isos || []).some(i => i !== 'USA')) {
+    let here = null;
+    try { here = oppAnswer(q, true); } catch (err) { here = null; }
+    const kind = here && here.opp && here.opp.kind;
+    if (['gap', 'pair', 'faces', 'conn', 'mix', 'life'].includes(kind)) {
+      const face = kind === 'life' ? 'health' : 'opportunity';
+      const moved = !onUs();
+      if (curFacet !== face && !(kind === 'life' && onUs())) chooseFacet(face);
+      resetCell(); cell.raw = q; cell.asked = typed; updateCell();
+      if (moved) noteNext = (noteNext || '') + '<em class="readas">Only the United States publishes this, county by county, so this answer is the US.</em>';
+      return true;
+    }
+  }
   // an opportunity question typed from another face: "does knowing better-off people
   // help you climb" went to a ranking of wealth risers, because "climb" reads as rising.
   // the words are held against the layer's own questions first
@@ -6335,7 +6359,8 @@ function usPlaceAnswer(pl, q) {
     return null;
   }
   const bars = [];
-  const bar = (label, pos, better) => { if (pos) bars.push({ label, pct: pos.pct, better }); };
+  // each bar carries the face its measure belongs to, and is drawn in that face's colour
+  const bar = (label, pos, better, face = 'opportunity') => { if (pos) bars.push({ label, pct: pos.pct, better, face }); };
   if (pl.type === 'zone') {
     const z = US_CZ[pl.id], zones = Object.values(US_CZ);
     const col = k => Object.fromEntries(Object.entries(US_CZ).map(([id, r]) => [id, r[k]]));
@@ -6360,9 +6385,9 @@ function usPlaceAnswer(pl, q) {
     t += ` <em>A commuting zone is a local job market, the counties people travel between for work. Children born in the early ` +
       `1980s, measured in their mid thirties, from Opportunity Insights. Life expectancy covers the ${Object.keys(gaps).filter(k => gaps[k] != null).length} zones large enough to measure it.</em>`;
     f.text = t;
-    if (curFacet === 'health') bar('rich-poor life gap at forty', gp, 'lower');
+    if (curFacet === 'health') bar('rich-poor life gap at forty', gp, 'lower', 'health');
     bar('how far poor children climb', mob, 'higher'); bar('credit score, poorest quarter', cr, 'higher');
-    bar('behind on payments, poorest quarter', dq, 'lower'); if (curFacet !== 'health') bar('rich-poor life gap at forty', gp, 'lower');
+    bar('behind on payments, poorest quarter', dq, 'lower'); if (curFacet !== 'health') bar('rich-poor life gap at forty', gp, 'lower', 'health');
     f.opp.unit = 'commuting zones';
   } else {
     const src = pl.type === 'county' ? US_COUNTY : US_STATE;
@@ -6391,7 +6416,7 @@ function usPlaceAnswer(pl, q) {
       `friendships are from Facebook's social capital study.</em>`;
     f.text = t;
     bar('how far poor children climb', mob, 'higher'); bar('better-off friends', ec, 'higher');
-    bar('income Gini', gi, 'lower'); bar('rich-poor life gap at forty', lg, 'lower');
+    bar('income Gini', gi, 'lower', 'income'); bar('rich-poor life gap at forty', lg, 'lower', 'health');
   }
   f.opp.bars = bars;
   return f;
@@ -6622,17 +6647,25 @@ function oppAnswer(q, strict) {
     `runs from the <strong>${ord(Math.round(bot.mob * 100))}</strong> in ${esc(bot.name)} to the <strong>${ord(Math.round(top.mob * 100))}</strong> in ${esc(top.name)}.`;
   return f;
 }
+// a logged dollar axis labelled at round values, not at every minor decade tick
+const HOUSE_TICKS = { tickvals: [2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6], ticktext: ['$20k', '$50k', '$100k', '$200k', '$500k', '$1m', '$2m'] };
 function drawOpp(f) {
   const el = document.getElementById('chart'), title = document.getElementById('chart-title'), src = document.getElementById('chart-src');
-  const o = f.opp, AM = '#c98a2b';
+  // amber is the opportunity face, not the US layer: a chart of how long people live is
+  // health and wears rose, a county Gini is income and wears teal
+  const o = f.opp, AM = FACET_HEX.opportunity, FC = face => FACET_HEX[face] || AM;
   if (o.kind === 'place') {
     const b = o.bars.slice().reverse();
-    Plotly.react(el, [{ type: 'bar', orientation: 'h', x: b.map(r => r.pct), y: b.map(r => r.label),
-      marker: { color: AM }, text: b.map(r => `above ${r.pct}%`), textposition: 'outside', cliponaxis: false,
+    const narrow = el.clientWidth < 520;
+    const wrap = t => { if (!narrow) return t; const w = t.split(' '), out = ['']; for (const x of w) {
+      if ((out[out.length - 1] + ' ' + x).trim().length > 16) out.push(x); else out[out.length - 1] = (out[out.length - 1] + ' ' + x).trim(); }
+      return out.join('<br>'); };
+    Plotly.react(el, [{ type: 'bar', orientation: 'h', x: b.map(r => r.pct), y: b.map(r => wrap(r.label)),
+      marker: { color: b.map(r => FC(r.face)) }, text: b.map(r => `above ${r.pct}%`), textposition: 'outside', cliponaxis: false,
       hovertemplate: '%{y}: higher than %{x}% of ' + o.unit + '<extra></extra>' }],
       Object.assign({}, BASE_LAYOUT, { margin: { t: 10, r: 60, b: 44, l: 200 },
         xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { range: [0, 100], autorange: false, ticksuffix: '%',
-          title: { text: 'share of ' + o.unit + ' this one is higher than', font: { size: 11 } } }),
+          title: { text: narrow ? 'share it is higher than' : 'share of ' + o.unit + ' this one is higher than', font: { size: 11 } } }),
         yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category', autorange: true }),
         shapes: [{ type: 'line', x0: 50, x1: 50, y0: -0.5, y1: b.length - 0.5, line: { color: cssVar('--ink-3', '#999'), width: 1, dash: 'dot' } }] }), CFG);
     title.textContent = `${o.placeName}, against every other one of the ${o.unit}`;
@@ -6707,14 +6740,18 @@ function drawOpp(f) {
       type: 'scatter', mode: 'markers',
       x: o.pts.map(q => sx ? q.x * 100 : q.x), y: o.pts.map(q => sy ? q.y * 100 : q.y),
       text: o.pts.map(q => q.name),
-      marker: { color: AM, size: 5, opacity: 0.4 },
+      marker: { color: FC(o.y.face), size: 5, opacity: 0.4 },
       hovertemplate: '%{text}<br>%{x}<br>%{y}<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, {
       margin: { t: 16, r: 18, b: 46, l: 62 },
-      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { type: 'linear', autorange: true,
-        title: { text: cap(o.x.lab) + (sx ? ', income percentile' : ''), font: { size: 11 } } }),
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'linear', autorange: true,
-        title: { text: cap(o.y.lab) + (sy ? ', income percentile' : ''), font: { size: 11 } } }),
+      // house values run from tens of thousands to millions: on a straight axis a few
+      // coastal counties flatten every other dot onto the floor, so that axis is logged
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { type: o.x.k === 'us_house_value' ? 'log' : 'linear', autorange: true,
+        ...(o.x.k === 'us_house_value' ? HOUSE_TICKS : {}),
+        title: { text: cap(o.x.lab) + (sx ? ', income percentile' : o.x.k === 'us_house_value' ? ', log scale' : ''), font: { size: 11 } } }),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: o.y.k === 'us_house_value' ? 'log' : 'linear', autorange: true,
+        ...(o.y.k === 'us_house_value' ? HOUSE_TICKS : {}),
+        title: { text: cap(o.y.lab) + (sy ? ', income percentile' : o.y.k === 'us_house_value' ? ', log scale' : ''), font: { size: 11 } } }),
     }), CFG);
     title.textContent = `${cap(o.x.lab)} and ${o.y.lab}, by county`;
     src.textContent =
@@ -6803,8 +6840,8 @@ function drawOpp(f) {
     Plotly.react(el, [
       { x: [lo, hi], y: [lo, hi], mode: 'lines', showlegend: false,
         line: { color: '#cbd5e1', width: 1, dash: 'dash' }, hoverinfo: 'skip' },
-      series('f1', 'f4', 'women', shade(AM, -0.35), 0.5),
-      series('m1', 'm4', 'men', AM, 0.55),
+      series('f1', 'f4', 'women', shade(FC('health'), -0.35), 0.5),
+      series('m1', 'm4', 'men', FC('health'), 0.55),
     ], Object.assign({}, BASE_LAYOUT, {
       showlegend: true, legend: { orientation: 'h', y: 1.14, font: { size: 11 } },
       margin: { t: 14, r: 16, b: 44, l: 54 },
@@ -6997,7 +7034,7 @@ function updateCell() {
     setSlot('place', (last.opp && last.opp.placeName) || 'US commuting zones', 'a country, or all of them');
     setSlot('time', null, 'a moment, or a run of years');
     const o = last.opp;
-    setSlot('against', o.covLabel || o.label || null, 'another measure to hold it to', '#c98a2b');
+    setSlot('against', o.covLabel || o.label || null, 'another measure to hold it to', FACET_HEX[curFacet] || FACET_HEX.opportunity);
     // every slot, not only the three this layer fills. arriving here from another face
     // used to leave that face's reading sitting in the strip: a matrix of US counties
     // under a pill reading "what the wealth is made of".
@@ -7353,10 +7390,18 @@ const BASE_LAYOUT = {
   margin: { t: 8, r: 8, b: 40, l: 46 },
   // axis type and range are sticky across Plotly.react, so every draw restates them:
   // a bar chart's category axis must never leak into the next scatter
-  xaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', type: 'linear', autorange: true },
-  yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', type: 'linear', autorange: true },
+  // automargin: a long label or axis title widens the margin rather than being cut off
+  xaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', type: 'linear', autorange: true, automargin: true },
+  yaxis: { gridcolor: '#f0f0f0', zeroline: false, linecolor: '#eaeaea', type: 'linear', autorange: true, automargin: true },
   showlegend: false,
 };
+// the tick format a measure's own axis wears: a share as a per cent, money with its sign
+function axisFmt(m) {
+  if (!m) return {};
+  if (m.fmt === pc) return { tickformat: '.0%' };
+  if (m.fmt === usd0 || m.fmt === usdDay || m.money) return { tickprefix: '$' };
+  return {};
+}
 const CFG = { responsive: true, displayModeBar: false };
 // shaded years: only global, dated episodes, so a turn in a line can be read against them
 // What was going on, for looking up beside a turn the data picked. These are never
@@ -7452,6 +7497,37 @@ function syncChartTheme() {
 }
 
 function drawChart() {
+  drawChartBody();
+  syncSwatch();
+}
+// the colour a chart is mostly drawn in, snapped to the palette: the first saturated
+// colour among its traces. a rose chart of life expectancy on the wealth face used to sit
+// under a blue square, because the square followed the face rather than the chart
+function syncSwatch() {
+  const el = document.getElementById('chart'), t = document.getElementById('chart-title');
+  if (!el || !t) return;
+  const rgb = c => {
+    if (typeof c !== 'string') return null;
+    let m = c.match(/^#([0-9a-f]{6})$/i);
+    if (m) return [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16));
+    m = c.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
+    if (m && (m[4] == null || +m[4] > 0.3)) return [+m[1], +m[2], +m[3]];
+    return null;
+  };
+  const sat = ([r, g, b]) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b); return mx ? (mx - mn) / mx : 0; };
+  const PAL = Object.values(FACET_HEX).concat([metricColor('co2_pc')]);
+  // a chart mixing faces (a US place's bars) takes the face it was asked on, when that
+  // face's colour is in it; otherwise the first colour that is a colour and not a grey
+  const all = (el.data || []).flatMap(tr => [tr.line && tr.line.color, tr.marker && tr.marker.color])
+    .flatMap(x => Array.isArray(x) ? x : [x]).filter(c => typeof c === 'string').map(c => c.toLowerCase());
+  const own = FACET_HEX[curFacet];
+  let pick = own && all.includes(own) ? rgb(own) : null;
+  if (!pick) for (const c of all) { const v = rgb(c); if (v && sat(v) > 0.12) { pick = v; break; } }
+  if (!pick) { t.style.removeProperty('--swatch'); return; }
+  const dist = h => { const v = rgb(h); return v.reduce((a, x, i) => a + (x - pick[i]) ** 2, 0); };
+  t.style.setProperty('--swatch', PAL.reduce((a, h) => dist(h) < dist(a) ? h : a));
+}
+function drawChartBody() {
   syncChartTheme();
   const drawable = chain.slice().reverse().find(f => !f.noChart) || chain[chain.length - 1];
   const mode = drawable.mode;
@@ -7485,9 +7561,15 @@ function drawChart() {
     const isDelta = bar.key === 'delta';
     const m = META[isDelta ? bar.metric : bar.key];
     const isPct = m.fmt === pc;
-    const vals = rows.map(r => isPct && !isDelta ? r.val * 100 : r.val);
+    // on a phone the bars get a third of the width, so the end labels drop their unit
+    // (the axis title carries it) and the bars leave more room for them
+    const narrow = el.clientWidth < 520;
+    const vals = rows.map(r => isPct ? r.val * 100 : r.val);
+    // room past the longest bar for its label, on whichever side the bars run
+    const vLo = Math.min(0, ...vals), vHi = Math.max(0, ...vals), vPad = (vHi - vLo) * (narrow ? 0.42 : 0.2) || 1;
+    const padded = [vLo < 0 ? vLo - vPad : 0, vHi > 0 ? vHi + vPad : 0];
     const labels = rows.map(r => isDelta
-      ? (r.val >= 0 ? '+' : '-') + m.fmtD(Math.abs(r.val))
+      ? (r.val >= 0 ? '+' : '-') + (narrow && isPct ? (Math.abs(r.val) * 100).toFixed(1) : m.fmtD(Math.abs(r.val)))
       : m.fmt(r.val));
     Plotly.react(el, [{
       type: 'bar', orientation: 'h',
@@ -7511,8 +7593,11 @@ function drawChart() {
       // a Gini sits on a fixed 0 to 1 axis; a share is already scaled to 0 to 100, so it
       // keeps its own range, wears the per-cent sign, and leaves room for the end labels
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis,
-        isDelta ? {} : isPct ? { ticksuffix: '%', range: [0, Math.max(...vals) * 1.14], autorange: false }
-          : m.giniFam ? { range: [0, 1.05], autorange: false } : {}),
+        isDelta ? Object.assign({ range: padded, autorange: false, zeroline: true, zerolinecolor: '#cfcfcf' },
+            isPct ? { ticksuffix: narrow ? '' : ' pts', title: { text: 'change, percentage points', font: { size: 11 } } } : {})
+          : isPct ? { ticksuffix: '%', range: padded, autorange: false }
+          : m.giniFam ? { range: [0, 1.05], autorange: false }
+          : Object.assign({ range: padded, autorange: false }, axisFmt(m))),
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category' }),
       bargap: 0.35,
     }), CFG);
@@ -8202,7 +8287,7 @@ function drawChart() {
         yanchor: 'bottom', yshift: 2 + (i % 2) * 13, text: e.k, showarrow: false,
         font: { size: 9.5, color: cssVar('--ink-3', '#999999') },
       })),
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, m.fmt === pc ? { tickformat: '.0%' } : {}),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, axisFmt(m)),
     }), CFG);
     title.textContent = `${BY_ISO[tn.iso].name}: the sharpest ${tn.span} years, ${tn.a} to ${tn.b}`;
     src.textContent =
@@ -8570,7 +8655,7 @@ function drawChart() {
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis, (fromYear || toYear)
         ? { range: [fromYear || eLo, toYear || Math.max(eHi, 2025)], autorange: false } : {}),
       // a share reads as a share on the axis too, matching the sentence above it
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, m.fmt === pc ? { tickformat: '.0%' } : {}),
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, axisFmt(m)),
       margin: { t: 12, r: labelable.length <= 4 ? 110 : 16, b: 40, l: 46 },
     }), CFG);
     title.textContent = `${cap(m.label)} over time`;
