@@ -87,12 +87,8 @@ function render() {
   // once you're working, the cube shrinks so the ask box and cell stay the controls
   const engaged = stage === 'result' && chain.length > 0;
   document.getElementById('view-ask').classList.toggle('engaged', engaged);
-  if (!engaged && deckCondensed) {   // back home: the deck stands up again
-    deckCondensed = false;
-    const dk = document.getElementById('deck'); if (dk) dk.classList.remove('condensed');
-  }
-  const wantScale = engaged ? (deckCondensed ? 0.36 : 0.55) : 1.08;   // sending lifts the cube out of the way
-  requestAnimationFrame(syncDeck);   // the deck's height drives where the graph's head sits
+  const wantScale = engaged ? 0.55 : 1.08;   // sending lifts the cube out of the way
+  requestAnimationFrame(syncDeck);   // the minibar says what is on screen once the deck is gone
   if (wantScale !== cubeScale) { cubeScale = wantScale; cubeApply(); }
   if (chain.length === 0) {
     // an empty chain is normal while composing: the cell is a draft, nothing is computed yet

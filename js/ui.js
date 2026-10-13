@@ -787,27 +787,22 @@ function revealAnswer(sel) {
     // The cube, the ask box and the accordion sit in a sticky deck at the top of the
     // page. Scrolling the answer to a fixed offset put it underneath them, which looked
     // exactly like no answer at all, so the deck's real height is measured each time.
-    const clear = () => {
-      const deck = document.getElementById('deck');
-      // on a phone the deck scrolls away with the page (it was two thirds of the screen
-      // when it stayed), so the answer goes to the top
-      if (!deck || getComputedStyle(deck).position !== 'sticky') return 12;
-      const h = deck.getBoundingClientRect().bottom;
-      return Math.max(24, Math.min(h + 16, window.innerHeight * 0.62));
+    // the deck scrolls away with the page and the minibar takes its place, so the
+    // answer goes to just under the minibar
+    const clear = () => { const bar = document.getElementById('minibar'); return (bar ? bar.offsetHeight : 0) + 12; };
+    // on a laptop an answer whose chart runs off the bottom is brought up under the
+    // minibar, where the sentence and the whole chart fit; it used to stop with the deck
+    // still taking the top half and the chart cut off below
+    const chartCut = () => {
+      if (sel && sel !== '#answer') return false;
+      if (window.matchMedia('(max-width: 720px)').matches) return false;
+      const ch = document.getElementById('chart');
+      return !!ch && ch.getBoundingClientRect().bottom > window.innerHeight;
     };
     const go = () => {
-      let box = el.getBoundingClientRect();
-      // a scroll far enough to condense the deck is measured against the condensed deck,
-      // so the answer is placed under the deck it will end up under
-      const deck = document.getElementById('deck');
-      if (deck && !deckCondensed && getComputedStyle(deck).position === 'sticky' &&
-          (window.scrollY + box.top - clear() > 90 || box.top > window.innerHeight * 0.55)) {
-        deckCondensed = true; deck.classList.add('condensed'); cubeScale = 0.36; cubeApply();
-        deckHoldUntil = Date.now() + 1400;
-        box = el.getBoundingClientRect();
-      }
+      const box = el.getBoundingClientRect();
       const top = clear();
-      if (box.top >= top - 4 && box.top < window.innerHeight * 0.7) return;
+      if (box.top >= top - 4 && box.top < window.innerHeight * 0.7 && !chartCut()) return;
       window.scrollTo({ top: Math.max(0, window.scrollY + box.top - top),
         behavior: smooth ? 'smooth' : 'auto' });
     };
@@ -820,7 +815,7 @@ function revealAnswer(sel) {
     // the top of the screen. later looks correct only a real drift, and without easing
     const settle = () => {
       const box = el.getBoundingClientRect(), top = clear();
-      if (box.top < top - 24 || box.top > window.innerHeight * 0.7)
+      if (box.top < top - 24 || box.top > window.innerHeight * 0.7 || (chartCut() && box.top > top + 24))
         window.scrollTo({ top: Math.max(0, window.scrollY + box.top - top), behavior: 'auto' });
     };
     revealLater.push(setTimeout(go, 900), setTimeout(settle, 1300), setTimeout(settle, 1700));
@@ -1011,7 +1006,7 @@ function cubeSnap() {
   // whichever face ended up nearest the viewer wins, from any tumbled orientation
   chooseFacet(facetFromAngles());
 }
-let deckCondensed = false, deckHoldUntil = 0;
+// the deck no longer condenses: it scrolls away and the minibar stands in for it
 let stage = 'compose', stageFocus = true;   // compose -> chain -> result
 function setStage(next) {
   const from = stage;
@@ -1684,32 +1679,34 @@ function sendCell() {
   else revealAnswer('#notice');
 }
 function syncDeck() {
-  const deck = document.getElementById('deck');
-  const view = document.getElementById('view-ask');
-  if (!deck || !view) return;
-  // two thresholds, not one: shrinking the deck pulls the page up under the reader,
-  // which put the scroll back under 90, which grew the deck again, and it settled in
-  // whichever state came last, sometimes tall and over the first line of the answer
-  let want = view.classList.contains('engaged') && window.scrollY > (deckCondensed ? 30 : 90);
-  // on a phone the deck scrolls away rather than staying, so condensing it did nothing but
-  // shrink the page under a scroll in progress and carry the answer past the top
-  if (getComputedStyle(deck).position !== 'sticky') want = false;
-  // while an answer is being scrolled into place the deck holds the size the scroll was
-  // measured against; growing it mid-scroll left the page where it started
-  if (deckCondensed && !want && view.classList.contains('engaged') && Date.now() < deckHoldUntil) {
-    want = true;
-    // and look again when the hold ends, or a jump to the top inside it left the deck
-    // condensed with the face chips hidden until the next scroll
-    clearTimeout(syncDeck.later); syncDeck.later = setTimeout(syncDeck, deckHoldUntil - Date.now() + 30);
+  const deck = document.getElementById('deck'), view = document.getElementById('view-ask');
+  const bar = document.getElementById('minibar');
+  if (!deck || !view || !bar) return;
+  // the minibar shows once the ask box has gone off the top, which is when there is no
+  // longer a way to ask without scrolling back. it sits outside the view because the
+  // cube's 3D perspective makes any fixed child inside it scroll with it
+  const form = document.getElementById('ask-form');
+  const on = view.classList.contains('engaged') && !view.hidden && !!form && form.getBoundingClientRect().bottom < 0;
+  if (on) {
+    const vals = [...document.querySelectorAll('#ribs .rib.filled:not(.facet) .val')]
+      .map(v => v.textContent.trim()).filter(Boolean);
+    document.getElementById('mb-text').textContent = [curFacet].concat(vals).join(' \u00b7 ');
   }
-  if (want !== deckCondensed) {
-    deckCondensed = want;
-    deck.classList.toggle('condensed', want);
-    cubeScale = want ? 0.36 : 0.55;
-    cubeApply();
+  if (bar.classList.contains('on') !== on) {
+    bar.classList.toggle('on', on);
+    bar.inert = !on; bar.setAttribute('aria-hidden', String(!on));
   }
-  document.documentElement.style.setProperty('--deckh',
-    Math.round(deck.getBoundingClientRect().height) + 'px');
+  document.documentElement.style.setProperty('--deckh', on ? bar.offsetHeight + 'px' : '0px');
+}
+// back up to the deck: the summary to the folds, the button to the box itself
+function initMinibar() {
+  const up = focus => {
+    window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    if (focus) setTimeout(() => { const q = document.getElementById('q'); if (q) { q.focus({ preventScroll: true }); q.select(); } }, 350);
+  };
+  const s = document.getElementById('mb-sum'), a = document.getElementById('mb-ask');
+  if (s) s.addEventListener('click', () => up(false));
+  if (a) a.addEventListener('click', () => up(true));
 }
 function initCube() {
   const scene = document.getElementById('scene');
@@ -1757,6 +1754,7 @@ function initCube() {
   });
   paintFacet('wealth'); cubeApply(); startIdle();
   window.addEventListener('scroll', syncDeck, { passive: true });
+  initMinibar();
   window.addEventListener('resize', syncDeck);
   // idle on the home page: the cube wanders the four faces so they all get seen
   setInterval(() => {

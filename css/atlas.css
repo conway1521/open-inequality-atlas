@@ -107,6 +107,8 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
   padding: 7px 13px; cursor: pointer; box-shadow: var(--shadow);
   opacity: 0; pointer-events: none; transform: translateY(6px); transition: opacity .2s, transform .2s; }
 #totop.show { opacity: 1; pointer-events: auto; transform: none; }
+/* the minibar already carries the way back up; two of them was one too many */
+body:has(.minibar.on) #totop { opacity: 0; pointer-events: none; }
 #totop:hover { color: var(--ink); border-color: var(--ink-3); }
 .tabs { border-top: 1px solid var(--border); background: var(--bg); }
 .tabs[hidden] { display: none; }
@@ -291,8 +293,7 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* On a phone the deck does not follow you down the page. Held at the top it was
    460 to 675 pixels of an 844 pixel screen, and a tapped next step changed an answer
    that was hidden under it half the time. The box is one scroll up. */
-@media (max-width: 720px) { #view-ask.engaged #deck.deck { position: static; box-shadow: none; }
-  #view-ask.engaged #deck.deck::after { display: none; }
+@media (max-width: 720px) {
   /* the chart title was pinned below a deck that no longer stays, 460 pixels down the
      screen, and sat over the top of every chart */
   #view-ask.engaged #chart-title.chart-title { position: static; padding: 4px 0 6px; } }
@@ -376,30 +377,30 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 /* the way back to the cube room; only present once you're working */
 
 
-#view-ask.engaged .deck {
-  position: sticky; top: 0; z-index: 20; background: var(--bg);
-  padding: 26px 0 12px; transition: padding .28s ease, box-shadow .28s ease;
-}
-#view-ask.engaged .deck::after {           /* the shadow only once it is holding */
-  content: ''; position: absolute; left: 50%; transform: translateX(-50%);
-  bottom: 0; width: 100vw; height: 1px; background: var(--border);
-  opacity: 0; transition: opacity .28s ease;
-}
-#view-ask.engaged .deck.condensed::after { opacity: 1; }
+/* the deck scrolls away with the page on every screen. pinned, it was 382 pixels even
+   condensed, more than half of a 720 pixel laptop, and the answer got what was left.
+   the minibar below takes its place once it is out of view */
+#view-ask.engaged .deck { padding: 26px 0 12px; }
 #view-ask.engaged .cubebox { margin: 0 auto 8px; gap: 8px; transition: margin .3s ease; }
 #view-ask.engaged .scene { height: 112px; margin-bottom: 0; display: flex;
   align-items: center; justify-content: center; transition: height .28s ease; }
 #view-ask.engaged .cube .face { justify-content: center; align-items: center; padding: 10px; }
 #view-ask.engaged .cube .face .q { display: none; }
 #view-ask.engaged .cube .face .lab { font-size: 13px; text-align: center; width: 100%; }
-/* condensed: the same cube, smaller, with the strip still attached */
-#view-ask.engaged .deck.condensed { padding: 16px 0 8px; }
-#view-ask.engaged .deck.condensed .scene { height: 78px; margin-bottom: 0; }
-#view-ask.engaged .deck.condensed .facet-chips,
-#view-ask.engaged .deck.condensed .helpbtn { display: none; }
-#view-ask.engaged .deck.condensed .askbox { max-width: 420px; }
-#view-ask.engaged .deck.condensed #q { height: 38px; font-size: 13.5px; }
-#view-ask.engaged .deck.condensed .cell { margin-top: 8px; }
+/* the minibar: what is on screen, and the way back up */
+.minibar { position: fixed; top: 0; left: 0; right: 0; z-index: 40; height: 44px;
+  background: var(--bg); border-bottom: 1px solid var(--border); padding: 0 16px;
+  display: flex; align-items: center; justify-content: center;
+  transform: translateY(-100%); transition: transform .2s ease; }
+.minibar.on { transform: none; }
+.mb-in { width: 100%; max-width: 840px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mb-sum { min-width: 0; flex: 1 1 auto; display: flex; align-items: center; gap: 9px; background: none; border: 0;
+  padding: 6px 0; cursor: pointer; font: inherit; font-size: 13.5px; color: var(--ink-2); text-align: left; }
+.mb-sum #mb-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-dot { flex: none; width: 9px; height: 9px; border-radius: 2px; background: var(--accent); }
+.mb-ask { flex: none; font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface, var(--bg)); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .minibar { transition: none; } }
 /* three beats. write it, see it as a chain, send it.
    the cube is large for the first two and rises out of the way for the third. */
 #view-ask.stage-compose .cell, #view-ask.stage-compose #session { display: none; }

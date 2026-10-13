@@ -23,14 +23,14 @@ export function seen(page) {
   });
 }
 
-// true when the element's top sits on screen, below any sticky deck
+// true when the element's top sits on screen, below the minibar when it shows
 export function onScreen(page, sel) {
   return page.evaluate(sel => {
     const el = document.querySelector(sel); if (!el || el.hidden) return false;
     const r = el.getBoundingClientRect();
-    const deck = document.getElementById('deck');
-    const sticky = deck && getComputedStyle(deck).position === 'sticky';
-    const floor = sticky ? deck.getBoundingClientRect().bottom - 4 : -4;
+    // the deck scrolls away; what can cover the top of the screen is the minibar
+    const bar = document.getElementById('minibar');
+    const floor = bar && bar.classList.contains('on') ? bar.getBoundingClientRect().bottom - 4 : -4;
     return r.top >= floor && r.top < innerHeight - 40;
   }, sel);
 }

@@ -11,6 +11,15 @@
 <link rel="stylesheet" href="css/atlas.css">
 </head>
 <body>
+<!-- once the deck has scrolled away: one line saying what is on screen, and the way
+     back to the box and the folds. it takes 44 pixels where the deck took half the screen -->
+<div class="minibar" id="minibar" aria-hidden="true" inert>
+  <div class="mb-in">
+    <button type="button" class="mb-sum" id="mb-sum" aria-label="Back to the folds"><span class="mb-dot" aria-hidden="true"></span><span id="mb-text"></span></button>
+    <button type="button" class="mb-ask" id="mb-ask">ask or change &#8593;</button>
+  </div>
+</div>
+
 <script>try{var t=localStorage.getItem('oia-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 
 <header>
