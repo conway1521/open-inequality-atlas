@@ -21,6 +21,21 @@ export default async function (t) {
   t.check('every answer leads with at most about 45 words', !long.length, long.join('; '));
   t.check('how a question was read fits on one short line', !many.length, many.join('; '));
 
+  // "did it move differently from comparable countries?" picks a country when none is
+  // named; it used to refuse whenever the pick's record ran further than its peers'
+  const refused = await page.evaluate(async () => {
+    const out = [];
+    for (const face of ['wealth', 'income']) for (const iso of Object.keys(BY_ISO)) {
+      resetAll(); chooseFacet(face); ctx.lastIso = iso;
+      if (!runPrompt('did it move differently from comparable countries?')) continue;
+      sendCell(); await new Promise(r => setTimeout(r, 30));
+      const n = document.getElementById('notice');
+      if (!n.hidden && /Too few comparable|No data for that one/.test(n.textContent)) out.push(face + ':' + iso);
+    }
+    return out;
+  });
+  t.check('the peer comparison answers for every country on both faces', !refused.length, refused.join(' '));
+
   await ask(page, 'how unequal is the uk', 900);
   const src = await page.evaluate(() => { const d = document.getElementById('src-fold');
     return d ? { open: d.open, text: document.getElementById('chart-src').textContent } : null; });

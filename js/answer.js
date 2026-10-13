@@ -1175,9 +1175,7 @@ function buildAnswer(p, q) {
     if (!iso || !BY_ISO[iso]) { showNotice('This one holds a country against its peers. Add a place first.'); return null; }
     const own = seriesOf(key, iso);
     if (own.length < 2) return miss();
-    const a = p.year || own[0].year;
-    const b = p.until || own[own.length - 1].year;
-    if (b - a < 3) { showNotice('Hold it over at least a few years, or there is nothing to compare.'); return null; }
+    let b = p.until || own[own.length - 1].year;
     // peers are countries in the same third of GDP per person, which is a stated rule
     // rather than a hand-picked club
     const gp = rankedPool('gdp_pc', 'high', null);
@@ -1187,6 +1185,26 @@ function buildAnswer(p, q) {
     const myBand = meAt >= 0 ? bandOf(meAt) : null;
     const val = (i, y) => { const s2 = seriesOf(key, i); const h = s2.filter(d => d.year <= y);
       return h.length && h[h.length - 1].year >= y - 2 ? h[h.length - 1].v : null; };
+    // with no start year asked for, the window opens at the first year enough of the
+    // peers carry the measure. opening at the country's own first year meant a series
+    // reaching back to 1900 was compared with nobody, and the reading refused. the
+    // sentence names the years either way
+    let a = p.year || own[0].year;
+    const band = gp.filter((rr, k) => rr.geo_id !== iso && (myBand == null || bandOf(k) === myBand));
+    const peersAt = (y1, y2) => band.filter(rr => val(rr.geo_id, y1) != null && val(rr.geo_id, y2) != null).length;
+    // the same for the end: a country whose record runs to 2021 while its peers stop in
+    // 2017 is held to the last year they share, ten peers if there are, six if not
+    for (const need of [10, 6]) {
+      let bb = b, aa = a;
+      if (!p.until) { bb = null; for (let y = own[own.length - 1].year; y >= own[0].year + 3; y--)
+        if (val(iso, y) != null && peersAt(y, y) >= need) { bb = y; break; } }
+      if (bb == null) continue;
+      if (!p.year) { aa = null; for (let y = own[0].year; y <= bb - 3; y++)
+        if (val(iso, y) != null && peersAt(y, bb) >= need) { aa = y; break; } }
+      if (aa == null) continue;
+      a = aa; b = bb; break;
+    }
+    if (b - a < 3) { showNotice('Hold it over at least a few years, or there is nothing to compare.'); return null; }
     const moves = [];
     for (const rr of gp) {
       if (myBand != null && bandOf(gp.indexOf(rr)) !== myBand) continue;
@@ -1194,6 +1212,9 @@ function buildAnswer(p, q) {
       if (va == null || vb == null) continue;
       moves.push({ iso: rr.geo_id, name: BY_ISO[rr.geo_id].name, dv: vb - va });
     }
+    // a country with no GDP figure is in no band; it is still measured against everyone
+    if (!moves.some(x => x.iso === iso) && val(iso, a) != null && val(iso, b) != null)
+      moves.push({ iso, name: BY_ISO[iso].name, dv: val(iso, b) - val(iso, a) });
     if (moves.length < 6) { showNotice('Too few comparable countries carry this measure over those years.'); return null; }
     moves.sort((x, y) => y.dv - x.dv);
     const mine = moves.find(x => x.iso === iso);

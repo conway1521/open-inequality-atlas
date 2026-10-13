@@ -1097,6 +1097,13 @@ function whyNot(dim, val) {
           `nowhere else the atlas can reach, not for ${esc(theName(cell.place))}.`;
       if (val === 'reach' && cell.place && seriesOf('median_income', cell.place).length < 2)
         return `No median income series for ${BY_ISO[cell.place].name}, so there is nothing to hold the growth against.`;
+      // a change needs two readings: Oman holds one year of the top 1% income share, so
+      // asking how it moved against its peers was picked for it and then had nothing to say
+      if (['peers', 'turn'].includes(val) && cell.place) {
+        const k = META[ctx.metric] && META[ctx.metric].series ? ctx.metric : facetIneqDefault();
+        const n2 = seriesOf(k, cell.place).length;
+        if (n2 < 2) return `${cap(theName(cell.place))} has ${n2 ? 'one reading' : 'no reading'} of the ${META[k].label}, so there is no change to read.`;
+      }
       // the three income readings each name the series they cannot do without, rather
       // than failing at send with a notice that says nothing about which one is short
       if (cell.place) {
