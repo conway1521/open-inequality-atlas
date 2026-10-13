@@ -1405,7 +1405,7 @@ function previewQuestion(typed) {
       const moved = !onUs();
       if (curFacet !== face && !(kind === 'life' && onUs())) chooseFacet(face);
       resetCell(); cell.raw = q; cell.asked = typed; updateCell();
-      if (moved) noteNext = (noteNext || '') + '<em class="readas">Only the United States publishes this, county by county, so this answer is the US.</em>';
+      if (moved) noteNext = (noteNext || '') + '<em class="readas">Only the US publishes this, so this is the US.</em>';
       return true;
     }
   }
@@ -1421,7 +1421,7 @@ function previewQuestion(typed) {
       if (want.length >= 2 && got / want.length >= 0.7) {
         chooseFacet(g.facet);
         resetCell(); cell.raw = oq; cell.asked = typed; updateCell();
-        noteNext = (noteNext || '') + '<em class="readas">Only the United States publishes this, county by county, so this answer is the US.</em>';
+        noteNext = (noteNext || '') + '<em class="readas">Only the US publishes this, so this is the US.</em>';
         return true;
       }
     }
@@ -1430,8 +1430,7 @@ function previewQuestion(typed) {
     const face = toFace || 'opportunity';
     if (curFacet !== face) chooseFacet(face);
     resetCell(); cell.raw = asks; cell.asked = typed; updateCell();
-    noteNext = (noteNext || '') + '<em class="readas">Only the United States publishes this, county by county, so this answer is the US. ' +
-      'Read as: ' + esc(asks) + '</em>';
+    noteNext = (noteNext || '') + '<em class="readas">Only the US publishes this, so this is the US, read as: ' + esc(asks) + '.</em>';
     return true;
   }
   if (onUs()) {
@@ -1454,7 +1453,7 @@ function previewQuestion(typed) {
     const face = (mk && META[mk] && META[mk].topic === 'income') ? 'income' : 'wealth';
     const curFacetWas = curFacet;
     chooseFacet(face);
-    noteNext = (noteNext || '') + `<em class="readas">The ${curFacetWas} face covers the United States only, so this was read on the ${face} face.</em>`;
+    noteNext = (noteNext || '') + `<em class="readas">The ${curFacetWas} face is US only, so this is on the ${face} face.</em>`;
   }
   let p;
   try { p = parse(q); } catch (e) { p = { kind: 'unknown' }; }
@@ -1474,8 +1473,7 @@ function previewQuestion(typed) {
     try { const q2 = q + ' ' + BY_ISO[ctx.lastIso].name; const p2 = parse(q2); if (p2.kind !== 'unknown') { p = p2; qRead = q2; } } catch (e) {}
   }
   if (p.kind === 'divergence' && !findCountries(q).isos.length && !(lastWasOnePlace && /\b(here|there|it|its|same|this country|that country)\b/.test(nq)))
-    noteNext = (noteNext ? noteNext + ' ' : '') + '<em class="readas">No country was named, so this is the United States, ' +
-      'which has the longest run of both records. Name a country to read it there.</em>';
+    noteNext = (noteNext ? noteNext + ' ' : '') + '<em class="readas">No country named, so this is the US, which has the longest record.</em>';
   if (p.kind === 'among') {
     // the answer on screen, over the new set. it used to re-run the last question from
     // its internal label ("the ranking"), which does not parse, and said it could not read it
@@ -1576,7 +1574,7 @@ function previewQuestion(typed) {
   // a question turned the cube a quarter of the time in the usability runs, and nothing
   // said so; the cube is the biggest thing on the page
   if (curFacet !== faceBefore && faceBefore !== 'opportunity' && !rolling && FACETS[curFacet])
-    noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">The cube turned to the ${curFacet} face, which is where this is measured.</em>`;
+    noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">Moved to the ${curFacet} face.</em>`;
   return true;
 }
 // only now is anything computed
@@ -1597,8 +1595,7 @@ function cellNeedsPlace() {
 function notePicked(iso) {
   if (!cell.asked || rolling) return;
   const nm = BY_ISO[iso] ? theName(iso) : iso;
-  noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">This reading is drawn for one country and none was named, ` +
-    `so this is ${esc(nm)}, one of those it can be drawn for. Change it in the place fold, or ask again with a country in it.</em>`;
+  noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">No country named, so this is ${esc(nm)}.</em>`;
 }
 // A typed question that names no country is about all of them. The usability runs
 // answered 18% of typed questions with one country picked at random, which is honest
@@ -1610,8 +1607,7 @@ function typedNoPlace() {
   return !!cell.asked && !cell.place && !cell.raw && !rolling;
 }
 function acrossNote(region) {
-  noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">No country was named, so this ranks ${region ? 'the countries in ' + esc(region) : 'them all'}. ` +
-    'Name one, or pick it in the place fold, to see it on its own.</em>';
+  noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">No country named, so this ranks ${region ? 'the countries in ' + esc(region) : 'them all'}.</em>`;
 }
 function sendCell() {
   if (!DATA_READY) { showNotice('The figures are still loading. Ask again in a moment.'); return; }

@@ -703,7 +703,15 @@ header .wrap { display: flex; align-items: center; height: 56px; gap: 20px; }
 .answer .termdef { margin: 10px 0 0; padding: 8px 12px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2);
   background: var(--surface); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; }
 /* how the question was read, when that is not obvious from the answer itself */
-.answer .t em.readas { display: block; margin-top: 10px; font-size: 13.5px; line-height: 1.5; }
+.answer .t em.readas { display: block; margin-top: 8px; font-size: 13px; line-height: 1.45; }
+/* the source and how to read the chart, one tap under it */
+.src-fold { margin-top: 6px; }
+.src-fold > summary { cursor: pointer; font-size: 12.5px; color: var(--ink-3); list-style: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: 6px 0; }
+.src-fold > summary::-webkit-details-marker { display: none; }
+.src-fold > summary::before { content: '+ '; }
+.src-fold[open] > summary::before { content: '\2212 '; }
+.src-fold > .chart-src { margin-top: 2px; }
 .notice .linkout { display: block; width: 100%; margin-top: 8px; font: 13px var(--mono); padding: 6px 8px;
   border: 1px solid var(--border-2); border-radius: 6px; background: var(--surface); color: var(--ink); }
 /* how far the evidence goes, said next to the claim rather than under it */

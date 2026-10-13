@@ -36,8 +36,9 @@ function decorate(html) {
   }
   return out;
 }
-// the facts before the first stretch of working, capped at about sixty words; the rest
-// under "more". the notes on how the question was read always stay in view
+// the answer in a sentence or two: whole sentences up to about 35 words, never fewer
+// than one, and never past the first stretch of working. the rest goes under "more".
+// the notes on how the question was read always stay in view, on one short line
 function splitLead(html) {
   const notes = [];
   let body = html.replace(/\s*<em class="readas">[\s\S]*?<\/em>/g, m => { notes.push(m.trim()); return ''; });
@@ -62,13 +63,20 @@ function splitLead(html) {
     if (depth === 0 && '.?!'.includes(c) && /\s/.test(body[i + 1] || '') && /[A-Z<"0-9]/.test((body.slice(i + 1).trimStart()[0]) || '')) ends.push([i + 1, words]);
   }
   let lead = cut >= 0 ? body.slice(0, cut) : body, rest = cut >= 0 ? body.slice(cut) : '';
-  if (words > 60 || (cut < 0 && ends.length && ends[ends.length - 1][1] > 60)) {
-    const stop = ends.find(([at, w]) => w >= 30 && (cut < 0 || at <= cut));
-    if (stop) { lead = body.slice(0, stop[0]); rest = body.slice(stop[0]); }
+  const LEAD = 35;
+  const inLead = ends.filter(([at]) => cut < 0 || at <= cut);
+  if (inLead.length) {
+    // the last sentence end that keeps the lead within the cap, or the first one if even
+    // the first sentence runs past it
+    const fit = inLead.filter(([, w]) => w <= LEAD);
+    const stop = fit.length ? fit[fit.length - 1] : inLead[0];
+    if (stop[0] < lead.length) { lead = body.slice(0, stop[0]); rest = body.slice(stop[0]); }
   }
   // a tail of a few words is not worth a fold
-  if (rest.replace(/<[^>]*>/g, '').trim().split(/\s+/).length < 10) { lead = body; rest = ''; }
-  return { lead: lead.trim(), rest: rest.trim(), notes: notes.join(' ') };
+  if (rest.replace(/<[^>]*>/g, '').trim().split(/\s+/).length < 6) { lead = body; rest = ''; }
+  // the notes, each already a sentence, run together as one quiet line
+  const line = notes.map(n => n.replace(/^<em class="readas">|<\/em>$/g, '').trim()).join(' ');
+  return { lead: lead.trim(), rest: rest.trim(), notes: line ? `<em class="readas">${line}</em>` : '' };
 }
 let moreOpen = false;
 try { moreOpen = localStorage.getItem('oia-more') === '1'; } catch (err) {}
