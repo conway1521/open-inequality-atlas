@@ -85,4 +85,4 @@ spreadsheet.
 ## What the app actually loads
 
 Only `data/*.json`, and only the files named in the `Promise.all` block near the
-bottom of `index.html`. A new JSON file does nothing until it is added there.
+bottom of `js/app.js`. A new JSON file does nothing until it is added there.

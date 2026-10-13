@@ -18,13 +18,24 @@ export default async function (t) {
     catch (e) { ok = false; why = e.message; }
     t.check(`data/${f} parses`, ok, why);
   }
-  // every inline script compiles
+  // the engine lives in js/, one file per part, loaded by the page in a fixed order.
+  // every file in js/ must be loaded, none twice, and each must compile on its own
   const html = readFileSync(join(t.root, 'index.html'), 'utf8');
-  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
-  t.check('the page has its inline engine', scripts.some(s => s.length > 100000));
-  scripts.forEach((s, i) => {
+  const loaded = [...html.matchAll(/<script src="(js\/[^"]+)"><\/script>/g)].map(m => m[1]);
+  const files = readdirSync(join(t.root, 'js')).filter(f => f.endsWith('.js')).map(f => 'js/' + f);
+  t.check('the page loads every file in js/', files.every(f => loaded.includes(f)), files.filter(f => !loaded.includes(f)).join(' '));
+  t.check('and loads none of them twice', new Set(loaded).size === loaded.length);
+  t.check('it starts with the data and ends with the app', loaded[0] === 'js/data.js' && loaded[loaded.length - 1] === 'js/app.js', loaded.join(' '));
+  for (const f of loaded) {
+    let ok = true, why = '';
+    try { new vm.Script(readFileSync(join(t.root, f), 'utf8'), { filename: f }); } catch (e) { ok = false; why = e.message; }
+    t.check(`${f} compiles`, ok, why);
+  }
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+  inline.forEach((s, i) => {
     let ok = true, why = '';
     try { new vm.Script(s); } catch (e) { ok = false; why = e.message; }
     t.check(`inline script ${i + 1} compiles`, ok, why);
   });
+  t.check('the stylesheet is linked', /<link rel="stylesheet" href="css\/atlas.css">/.test(html));
 }

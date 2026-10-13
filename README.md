@@ -15,8 +15,9 @@ nothing else.
 make serve          # http://localhost:8744
 ```
 
-That is the whole thing. `index.html` and `data/*.json` are all a browser needs, and
-both are in the repository.
+That is the whole thing. `index.html`, `css/`, `js/` and `data/*.json` are all a
+browser needs, and all of them are in the repository. There is no build step for the
+page: edit a file in `js/` and reload.
 
 ## Checking it
 
@@ -74,7 +75,16 @@ version is that a raw file goes in `data/raw/`, a build script turns it into
 
 | | |
 |---|---|
-| `index.html` | the whole application, markup, styles and engine |
+| `index.html` | the markup: the page, the reference pages and the database view |
+| `css/atlas.css` | every style, light and dark |
+| `js/data.js` | the data stores, regions, country names, spelling, formats and the measure registry |
+| `js/read.js` | reading a question: context, the pool of countries, the parser |
+| `js/answer.js` | every reading the atlas gives for countries, and the address bar |
+| `js/ui.js` | the session, the cube and the drawer of folds |
+| `js/us.js` | the United States layer: commuting zones, counties, one US place |
+| `js/flow.js` | what an answer shows first, and the next steps under it |
+| `js/chart.js` | every chart |
+| `js/app.js` | chips, notices, the read line, the database table, and loading the data |
 | `data/*.json` | what the page loads, about 2.5 MB |
 | `data/raw_manifest.json` | the sha256 of every upstream source |
 | `data/raw/README.md` | where to put data you collect |
