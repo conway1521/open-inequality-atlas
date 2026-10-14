@@ -683,8 +683,11 @@ function drawChartBody() {
       // looking for it should be told that on the picture rather than only underneath it
       annotations: here ? [] : [{
         xref: 'paper', yref: 'paper', x: 0.5, y: 0.06, showarrow: false,
-        text: `${esc(theName(wm.iso))} is not on this chart: the poorest half there owes more than it owns, ` +
-          `so the gap in owning has no value to plot`,
+        // on a phone the one line ran off both edges, so it breaks into three
+        text: el.clientWidth < 520
+          ? `${esc(theName(wm.iso))} is not on this chart:<br>the poorest half there owes more than it owns,<br>so the gap in owning has no value to plot`
+          : `${esc(theName(wm.iso))} is not on this chart: the poorest half there owes more than it owns, ` +
+            `so the gap in owning has no value to plot`,
         font: { size: 11, color: cssVar('--ink-2', '#555555') },
         bgcolor: cssVar('--card', '#ffffff'), borderpad: 4,
       }],
@@ -840,8 +843,10 @@ function drawChartBody() {
       band(L => L.top10_wealth_share, 'the richest tenth', shade(metricColor('wealth_top1'), 0.35)),
     ], Object.assign({}, BASE_LAYOUT, {
       barmode: 'relative', showlegend: true,
-      legend: { orientation: 'h', y: 1.16, font: { size: 11 } },
-      margin: { t: 24, r: 20, b: 38, l: 150 },
+      // on a phone the legend wrapped onto three lines and sat over the first countries,
+      // so it goes under the axis there instead
+      legend: el.clientWidth < 520 ? { orientation: 'h', x: 0, y: -0.22, font: { size: 10.5 } } : { orientation: 'h', y: 1.16, font: { size: 11 } },
+      margin: el.clientWidth < 520 ? { t: 8, r: 10, b: 96, l: 110 } : { t: 24, r: 20, b: 38, l: 150 },
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: { text: 'share of all household wealth', font: { size: 12 } },
         ticksuffix: '%', range: [Math.min(-2, lowest - 2), 100], autorange: false, zeroline: true,
         zerolinecolor: cssVar('--axis', '#eaeaea'), zerolinewidth: 1 }),
@@ -1159,11 +1164,13 @@ function drawChartBody() {
       y: rows.map(r => r.label), x: vals,
       // three ordered groups, so three steps of the face's own colour
       marker: { color: shadesOf(metricColor(t.lens), 3) },
+      // on a phone the value and the count sat past the edge of the screen: they go inside
       text: rows.map(r => my.fmt(r.val) + '  ·  ' + r.n),
-      textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
+      textposition: el.clientWidth < 520 ? 'inside' : 'outside', insidetextanchor: 'end',
+      insidetextfont: { color: '#ffffff', size: 11 }, textfont: { size: 11, color: cssVar('--ink-2', '#555555') },
       hovertemplate: '%{y}: %{text} countries<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, {
-      margin: { t: 8, r: 112, b: 36, l: 150 },
+      margin: el.clientWidth < 520 ? { t: 8, r: 10, b: 36, l: 104 } : { t: 8, r: 112, b: 36, l: 150 },
       // the value and the count are written outside the bar, so the axis has to leave
       // room for them or the label is cut off at the edge of the card
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis,

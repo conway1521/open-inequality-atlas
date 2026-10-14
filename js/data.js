@@ -97,7 +97,7 @@ const ALIASES = {
   'dutch':'NLD','spanish':'ESP','italian':'ITA','italians':'ITA','irish':'IRL','greek':'GRC','greeks':'GRC',
   'japanese':'JPN','chinese':'CHN','brazilian':'BRA','brazilians':'BRA','mexican':'MEX','mexicans':'MEX',
   'canadian':'CAN','canadians':'CAN','australian':'AUS','australians':'AUS','aussies':'AUS','russian':'RUS','russians':'RUS',
-  'polish':'POL','swiss':'CHE','korean':'KOR','koreans':'KOR','turkish':'TUR','nigerian':'NGA','nigerians':'NGA',
+  'polish':'POL','swiss':'CHE','finns':'FIN','swede':'SWE','dane':'DNK','norwegian people':'NOR','korean':'KOR','koreans':'KOR','turkish':'TUR','nigerian':'NGA','nigerians':'NGA',
   'kenyan':'KEN','argentine':'ARG','argentinian':'ARG','chilean':'CHL','colombian':'COL','portuguese':'PRT',
   'belgian':'BEL','austrian':'AUT','hungarian':'HUN','czech':'CZE','romanian':'ROU','ukrainian':'UKR','new zealanders':'NZL',
 };
@@ -154,7 +154,8 @@ const SPELL_WORDS = ('wealth wealthy income incomes inequality inequalities uneq
   // real words it used to "correct": "what is the poverty line" was read as life, and
   // "happiest country" as happiness, which then ranked wealth concentration
   'line lines happiest unhappiest saddest happier unhappy unhappiness happy productivity output wages dream ' +
-  'scandinavia scandinavian nordic nordics surprising crisis pandemic covid lockdown').split(' ');
+  'scandinavia scandinavian nordic nordics surprising crisis pandemic covid lockdown globally worldwide connectedness ' +
+  'women men woman man female male gender boys girls black white race').split(' ');
 const COMMON = new Set(('a an the is are was were be been being do does did done have has had having of in on at to for from by with ' +
   'about into over under than then so and or but if not no yes it its this that these those there here where when what which who whom ' +
   'whose why how much many more less very too also just only even still ever never always again all any each every some such own same ' +

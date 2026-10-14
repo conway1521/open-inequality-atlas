@@ -280,6 +280,13 @@ function runCell() {
     // a scatter that gains time becomes a trajectory: one country's path across the two
     p = { kind: 'path', iso: cell.place, x: ctx.metric, y: cell.against };
     q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} path`;
+  } else if (cell.place && cell.against && META[cell.against]) {
+    // one country held against another measure is the scatter across countries with it
+    // marked. it used to fall to "one country, one year" below, and the measure picked in
+    // the against fold changed nothing on screen
+    p = { kind: 'correlate', x: ctx.metric, y: cell.against, region: ctx.region,
+      year: cell.span === 'moment' ? cell.year : null };
+    q = `${META[cell.against].label} and inequality`;
   } else if (cell.place && cell.span === 'moment' && cell.year) {   // one country, one year
     p = { kind: 'point', iso: cell.place, year: cell.year, metric: ctx.metric };
     q = `${BY_ISO[cell.place] ? BY_ISO[cell.place].name : cell.place} in ${cell.year}`;
@@ -315,7 +322,18 @@ function runCell() {
   }
   const prev = chain.slice();
   chain.length = 0;   // so the highlight comes from the cell, not the answer we're replacing
-  const f = buildAnswer(p, q);
+  // the last answer's complaint is not about this one: "No data" from a refused fold
+  // pick stayed on screen under the next answer that worked
+  hideNotice();
+  let f = buildAnswer(p, q);
+  // two measures at one year: "a single moment" picks the latest wealth year, 2024, and
+  // income surveys stop around 2021, so a comparison there found nobody and said only
+  // "no data". it reads each at its latest year instead, and says so
+  if (!f && p.year && ['tiers', 'break', 'correlate'].includes(p.kind)) {
+    hideNotice();
+    f = buildAnswer(Object.assign({}, p, { year: null }), q);
+    if (f) f.text += ` <em class="readas">Too few countries carry both measures at ${p.year}, so this reads each at its latest year.</em>`;
+  }
   if (!f) { chain.push(...prev); render(); return; }
   chain.push(f); ctx.lastQuery = q; render();
 }
@@ -884,11 +902,12 @@ function buildAnswer(p, q) {
         `The gap in what people own is <strong>${(pair.wm / pair.im).toFixed(0)} times</strong> the gap ` +
         `in what they earn.`;
     } else if (pair.im != null) {
-      lead = `In <strong>${here}</strong>, one person in the top 1% earns ` +
-        `<strong>${roughly(pair.im)} times</strong> what one person in the poorest half earns ` +
-        `(${pair.iYear}). There is no matching figure for what they own, because the poorest half ` +
-        `there <strong>owes more than it owns</strong> (${pair.wYear}) and there is nothing to divide by. ` +
-        `That is the far end of this question rather than a gap in it.`;
+      // the reason first: led by the earning figure, an answer to "how many times more does
+      // one person own" read as if it had answered about pay
+      lead = `In <strong>${here}</strong> the poorest half <strong>owes more than it owns</strong> ` +
+        `(${pair.wYear}), so there is no multiple for owning: there is nothing to divide by. On earning, one ` +
+        `person in the top 1% takes <strong>${roughly(pair.im)} times</strong> what one in the poorest half does ` +
+        `(${pair.iYear}). That is the far end of this question rather than a gap in it.`;
     } else {
       lead = `In <strong>${here}</strong>, one person in the top 1% owns ` +
         `<strong>${roughly(pair.wm)} times</strong> what one person in the poorest half owns ` +
@@ -1103,10 +1122,10 @@ function buildAnswer(p, q) {
       : '';
     if (owe) {
       ctx.lastIso = owe.geo_id; f.isos = [owe.geo_id];
-      f.text = `In <strong>${esc(theName(owe.geo_id))}</strong> the question has no answer as a multiple. The ` +
-        `poorest half of adults owns <strong>less than nothing</strong>: their debts come to ` +
-        `${pc(Math.abs(owe.v))} of all the household wealth in the country more than their assets do ` +
-        `(${owe.year}), so the richest tenth hold more than everything there is. Where the poorest half ` +
+      f.text = `In <strong>${esc(theName(owe.geo_id))}</strong> the poorest half of adults owns ` +
+        `<strong>less than nothing</strong>, so there is no multiple to give: the richest tenth hold more than ` +
+        `everything there is. The poorest half's debts come to ${pc(Math.abs(owe.v))} of all the household ` +
+        `wealth in the country more than their assets do (${owe.year}). Where the poorest half ` +
         `does own something, the widest gap among ${set} is ${rows[0].val.toFixed(1)} times, in ` +
         `${esc(theName(rows[0].geo_id))}, and the middle of that pack is ${med.val.toFixed(1)} times.` +
         (owing.length > 1 ? ` ${owing.length - 1} other ${owing.length === 2 ? 'country is' : 'countries are'} in the same position: ` +
@@ -1560,6 +1579,29 @@ function buildAnswer(p, q) {
         f.text += ` The top 1% hold <strong>${pc(c.latest.top1_wealth_share)}</strong>.`;
     }
     if (!m.series) f.mode = 'bars', f.bar = barFor(key, p.iso);
+  }
+
+  else if (p.kind === 'regions') {
+    // two regions held side by side by the country in the middle of each. a median rather
+    // than a pooled figure, for the reason in FOUNDATION section 5: a bloc is not a unit
+    const key = p.metric && META[p.metric] && META[p.metric].series ? p.metric : (META[ctx.metric].series ? ctx.metric : facetIneqDefault());
+    ctx.metric = key;
+    const m = META[key];
+    // each region read whole, whatever region the page is standing in: the first region
+    // named was being set as the standing one, and Africa inside Europe is nobody
+    if (ctx.region) setRegion(null);
+    if (cell.scope && /^r:/.test(cell.scope)) cell.scope = null;
+    const rows = p.regions.map(reg => {
+      const pool = poolOf(key).filter(r => REGION_SET[reg] && REGION_SET[reg].has(r.geo_id)).sort((a, b) => b.val - a.val);
+      return pool.length ? { geo_id: 'reg:' + reg, geo_name: cap(REGION_LABEL[reg]), val: medianOf(pool.map(r => r.val)), n: pool.length,
+        lo: pool[pool.length - 1], hi: pool[0] } : null;
+    }).filter(Boolean).sort((a, b) => b.val - a.val);
+    if (rows.length < 2) return miss();
+    f.mode = 'bars'; f.isos = []; f.metricUsed = key;
+    f.bar = { key, dir: 'high', rows, highlight: null, note: ', the middle country of each region' };
+    f.text = `On ${m.label}, the middle country of ${rows.map(r => `${esc(r.geo_name)} sits at <strong>${m.fmt(r.val)}</strong>`).join(' and of ')}.` +
+      ` <em>${rows.map(r => `${esc(r.geo_name)} runs from ${esc(r.lo.geo_name)} at ${m.fmt(r.lo.val)} to ${esc(r.hi.geo_name)} at ${m.fmt(r.hi.val)}, across ${r.n} countries`).join('; ')}. ` +
+      `The spread inside each region is wider than the gap between them, which is why the atlas reads countries rather than blocs.</em>`;
   }
 
   else if (p.kind === 'compare') {

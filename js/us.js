@@ -100,6 +100,26 @@ function usPlaceAnswer(pl, q) {
       `${pl.states.length > 6 ? ', and more' : ''}). Add the state, for example "${esc(pl.name)} County, ${esc(pl.states[0])}".`);
     return null;
   }
+  // "best county to grow up in ohio" answered for Ohio as a whole. a state asked which of
+  // its counties is best or worst ranks the counties inside it
+  const nq0 = norm(q || '');
+  if (pl.type === 'state' && /\bcount(y|ies)\b/.test(nq0) && /\b(best|worst|top|bottom|which|where|most|least|highest|lowest|rank\w*)\b/.test(nq0) &&
+      US_COUNTY && US_COUNTY.us_mobility) {
+    const pre = String(pl.fips).padStart(2, '0');
+    const rows = Object.entries(US_COUNTY.us_mobility).filter(([fp, v]) => fp.startsWith(pre) && v != null)
+      .map(([fp, v]) => ({ name: ((US_NAMES || {})[fp] || fp).split(',')[0], mob: v })).sort((a, b) => b.mob - a.mob);
+    if (rows.length >= 3) {
+      const f = { id: ++factSeq, query: q, kind: 'opp', isos: [], mode: 'opp', text: '',
+        opp: { kind: 'within', ranked: rows, placeName: pl.name, unit: 'counties' } };
+      const top = rows[0], bot = rows[rows.length - 1], worst = /\b(worst|bottom|lowest|least)\b/.test(nq0);
+      const say = r => `<strong>${esc(r.name)} County</strong>, where a child from a low-income family reaches the ${ord(Math.round(r.mob * 100))} percentile`;
+      f.text = `Of ${rows.length} counties in ${esc(pl.name)}, the ${worst ? 'hardest' : 'best'} place for a poor child to grow up is ` +
+        `${say(worst ? bot : top)}; the ${worst ? 'best' : 'hardest'} is ${say(worst ? top : bot)}.` +
+        ` <em>Children born in the early 1980s, measured in their mid thirties (Opportunity Insights). A small county carries few ` +
+        `children, so its figure moves more than a large one's.</em>`;
+      return f;
+    }
+  }
   const bars = [];
   // "rent in new york" was answered with how far poor children climb and no word on rent.
   // the zones carry the average two-bed rent and the counties and states the value of the
@@ -645,6 +665,20 @@ function drawOpp(f) {
       }), CFG);
     title.textContent = `Upward mobility and ${o.covLabel}, by commuting zone`;
     src.textContent = 'Each dot is a US commuting zone. Source: Opportunity Insights.';
+  } else if (o.kind === 'within') {
+    const rows = o.ranked.length > 16 ? o.ranked.slice(-8).concat(o.ranked.slice(0, 8)) : o.ranked.slice().reverse();
+    const cut = o.ranked.length > 16 ? 8 : 0;
+    Plotly.react(el, [{ type: 'bar', orientation: 'h', y: rows.map(z => z.name), x: rows.map(z => Math.round(z.mob * 100)),
+      marker: { color: rows.map((z, i) => i < cut ? '#e0c194' : AM) },
+      text: rows.map(z => Math.round(z.mob * 100)), textposition: 'outside', textfont: { size: 11, color: cssVar('--ink-2', '#555555') }, hoverinfo: 'skip' }],
+      Object.assign({}, BASE_LAYOUT, {
+        margin: { t: 8, r: 26, b: 40, l: 120 },
+        xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: 'income percentile a poor kid reaches', type: 'linear', autorange: true }),
+        yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { type: 'category', autorange: true }),
+      }), CFG);
+    title.textContent = `${o.placeName}: where poor children climb furthest and least, by county`;
+    src.textContent = (o.ranked.length > 16 ? `The eight highest and eight lowest of ${o.ranked.length} counties. ` : '') +
+      'Where a child born to parents at the 25th percentile ends up, as a percentile of their generation. Source: Opportunity Insights.';
   } else {
     const rows = o.ranked.slice(-8).concat(o.ranked.slice(0, 8));
     Plotly.react(el, [{ type: 'bar', orientation: 'h', y: rows.map(z => z.name), x: rows.map(z => Math.round(z.mob * 100)),

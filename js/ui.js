@@ -623,10 +623,13 @@ function renderDrawer(dim, rib, opts, filter) {
       if (offNote) { offNote.textContent = btn.dataset.why; offNote.hidden = false; }
       return;
     }
-    if (onUs() && dim !== 'facet') { closeDrawer(); ask(v); return; }
+    if (onUs() && dim !== 'facet') { closeDrawer(); ask(v); revealAnswer(); return; }
     if (dim === 'place' && v) { keepOpen = dim; applyDim(dim, v); keepOpen = null; return; }
     closeDrawer();
     applyDim(dim, v);
+    // the answer changed below the folds, out of sight: it is brought up to be seen. a
+    // place pick keeps its fold open for adding more countries, so that one stays put
+    if (stage === 'result' && chain.length) revealAnswer();
   }));
   // a gap never answers: it says what is missing, and offers the nearest real measure
   const note = opts.querySelector('.opt-note');
@@ -1241,7 +1244,7 @@ const OPP_READS = {
   mobility: 'climbing, 741 zones', life: 'life expectancy at 40, 595 zones',
   gap: 'credit, mortgages, arrears', scatter: '741 US commuting zones', place: 'climbing, friends, lifespan',
 };
-const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'among', 'owngap'];
+const RAW_KINDS = ['divergence', 'world', 'compare', 'threshold', 'context', 'among', 'owngap', 'regions'];
 // a typed question that names a measure turns the cube to that measure's face, so the
 // answer is computed on what was asked and not on whichever face happened to be up
 function adoptMetric(m) {
@@ -1294,6 +1297,10 @@ const GLOSSARY = [
     ['what does the average person earn?', 'how unequal is income in the UK?']],
   [/\bpoverty (line|threshold)s?\b/, 'The atlas uses two poverty lines. One is $2.15 a day in 2017 dollars, the World Bank\'s line for surviving, which reads close to zero in every rich country. The other is half of what the person in the middle of the country has, the line rich countries use for themselves. Asked about poverty, the atlas uses the second for the richer third of countries and the first elsewhere.',
     ['relative poverty in the UK', 'extreme poverty in Nigeria']],
+  [/\beconomic connectedness\b|\bsocial capital\b/, 'Economic connectedness is how many better-off friends people on low incomes have, against how many they would have if friendship ignored income. A value of 1 means as many as chance would give; most US counties sit between 0.5 and 1.3. It comes from Facebook friendships, measured by Chetty and colleagues, and it predicts how far a poor child climbs better than anything else the atlas holds.',
+    ['does knowing better-off people help you climb?', 'are they not here, or here and not mixing?']],
+  [/\bcommuting zones?\b/, 'A commuting zone is a local job market: the group of US counties people travel between for work. The US splits into 741 of them, and that is the unit the mobility and life expectancy figures are published for.',
+    ['if you grow up poor here, what do you earn later?', 'how much longer do the rich live here?']],
   [/\bgini\b/, 'The Gini coefficient is one number for how evenly something is shared. At 0 everyone has the same; at 1 one person has all of it. Income Ginis in rich countries mostly sit between 0.25 and 0.40; wealth Ginis run much higher, often above 0.70, because wealth piles up in a way pay does not.',
     ['which country is most unequal?', 'how unequal is the UK?']],
   [/\btop 1\s*%|\btop one per ?cent\b|\btop 1 share\b/, 'The top 1% share is the part of everything, either all the wealth or all the income, that goes to the richest one person in a hundred. If they held only their headcount it would be 1%; in most countries here they hold between 15% and 35% of the wealth.',
@@ -1330,7 +1337,7 @@ const NOT_HELD = [
   [/\bbillionaires?\b|\bmillionaires?\b|\bforbes\b|\brich list\b|\belon\b|\bmusk\b|\bbezos\b/,
     'The atlas has no count of billionaires or rich lists. The closest thing it holds is how much of all the wealth the top 1% own, country by country.',
     ['what does the top 1% own?', 'which country is most unequal?']],
-  [/\bwealth tax\b|\btax(es)? (the rich|rates?|polic\w*|on wealth)\b|\btaxing\b|\btaxation\b|\bpolicy\b|\bpolicies\b|\bredistribut\w*\b/,
+  [/\bwealth tax\b|\btax(es)? (the rich|rates?|polic\w*|on wealth)\b|\btaxing\b|\btaxation\b|\bfair share\b|\bpay (their|its) (fair )?share\b|\bpolicy\b|\bpolicies\b|\bredistribut\w*\b/,
     'The atlas describes how things are shared; it does not model taxes or what a policy would do. What it can show is how concentrated wealth is, and where it has moved.',
     ['what does the top 1% own?', 'has inequality gone up since 2008?']],
   [/\brigged\b|\bunfair system\b|\bconspiracy\b/,
@@ -1400,10 +1407,12 @@ const EVENT_YEAR = [[/\bthatcher\b/, 1979, 'Thatcher'], [/\breagan\b/, 1981, 'Re
 function readPlacesAndEvents(q) {
   let t = norm(q); const notes = [];
   const c = t.match(CITY_RE);
-  if (c && !findCountries(t).isos.length && !(US_CZ && usPlaceFind(q))) {
+  const found = c ? findCountries(t).isos : [];
+  // "mexico city" names its country too, which used to skip the note and answer quietly
+  if (c && (!found.length || (found.length === 1 && found[0] === CITY_OF[c[1]])) && !(US_CZ && usPlaceFind(q))) {
     const iso = CITY_OF[c[1]];
     if (BY_ISO[iso]) { t = t.replace(CITY_RE, BY_ISO[iso].name.toLowerCase());
-      notes.push(`Read ${cap(c[1])} as ${theName(iso)}: outside the United States the atlas goes down to countries, not cities.`); }
+      notes.push(`Read ${c[1].split(' ').map(cap).join(' ')} as ${theName(iso)}: outside the United States the atlas goes down to countries, not cities.`); }
   }
   if (!/\b(19|20)\d{2}\b/.test(t)) for (const [re, y, name] of EVENT_YEAR) if (re.test(t)) {
     t = t.replace(re, /\b(since|after|from)\s*$/.test(t.slice(0, t.search(re))) ? String(y) : 'since ' + y);
@@ -1418,6 +1427,16 @@ function previewQuestion(typed) {
   const fix = spellFix(typed);
   let q = fix.text;
   noteNext = readAsNote(fix.changes) || null;
+  // a year the atlas cannot read is said and set aside rather than quietly ignored:
+  // "how unequal is the uk in 1850" answered for 2024 without a word
+  const thisYear = new Date().getFullYear();
+  for (const y of (norm(q).match(/\b(1[0-9]{3}|2[0-9]{3})\b/g) || []).map(Number)) {
+    if (y >= 1870 && y <= thisYear) continue;
+    q = norm(q).replace(new RegExp('\\b(in|since|from|after|before|by|until|to)?\\s*' + y + '\\b'), ' ').replace(/\s+/g, ' ').trim();
+    noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">${y > thisYear
+      ? `${y} has not happened yet, so this reads the latest year there is.`
+      : `Nothing in the atlas goes back to ${y}: the longest records start in the 1870s and the wealth record in 1990. This reads the latest year.`}</em>`;
+  }
   const pe = readPlacesAndEvents(q);
   if (pe.notes.length) { q = pe.text; noteNext = (noteNext ? noteNext + ' ' : '') + pe.notes.map(n => `<em class="readas">${esc(n)}</em>`).join(' '); }
   if (ABOUT.test(norm(q))) {
@@ -1505,7 +1524,12 @@ function previewQuestion(typed) {
     noteNext = (noteNext || '') + '<em class="readas">Only the US publishes this, so this is the US, read as: ' + esc(asks) + '.</em>';
     return true;
   }
-  if (onUs()) {
+  // gibberish on a US face was answered with that face's own chart: the health face reads
+  // anything without a layer word as its main question, so "asdfgh" got the life gap. a
+  // question needs one word the atlas knows before it is read at all
+  if (!SPELL_KNOWN) spellSetup();
+  const knows = norm(q).split(' ').some(w => w.length > 2 && !STOP.has(w) && SPELL_KNOWN.has(w)) || findCountries(q).isos.length || (US_CZ && usPlaceFind(q));
+  if (onUs() && knows) {
     // the US layer reads its own questions. one it cannot read, that the country faces
     // can, goes back to them rather than being answered with a US county chart
     let here = null, there = { kind: 'unknown' };
@@ -1517,7 +1541,9 @@ function previewQuestion(typed) {
     // "housing affordability" asked on the opportunity face was answered with mortgage debt
     // by parents' income, because the US reader knows the word mortgage. the layer keeps a
     // question the country faces can also read only when it uses the layer's own words
-    const layerWords = /\b(parents?|children|child|kids?|credit|climb\w*|mobility|county|counties|zones?|neighbou?rhood|friends?|delinquen\w*|arrears|grow(ing)? up|poor kids)\b/.test(nq);
+    // "worst place" on the health face left for a ranking of countries: a place is what
+    // this layer is made of, so the word keeps a question here
+    const layerWords = /\b(parents?|children|child|kids?|credit|climb\w*|mobility|county|counties|zones?|neighbou?rhood|friends?|delinquen\w*|arrears|grow(ing)? up|poor kids|places?|cit(y|ies)|towns?)\b/.test(nq);
     if ((here && !namesAbroad && (layerWords || there.kind === 'unknown')) || there.kind === 'unknown' || there.kind === 'pending') {
       resetCell(); cell.raw = q; cell.asked = typed; updateCell(); return true;
     }
@@ -1646,7 +1672,8 @@ function previewQuestion(typed) {
   // a question turned the cube a quarter of the time in the usability runs, and nothing
   // said so; the cube is the biggest thing on the page
   if (curFacet !== faceBefore && faceBefore !== 'opportunity' && !rolling && FACETS[curFacet])
-    noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">Moved to the ${curFacet} face.</em>`;
+    // said once: "the health face is US only, so this is on the wealth face" already says it
+    if (!/so this is on the \w+ face/.test(noteNext || '')) noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">Moved to the ${curFacet} face.</em>`;
   return true;
 }
 // only now is anything computed
@@ -1857,7 +1884,10 @@ function initCube() {
         cell.view = null; cell.form = null; cell.span = null;
         if (stage === 'result') { paintFacet(name); faceToFront(name); settle(); updateChips(); runCell(); return; }
       }
+      const before = chain.length ? chain[chain.length - 1] : null;
       chooseFacet(name);
+      const after = chain.length ? chain[chain.length - 1] : null;
+      if (stage === 'result' && after && after !== before) revealAnswer();
     }));
   scene.setAttribute('tabindex', '0');
   scene.setAttribute('role', 'group');

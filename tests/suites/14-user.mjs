@@ -105,6 +105,48 @@ export default async function (t) {
   const ty = await phone.evaluate(() => (document.getElementById('chart').data || []).map(tr => tr.type));
   t.check('on a phone the three-measure chart is flat', ty.length && !ty.includes('scatter3d'), ty.join(','));
 
+  // the third pass: folds, follow-ups, years, regions and the US layer
+  await read('how unequal is the uk');
+  await page.evaluate(() => { cell.span = 'moment'; cell.year = 2024; cell.against = 'income_gini'; runCell(); setStage('result'); render(); });
+  await page.waitForTimeout(400);
+  s = await seen(page);
+  t.check('one country held against another measure draws the scatter', /income Gini/.test(s.answer) && /Across \d+ countries/.test(s.answer), s.answer.slice(0, 120));
+  await page.evaluate(() => { cell.form = 'tiers'; runCell(); setStage('result'); render(); }); await page.waitForTimeout(400);
+  s = await seen(page);
+  t.check('"by tier" at a year the second measure lacks reads each at its latest, and says so', /Grouping countries/.test(s.answer) && /reads each at its latest year/.test(s.answer) && !s.notice, (s.notice || s.answer).slice(0, 140));
+  for (const [q, want] of [
+    ['how unequal is the uk in 1850', /Nothing in the atlas goes back to 1850/],
+    ['how unequal is the uk in 2030', /2030 has not happened yet/],
+    ['compare every country', /Highest top 1% wealth share among all countries/],
+    ['uk 1995 to 2005', /United Kingdom \+?-?[\d.]+ points from 1995 to 2005/],
+    ['uk vs germany house prices', /United Kingdom \d+ vs Germany \d+/],
+    ['how much does the middle class earn in germany', /Germany: median income/],
+    ['how happy are finns', /Finland: life satisfaction/],
+    ['which countries have negative wealth for the bottom half', /Lowest bottom 50% wealth share/],
+    ['best county to grow up in ohio', /counties in Ohio, the best place for a poor child/],
+    ['how does wealth inequality in africa compare to europe', /middle country of Africa/],
+  ]) { s = await read(q); t.check(`"${q}" answers what was asked`, want.test(s.answer), (s.notice || s.answer).slice(0, 140)); }
+  s = await read('how much more do the richest hold than the poorest in sweden');
+  t.check('a question with no multiple says why in its first sentence', /owns less than nothing, so there is no multiple/.test(s.answer), s.answer.slice(0, 140));
+  for (const [q, want] of [['do the rich pay their fair share', /does not model taxes/], ['what is economic connectedness', /better-off friends/]]) {
+    s = await read(q); t.check(`"${q}" is answered in a notice`, want.test(s.notice), s.notice || s.answer.slice(0, 100));
+  }
+  // start over resets the measure with the face
+  await page.evaluate(() => resetAll()); await page.click('.fchip[data-facet="income"]'); await page.waitForTimeout(200);
+  await page.evaluate(() => resetAll()); await ask(page, 'how has spain changed since 2000', 1100);
+  t.check('start over from the income face reads the next question on wealth', /Top 1% wealth share over time: Spain/.test((await seen(page)).answer));
+  // gibberish on the health face is not answered with the health chart
+  await page.evaluate(() => resetAll()); await page.click('.fchip[data-facet="health"]'); await page.waitForTimeout(300);
+  await ask(page, 'asdfgh', 900);
+  t.check('gibberish on the health face says it could not read it', /Could not read/.test((await seen(page)).notice));
+  await ask(page, 'what about women', 1100);
+  t.check('but "what about women" there still answers', /For women it is/.test((await seen(page)).answer));
+  // "tell me more" opens the fold
+  await read('how unequal is sweden');
+  await read('have houses pulled away from pay in the netherlands?');
+  await page.evaluate(() => scrollTo(0, 0)); await page.fill('#q', 'tell me more'); await page.press('#q', 'Enter'); await page.waitForTimeout(600);
+  t.check('"tell me more" opens what is folded under the answer', await page.evaluate(() => !!document.querySelector('#answer details.more[open]')));
+
   // in dark mode nothing is drawn darker than the page can show
   const dark = await t.page({ dark: true });
   await ask(dark, 'wealth inequality sweden vs denmark since 2000', 1500);

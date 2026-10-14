@@ -42,6 +42,9 @@ function detectMetrics(r) {
   push(/\btop\s*10\b|\b10%|\b10\s*(per\s*cent|percent|pct)\b/, 'income_top10');
   push(/\btop\s*1\b|\b1%|\btop\s*one\b|\b1\s*(per\s*cent|percent|pct)\b|\brich(est)?\b|\bthe wealthy\b/, 'wealth_top1');
   push(/\bbottom\s*(50|half)\b|\b50%|\bpoor(est)?\s*half\b|\bordinary people\b|\beveryone else\b/, 'wealth_bottom50');
+  // what the middle earns is money, the median; "how much does the middle class earn in
+  // germany" answered with the middle forty per cent's share of national income
+  push(/\bmiddle( class)?\b[\w\s]{0,20}\b(earn|earns|make|makes|paid|take home|live on)\b|\b(earn|earns|make|makes)\b[\w\s]{0,20}\bmiddle class\b/, 'median_income');
   push(/\bmiddle class\b|\bmiddle 40\b|\bthe middle\b(?! income)/, 'income_middle40');
   push(/\blife expectancy\b|\blongevity\b|\blifespan\b|\bhealth\b|\blive longer\b|\blive long\w*\b|\bhow long .*\blive\b|\bdie (young|earl\w*|soon\w*)\b|\bdying\b|\byears of life\b/, 'life_exp');
   push(/\bprice[- ]to[- ]income\b|\bhouse prices? (against|to|vs\.?|versus) (income|pay|earnings|wages)\b|\bhousing affordability\b/, 'house_income');
@@ -132,6 +135,10 @@ function parse(raw) {
   const rest = t.replace(WHOLE_WORLD, ' ').replace(/\s+/g, ' ').trim();
   const says = rest.split(' ').filter(w => w.length > 2 && !STOP.has(w)).length || findCountries(rest).isos.length;
   const p = says ? parseCore(rest) : { kind: 'unknown' };
+  // "compare every country" is a ranking of all of them, not the last country asked about
+  // re-read against all 213
+  if ((p.kind === 'unknown' || p.kind === 'pending') && /\b(compare|comparing|rank\w*|list|league|table|show|order)\b/.test(rest))
+    return { kind: 'rank', dir: 'high', region: null, metric: null, pool: ALL_POOL };
   if (p.kind === 'unknown' || p.kind === 'pending') return { kind: 'among', pool: ALL_POOL };
   p.pool = ALL_POOL; if (p.region) p.region = null;
   // poverty across the whole world is the survival line, not half of each country's median
@@ -147,8 +154,13 @@ function parseCore(raw) {
   for (const [re, key] of REGION_TOKENS) {
     if (re.test(shielded)) { region = key; text = text.replace(re, ' '); break; }
   }
+  // "how does africa compare to europe" named two regions and read the first alone
+  let region2 = null;
+  if (region) for (const [re, key] of REGION_TOKENS) if (key !== region && re.test(text)) { region2 = key; text = text.replace(re, ' '); break; }
   const { isos, residual: r } = findCountries(text);
-  const years = (r.match(/\b(?:19|20)\d{2}\b/g) || []).map(Number).filter(y => y >= 1950 && y <= 2025);
+  // from the start of the longest records to this year: 1950 to 2025 dropped "since 1913"
+  // and this year itself without a word
+  const years = (r.match(/\b(?:18|19|20)\d{2}\b/g) || []).map(Number).filter(y => y >= 1870 && y <= new Date().getFullYear());
   const metrics = detectMetrics(r);
   // "poverty" alone takes the line the place itself would use: half the median for the
   // richer third and for the whole world ranked together, $2.15 a day for a poorer
@@ -160,6 +172,7 @@ function parseCore(raw) {
     metrics[0] = 'poverty_relative';
   const metric = metrics.length ? metrics[0] : null;
   if (metrics.includes('PENDING')) return { kind: 'pending' };
+  if (region2) return { kind: 'regions', regions: [region, region2], metric };
 
   // ── the per-face readings: what a share means for one person, rather than a block ──
   // These sit ahead of the general readings because they answer the same words more
@@ -186,7 +199,9 @@ function parseCore(raw) {
     return { kind: 'weather', isos, iso: isos[0] || null,
       year: years.length ? Math.max(...years) : null };
   // UNDERWATER: the headcount behind the share. household survey, euro area.
-  if (!/\bpoverty\b|\bpoor\b/.test(r) && /\bhow many (people|households|of us)\b|\bowe more than\b|\bunder ?water\b|\bnegative (net )?wealth\b|\bin the red\b|\bhow many are in debt\b|\bmore debt than\b/.test(r)) {
+  if (/\bnegative\b|\bless than nothing\b|\bowe more than\b|\bbelow zero\b/.test(r) && /\bbottom (half|50)\b|\bpoorest half\b/.test(r))
+    return isos.length ? Object.assign({ kind: 'owns', isos, iso: isos[0] }, win) : { kind: 'rank', dir: 'low', metric: 'wealth_bottom50', region, pool: ALL_POOL };
+  if (!/\bpoverty\b|\bpoor\b/.test(r) && /\bhow many (people|households|of us)\b|\b(owns?|anyone|people|households) less than nothing\b|\bowe more than\b|\bunder ?water\b|\bnegative (net )?wealth\b|\bin the red\b|\bhow many are in debt\b|\bmore debt than\b/.test(r)) {
     // the household survey covers the euro area. Sweden, Norway and Denmark are where the
     // bottom half is below zero as a group, and that is in the bottom half's share
     if (isos[0] && typeof HFCS_NEG !== 'undefined' && HFCS_NEG && !HFCS_NEG.by[isos[0]] && seriesOf('wealth_bottom50', isos[0]).length)
@@ -219,7 +234,7 @@ function parseCore(raw) {
   if (/\blives? on\b|\bliving on\b|\ba day\b|\bbasket of goods\b|\bpurchasing power\b|\bsame money buy\b|\bgo further\b|\b(average|typical|normal|ordinary) (person|family|household|worker|people)\b.*\b(earn|make|get|take home|paid)\w*\b/.test(r))
     return Object.assign({ kind: 'basket', isos, iso: isos[0] || null }, win);
   // THREE: the top tenth, the forty in the middle, and the bottom half, summing to 100
-  if (/\bthree parts\b|\bmiddle 40\b|\bmiddle forty\b|\bmiddle class\b|\bhappened to the middle\b|\bhollow\w*\b|\bsplit three ways\b|\bcut into three\b|\bsqueez\w*\b/.test(r))
+  if (!/\b(earn|earns|make|makes|paid|take home|live on|salary|wage)\b/.test(r) && /\bthree parts\b|\bmiddle 40\b|\bmiddle forty\b|\bmiddle class\b|\bhappened to the middle\b|\bhollow\w*\b|\bsplit three ways\b|\bcut into three\b|\bsqueez\w*\b/.test(r))
     return Object.assign({ kind: 'three', isos, iso: isos[0] || null }, win);
 
   // REACH: did the country's growth arrive at the median, or somewhere else
@@ -263,6 +278,12 @@ function parseCore(raw) {
       /\bworse\b|\bmore unequal\b|\bwider\b|\bbigger\b|\bgreater\b|\bhigher\b|\bthan\b|\bor\b/.test(r) && !/\bover time\b|\bsince\b|\bpulling apart\b|\bdiverg/.test(r))
     return isos.length ? { kind: 'wmultiple', isos, iso: isos[0] } : { kind: 'owngap' };
   const afterYear = r.match(/\b(after|since|from|post|following)\s+((?:19|20)\d{2})\b/);
+  // "uk 1995 to 2005" is a run of years; it was read as one country in 1995
+  const rng = r.match(/\b((?:18|19|20)\d{2})\s*(?:to|-|until|through|till|and)\s*((?:18|19|20)\d{2})\b/);
+  if (rng && +rng[2] > +rng[1] + 1) {
+    if (isos.length) return { kind: 'time', isos, year: +rng[1], until: +rng[2], region, metric };
+    return { kind: 'delta_rank', dir: /\bfall\w*|\bfell\b|\bless\b|\bdown\b|\bequal\b(?!ity)/.test(r) ? 'down' : 'up', year: +rng[1], until: +rng[2], region, metric };
+  }
   const movingWords = /\b(become|became|got|gotten|grown|grew) more unequal\b|\bless equal\b|\bgetting (richer|poorer|worse|better|bigger|wider|more unequal)\b|\brising\b|\brisen\b|\bgone up\b|\bgoing up\b|\bgot worse\b|\bworse\b|\bincreas\w*\b|\bgrown\b|\bwiden\w*\b|\bchang(ed|ing)\b/;
   const fallingWords = /\b(become|became|got|gotten|grown|grew) (more equal|less unequal)\b|\bmore equal\b|\bless unequal\b|\bgetting better\b|\bfallen\b|\bfalling\b|\bgone down\b|\bgoing down\b|\bdecreas\w*\b|\bnarrow\w*\b|\bimprov\w*\b/;
   // "has inequality gone up since 2008" with no country used to hand the question to
@@ -280,7 +301,10 @@ function parseCore(raw) {
   // houses: the price of one against what people earn, which is the picture the
   // question is actually asking for. the OECD's countries carry it and the fold shows which.
   if (/\bhous(e|es|ing)\b|\bhome ?prices?\b|\bproperty\b|\bmortgage\b|\brent\w*\b|\bafford\w*\b|\bon the ladder\b/.test(r))
-    return { kind: 'houses', isos, iso: isos[0] || null };
+    // two or more countries: houses against pay is drawn one at a time, and "uk vs germany
+    // house prices" drew the UK and dropped Germany. the OECD ratio sets them side by side
+    return isos.length >= 2 ? { kind: 'compare', isos: isos.slice(0, 4), metric: 'house_income' }
+      : { kind: 'houses', isos, iso: isos[0] || null };
   // "my country", with none named: nothing is computed, the place fold opens and asks
   if (mine && !isos.length) return { kind: 'profile', iso: null, needsPlace: true, metric };
 

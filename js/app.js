@@ -441,7 +441,9 @@ function resetAll() {
   chain.length = 0; facetMeasureIdx.wealth = 0; facetMeasureIdx.income = 0;
   const qb = document.getElementById('q'); if (qb) qb.value = '';
   resetCell(); resetCtx(); render();
-  chooseFacet('wealth'); startIdle(); setStage('compose');
+  // the measure is reset after the face, not before: reset first, it took the face being
+  // left, so "start over" from the income face read the next wealth question on income
+  chooseFacet('wealth'); resetCtx(); startIdle(); setStage('compose');
   if (onUS) flipTo('ask', true); else window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
   if (!restoring && location.hash) history.pushState(null, '', location.pathname);   // Back brings the answer back
 }
@@ -693,6 +695,15 @@ function boot() {
     setHelp(false);
     const asked = (cell.asked || '').trim();
     if (stage === 'chain' && (!v || v === asked)) { sendCell(); return; }   // the same one, send it
+    // "tell me more" over an answer opens what is folded under it, rather than being read
+    // as a question and refused
+    if (stage === 'result' && chain.length && /^(tell me more|more|go on|say more|explain( that| this| it)?|why|and|details?|how)\??$/.test(norm(v))) {
+      el.value = '';
+      const det = document.querySelector('#answer details.more');
+      if (det) { det.open = true; det.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' }); }
+      else showNotice('That is all there is to this answer. The source and how to read the chart are under it.');
+      return;
+    }
     // asking to be shown anything is asking for the die
     if (/^(show me )?(something|anything)( interesting| random| good)?$|^surprise me$|^random$|^roll( the die| the dice| me one| me)?$|^(show me |tell me )?(something|anything) (surprising|interesting|cool|new|random)$|^pick (one|something)( for me)?$|^i don t know$|^idk$/.test(norm(v))) {
       el.value = ''; shakeCube(); return;
