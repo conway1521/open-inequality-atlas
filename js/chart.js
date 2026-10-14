@@ -1060,6 +1060,36 @@ function drawChartBody() {
       return [lo - g, hi + g]; };
     const rx = pad(X, 0.06), ry = pad(Y, 0.06), rz = pad(Z, 0.06);
     const main = tp.pts.filter(q => !foc.has(q.iso)), hit = tp.pts.filter(q => foc.has(q.iso));
+    // on a phone a cloud in three dimensions is a smudge with tick labels too small to
+    // read, and depth cannot be judged at that size. it is drawn flat instead: the first
+    // two measures across and up, the third as the colour of each dot, with its key
+    if (el.clientWidth < 520) {
+      const zc = metricColor(tp.z);
+      Plotly.react(el, [{
+        type: 'scatter', mode: 'markers', showlegend: false,
+        x: main.map(q => sc(mx, q.x)), y: main.map(q => sc(my, q.y)), text: main.map(q => q.name + ', ' + q.year),
+        marker: { size: 7, opacity: dotOp(0.8), color: main.map(q => sc(mz, q.z)), cmin: rz[0], cmax: rz[1],
+          colorscale: [[0, shade(zc, -0.6)], [1, shade(zc, 0.45)]], showscale: true,
+          colorbar: { thickness: 8, len: 0.7, tickfont: { size: 9 }, title: { text: (({ life_exp: 'life exp.' })[tp.z] || mz.label), font: { size: 10 } } } },
+        hovertemplate: '%{text}<br>' + mx.label + ': %{x}<br>' + my.label + ': %{y}<br>' + mz.label + ': %{marker.color:.1f}<extra></extra>',
+      }].concat(hit.map(h => ({
+        type: 'scatter', mode: 'markers+text', showlegend: false, x: [sc(mx, h.x)], y: [sc(my, h.y)], text: [h.name],
+        textposition: 'top center', textfont: { size: 11, color: cssVar('--ink', '#1a2744') },
+        marker: { size: 11, color: hlFill(tp.x), line: { color: hlEdge(), width: 1.5 } },
+        hovertemplate: h.name + ' (' + h.year + ')<br>' + mz.label + ': ' + sc(mz, h.z).toFixed(1) + '<extra></extra>' }))),
+      Object.assign({}, BASE_LAYOUT, {
+        margin: { t: 10, r: 6, b: 44, l: 48 },
+        xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { range: rx, autorange: false, ticksuffix: mx.fmt === pc ? '%' : '',
+          title: { text: mx.label, font: { size: 11 } } }),
+        yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { range: ry, autorange: false, ticksuffix: my.fmt === pc ? '%' : '',
+          title: { text: my.label, font: { size: 11 } } }),
+      }), CFG);
+      title.textContent = `${cap(mx.label)}, ${my.label} and ${mz.label}, at once`;
+      src.textContent = `One dot per country at the latest year all three were measured: ${mx.label} across, ` +
+        `${my.label} up, and ${mz.label} as the colour, read off the key at the side. On a wider screen the same cloud ` +
+        `is drawn in three dimensions. ` + provenance([tp.x, tp.y, tp.z]);
+      return;
+    }
     const traces = [{
       // the cloud is one quiet colour: colouring it by an axis only repeats that axis
       type: 'scatter3d', mode: 'markers', name: 'every country', showlegend: false,

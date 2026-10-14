@@ -101,6 +101,17 @@ function usPlaceAnswer(pl, q) {
     return null;
   }
   const bars = [];
+  // "rent in new york" was answered with how far poor children climb and no word on rent.
+  // the zones carry the average two-bed rent and the counties and states the value of the
+  // median home, so a question about housing leads with whichever this place has
+  const housingAsk = /\brent\w*\b|\bhousing\b|\bhouse (prices?|values?)\b|\bhome (prices?|values?)\b|\bafford\w*\b|\bhouses?\b|\bhomes?\b/.test(norm(q || ''));
+  const usd = v => '$' + Math.round(v).toLocaleString('en-US');
+  // "rent in new york" means the city: a state asked about rent, with a commuting zone of
+  // the same name, is read as that zone, which is where the rents are
+  if (housingAsk && /\brent\w*\b/.test(norm(q || '')) && pl.type === 'state') {
+    const z = Object.entries(US_CZ).find(([, r]) => r.name === pl.name && r.rent != null);
+    if (z) pl = { type: 'zone', id: z[0], name: pl.name };
+  }
   // each bar carries the face its measure belongs to, and is drawn in that face's colour
   const bar = (label, pos, better, face = 'opportunity') => { if (pos) bars.push({ label, pct: pos.pct, better, face }); };
   if (pl.type === 'zone') {
@@ -119,7 +130,12 @@ function usPlaceAnswer(pl, q) {
       (z.leq1F != null && z.leq4F != null ? `; for women the gap is ${(z.leq4F - z.leq1F).toFixed(1)} years.` : '.') : null;
     const health = curFacet === 'health';
     let t = `In the <strong>${esc(pl.name)}</strong> commuting zone, `;
-    if (health) t += lifeS ? lifeS + ` Poor children here reach the ${ord(Math.round(z.mob * 100))} percentile by adulthood (the middle zone: ${ord(Math.round(mob.med * 100))}).`
+    const rp = z.rent != null ? usPos(col('rent'), z.rent) : null;
+    if (housingAsk && rp) t += `a two-bedroom home rents for <strong>${usd(z.rent)} a month</strong> on average (2015), ` +
+      `${ord(rp.rankHigh)} highest of ${rp.n} zones; the middle zone's is ${usd(rp.med)}.` +
+      (z.inc ? ` A year of that rent is <strong>${Math.round(z.rent * 12 / z.inc * 100)}%</strong> of what the median household here ` +
+        `takes in (${usd(z.inc)} a year, 2016).` : '') + ` And ` + climbS;
+    else if (health) t += lifeS ? lifeS + ` Poor children here reach the ${ord(Math.round(z.mob * 100))} percentile by adulthood (the middle zone: ${ord(Math.round(mob.med * 100))}).`
       : `there is no life expectancy by income: the source measures it only in the 595 zones large enough. ` + climbS;
     else t += climbS + (lifeS ? ' ' + cap(lifeS) : '');
     if (z.cr25 != null && !health) t += ` Children of the poorest quarter have a credit score of ${Math.round(z.cr25)} by their mid thirties, ` +
@@ -127,6 +143,7 @@ function usPlaceAnswer(pl, q) {
     t += ` <em>A commuting zone is a local job market, the counties people travel between for work. Children born in the early ` +
       `1980s, measured in their mid thirties, from Opportunity Insights. Life expectancy covers the ${Object.keys(gaps).filter(k => gaps[k] != null).length} zones large enough to measure it.</em>`;
     f.text = t;
+    if (housingAsk && rp) bar('two-bed rent', rp, 'lower', 'wealth');
     if (curFacet === 'health') bar('rich-poor life gap at forty', gp, 'lower', 'health');
     bar('how far poor children climb', mob, 'higher'); bar('credit score, poorest quarter', cr, 'higher');
     bar('behind on payments, poorest quarter', dq, 'lower'); if (curFacet !== 'health') bar('rich-poor life gap at forty', gp, 'lower', 'health');
@@ -153,6 +170,14 @@ function usPlaceAnswer(pl, q) {
       // on the health face the gap leads
       t = curFacet === 'health' ? `In <strong>${esc(name)}</strong>, ` + gapS[0].toLowerCase() + gapS.slice(1) + ' ' + t.replace(/^In <strong>[^<]*<\/strong>, a /, 'A ') : t + ' ' + gapS;
     } else if (curFacet === 'health') t = `The source has no life expectancy by income for ${esc(name)}. ` + t;
+    if (housingAsk && v('us_house_value') != null) {
+      const hv = pos('us_house_value');
+      t = `In <strong>${esc(name)}</strong>${pl.type === 'county' ? ',' : ''} the median home is worth <strong>${usd(v('us_house_value'))}</strong>, ` +
+        `${ord(hv.rankHigh)} highest of the ${hv.n} ${unit}; the middle one's is ${usd(hv.med)}.` +
+        (/\brent\w*\b/.test(norm(q || '')) ? ` ${pl.type === 'county' ? 'County' : 'State'} figures carry home values rather than rents; ask about a city for its rent.` : '') +
+        ' ' + t.replace(/^In <strong>[^<]*<\/strong>, a /, 'A ');
+      bar('median home value', hv, 'lower', 'wealth');
+    }
     if (pl.sharedZone) t += ` <em>${pl.sharedN} commuting zones are called ${esc(pl.sharedZone)} and the source does not say which state each is in, so this is ${esc(pl.name)} as a whole.</em>`;
     t += ` <em>Upward mobility is for children born in the early 1980s, measured in their mid thirties (Opportunity Insights); ` +
       `friendships are from Facebook's social capital study.</em>`;
@@ -403,7 +428,10 @@ function drawOpp(f) {
       if ((out[out.length - 1] + ' ' + x).trim().length > 16) out.push(x); else out[out.length - 1] = (out[out.length - 1] + ' ' + x).trim(); }
       return out.join('<br>'); };
     Plotly.react(el, [{ type: 'bar', orientation: 'h', x: b.map(r => r.pct), y: b.map(r => wrap(r.label)),
-      marker: { color: b.map(r => FC(r.face)) }, text: b.map(r => `above ${r.pct}%`), textposition: 'outside', cliponaxis: false,
+      // a long bar carries its label inside: "above 99%" outside it ran off a phone's edge
+      marker: { color: b.map(r => FC(r.face)) }, text: b.map(r => `above ${r.pct}%`),
+      textposition: b.map(r => r.pct > 72 ? 'inside' : 'outside'), insidetextanchor: 'end',
+      insidetextfont: { color: '#ffffff' }, cliponaxis: false,
       hovertemplate: '%{y}: higher than %{x}% of ' + o.unit + '<extra></extra>' }],
       Object.assign({}, BASE_LAYOUT, { margin: { t: 10, r: 60, b: 44, l: 200 },
         xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { range: [0, 100], autorange: false, ticksuffix: '%',

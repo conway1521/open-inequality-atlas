@@ -233,8 +233,11 @@ function parseCore(raw) {
       (/\btop\s*10\b|\b10%|\btop ten\b|\brichest (10|ten)\b/.test(r) && /\bown\w*\b|\bwealth\b|\bhold\w*\b|\bassets?\b/.test(r) && !/\bincome\b|\bearn\w*\b/.test(r)))
     return { kind: 'ratio', isos, iso: isos[0] || null };
   // TRIPLE: the three measured faces held together, one dot per country
-  if (/\bthree faces\b|\ball three\b|\bfaces together\b|\bfaces sit\b|\bsit together\b|\bhealth (sit|together)\b/.test(r))
-    return { kind: 'triple' };
+  // and the three named together: "wealth, income and life expectancy in france" was read
+  // as life expectancy alone, with the other two dropped
+  if (/\bthree faces\b|\ball three\b|\bfaces together\b|\bfaces sit\b|\bsit together\b|\bhealth (sit|together)\b/.test(r) ||
+      (/\bwealth\b/.test(r) && /\bincome\b/.test(r) && /\blife expectancy\b|\blongevity\b|\bhealth\b/.test(r)))
+    return { kind: 'triple', isos };
   // TABLES: the same countries ranked twice, once by earning and once by owning
   if (/\bleague table\b|\btwo tables\b|\brank\w* (twice|both)\b|\bsame ranking\b|\brank on each\b|\bearns? and .*owns?\b|\bown as unevenly as\b/.test(r))
     return { kind: 'tables', isos, region };

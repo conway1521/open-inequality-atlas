@@ -74,7 +74,9 @@ function splitLead(html) {
   }
   // a tail of a few words is not worth a fold
   if (rest.replace(/<[^>]*>/g, '').trim().split(/\s+/).length < 6) { lead = body; rest = ''; }
-  // the notes, each already a sentence, run together as one quiet line
+  // the notes, each already a sentence, run together as one quiet line: how the words were
+  // read ("Read Thatcher as from 1979") before what that meant ("the record starts in 1990")
+  notes.sort((a, b) => (/^<em class="readas">Read /.test(b) ? 1 : 0) - (/^<em class="readas">Read /.test(a) ? 1 : 0));
   const line = notes.map(n => n.replace(/^<em class="readas">|<\/em>$/g, '').trim()).join(' ');
   return { lead: lead.trim(), rest: rest.trim(), notes: line ? `<em class="readas">${line}</em>` : '' };
 }

@@ -1316,8 +1316,11 @@ function buildAnswer(p, q) {
     f.isos = want;
     const yrs = pts.map(q => q.year);
     const mx = META[X], my = META[Y], mz = META[Z];
+    // a phone draws this flat, with the third measure as the colour of each dot
+    const flat = matchMedia('(max-width: 720px)').matches;
     let t = `Every country is one point, placed by three numbers at once: ` +
-      `${mx.label} across, ${my.label} deep, ${mz.label} up. ` +
+      (flat ? `${mx.label} across, ${my.label} up, ${mz.label} as the colour of the dot. `
+        : `${mx.label} across, ${my.label} deep, ${mz.label} up. `) +
       `<strong>${pts.length} countries</strong> carry all three, each at the latest year all three ` +
       `were measured (${Math.min(...yrs)} to ${Math.max(...yrs)}).`;
     if (want.length) {
@@ -1325,7 +1328,7 @@ function buildAnswer(p, q) {
       t += ' ' + hits.map(h => `<strong>${esc(h.name)}</strong> sits at ${mx.fmt(h.x)} wealth, ` +
         `${my.fmt(h.y)} income, ${mz.fmt(h.z)} (${h.year})`).join('; ') + '.';
     } else {
-      t += ' Name a country to have it marked and its three readings dropped to the walls.';
+      t += flat ? ' Name a country to have it marked.' : ' Name a country to have it marked and its three readings dropped to the walls.';
     }
     f.text = t;
   }
@@ -1694,8 +1697,10 @@ function buildAnswer(p, q) {
     // the window each country was actually measured over, which is not the window
     // that was asked for whenever its series starts late or stops early
     const lo = Math.min(...top.map(x => x.from)), hi = Math.max(...top.map(x => x.to));
+    // the years said are the years read: "1980 to the latest year" over a record that
+    // starts in 1990 claimed a decade the ranking never saw
     const span = (p.year || p.until)
-      ? `${p.year || 'the start'} to ${p.until || 'the latest year'}`
+      ? `${p.year ? Math.max(p.year, lo) : 'the start'} to ${p.until || 'the latest year'}`
       : 'the whole run';
     f.bar = { key: 'delta', metric: key, dir: p.dir, rows: top, highlight: dhl,
               note: `${where}, ${m.label}, ${span}` };
@@ -1711,6 +1716,7 @@ function buildAnswer(p, q) {
       ` <em>Each country is measured over its own years inside that window (${lo} to ${hi}), and only ` +
       `those with ${minRun < 10 ? minRun : 'ten'} years or more are ${chosen ? 'shown' : 'ranked'}: ${dPool.length} of them.` +
       (minRun < 10 ? ` That is a short run: moves this small over so few years are as likely to be revisions as change.` : '') + `</em>` +
+      (p.year && lo > p.year + 1 ? ` <em class="readas">You asked from ${p.year}; the record starts in ${lo}, so that is where this begins.</em>` : '') +
       (f.missNote ? ` <em>${esc(f.missNote.join(', '))} ${f.missNote.length === 1 ? 'has' : 'have'} ` +
         `no run that long inside those years, so ${f.missNote.length === 1 ? 'it is' : 'they are'} not drawn.</em>` : '');
   }
@@ -1823,8 +1829,16 @@ function buildAnswer(p, q) {
         `fewer than two points inside those years, so ${short.length === 1 ? 'it is' : 'they are'} ` +
         `not summarised.</em>` : '') +
       // "since 1980" answered from 1990 without a word, and read as a claim about 1980
-      (lateStart.length ? ` <em>You asked from ${p.year}; the record here starts in ${lateStart.map(([i, y]) =>
-        `${y}${f.isos.length > 1 ? ' for ' + esc(theName(i)) : ''}`).join(', ')}, so that is where this begins.</em>` : '');
+      // on the notes line, not in the fold: it changes what the answer is about
+      (lateStart.length ? ` <em class="readas">You asked from ${p.year}; the record here starts in ${lateStart.map(([i, y]) =>
+        `${y}${f.isos.length > 1 ? ' for ' + esc(theName(i)) : ''}`).join(', ')}, so that is where this begins.` +
+        // the wealth record starts in 1990 but the top 1% income share often runs much
+        // further back, so the years asked for are one face away
+        (() => {
+          const alt = { wealth_top1: 'income_top1', wealth_bottom50: 'income_bottom50', wealth_gini: 'income_top1' }[key];
+          const reaches = alt && lateStart.every(([i]) => { const a = seriesOf(alt, i); return a.length && a[0].year <= p.year; });
+          return reaches ? ` The ${esc(META[alt].label)} reaches back that far: ask for income to see it from ${p.year}.` : '';
+        })() + `</em>` : '');
   }
 
   else if (p.kind === 'point') {

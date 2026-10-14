@@ -90,6 +90,21 @@ export default async function (t) {
   const hm = await phone.evaluate(() => (document.getElementById('chart').layout.annotations || []).map(a => a.text).filter(Boolean));
   t.check('the heatmap on a phone uses one decimal', hm.length && hm.every(x => /^-?\d\.\d$/.test(x)), hm.slice(0, 5).join(' '));
 
+  // rent is answered as rent, a period before the record says so on screen, and the
+  // three-measure chart is drawn flat on a phone
+  s = await read('rent in new york');
+  t.check('"rent in new york" leads with the rent', /two-bedroom home rents for \$[\d,]+ a month/.test(s.answer), s.answer.slice(0, 140));
+  s = await read('house prices in ohio');
+  t.check('a state asked about house prices gives the median home value', /median home is worth \$/.test(s.answer), s.answer.slice(0, 120));
+  s = await read('which countries got more unequal since 1980');
+  const notes = await page.evaluate(() => (document.querySelector('#answer .notes') || {}).textContent || '');
+  t.check('a period before the record says where it really starts, on the notes line', /record starts in 1990/.test(notes) && !/1980 to the latest year/.test(s.answer), notes);
+  s = await read('wealth, income and life expectancy in france');
+  t.check('the three named together draw the three-measure chart', /three numbers at once/.test(s.answer) && /France/.test(s.answer), s.answer.slice(0, 160));
+  await phone.evaluate(() => resetAll()); await ask(phone, 'how do wealth, income and life expectancy sit together?', 1500);
+  const ty = await phone.evaluate(() => (document.getElementById('chart').data || []).map(tr => tr.type));
+  t.check('on a phone the three-measure chart is flat', ty.length && !ty.includes('scatter3d'), ty.join(','));
+
   // in dark mode nothing is drawn darker than the page can show
   const dark = await t.page({ dark: true });
   await ask(dark, 'wealth inequality sweden vs denmark since 2000', 1500);
