@@ -421,7 +421,7 @@ function drawOpp(f) {
     Plotly.react(el, [
       { x: [lo, hi], y: [lo, hi], mode: 'lines', line: { color: '#cbd5e1', width: 1, dash: 'dash' }, hoverinfo: 'skip' },
       { x: o.pts.map(p => p.x), y: o.pts.map(p => p.y), text: o.pts.map(p => p.name), mode: 'markers',
-        marker: { color: AM, size: 6, opacity: 0.45 }, hovertemplate: '%{text}<extra></extra>' },
+        marker: { color: AM, size: 6, opacity: dotOp(0.45) }, hovertemplate: '%{text}<extra></extra>' },
     ], Object.assign({}, BASE_LAYOUT, {
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: 'parents in the bottom quarter', type: 'linear', autorange: true }),
       yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: 'parents in the top quarter', type: 'linear', autorange: true }),
@@ -442,8 +442,13 @@ function drawOpp(f) {
   } else if (o.kind === 'faces') {
     // a correlation matrix, which is the only honest way to show "do these agree":
     // a scatter can carry two, and the claim is about all of them at once
-    const lab = o.cols.map(c => c.lab);
-    const txt = o.grid.map(row => row.map(v => v == null ? '' : v.toFixed(2)));
+    // on a phone five columns get about 45 pixels each, and two-decimal figures at full
+    // size ran into each other ("-0.50.050.05"): one decimal, smaller, and short labels
+    const narrowH = el.clientWidth < 520;
+    const SHORT_LAB = { 'children climbing': 'climbing', 'who you know': 'who you know', 'income gap': 'income gap',
+      'house value': 'house value', 'rich-poor life gap at 40': 'life gap' };
+    const lab = o.cols.map(c => narrowH ? (SHORT_LAB[c.lab] || c.lab) : c.lab);
+    const txt = o.grid.map(row => row.map(v => v == null ? '' : v.toFixed(narrowH ? 1 : 2)));
     Plotly.react(el, [{
       type: 'heatmap', x: lab, y: lab, z: o.grid,
       zmin: -1, zmax: 1, xgap: 3, ygap: 3,
@@ -454,10 +459,10 @@ function drawOpp(f) {
       hovertemplate: '%{y} and %{x}<br>r = %{z:.2f}<extra></extra>',
       hoverongaps: false,
     }], Object.assign({}, BASE_LAYOUT, {
-      margin: { t: 12, r: 12, b: 92, l: 132 },
+      margin: narrowH ? { t: 8, r: 8, b: 70, l: 78 } : { t: 12, r: 12, b: 92, l: 132 },
       annotations: o.grid.flatMap((row, i) => row.map((v, j) => ({
         x: lab[j], y: lab[i], text: txt[i][j], showarrow: false,
-        font: { size: 11.5, color: v == null ? 'rgba(0,0,0,0)'
+        font: { size: narrowH ? 9.5 : 11.5, color: v == null ? 'rgba(0,0,0,0)'
           : Math.abs(v) > 0.55 ? '#ffffff' : cssVar('--ink', '#0a0a0a') },
       }))),
       xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { type: 'category', autorange: true,
@@ -482,7 +487,7 @@ function drawOpp(f) {
       type: 'scatter', mode: 'markers',
       x: o.pts.map(q => sx ? q.x * 100 : q.x), y: o.pts.map(q => sy ? q.y * 100 : q.y),
       text: o.pts.map(q => q.name),
-      marker: { color: FC(o.y.face), size: 5, opacity: 0.4 },
+      marker: { color: FC(o.y.face), size: 5, opacity: dotOp(0.4) },
       hovertemplate: '%{text}<br>%{x}<br>%{y}<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, {
       margin: { t: 16, r: 18, b: 46, l: 62 },
@@ -507,7 +512,7 @@ function drawOpp(f) {
     Plotly.react(el, [{
       type: 'scatter', mode: 'markers',
       x: o.pts.map(q => q.x), y: o.pts.map(q => q.y * 100), text: o.pts.map(q => q.name),
-      marker: { color: AM, size: 5, opacity: 0.4 },
+      marker: { color: AM, size: 5, opacity: dotOp(0.4) },
       hovertemplate: '%{text}<br>connectedness %{x:.2f}<br>reaches the %{y:.0f}th percentile<extra></extra>',
     }], Object.assign({}, BASE_LAYOUT, {
       margin: { t: 16, r: 18, b: 46, l: 56 },
@@ -605,7 +610,7 @@ function drawOpp(f) {
       `country: no source publishes the same gap in a form that compares across borders.`;
   } else if (o.kind === 'scatter') {
     Plotly.react(el, [{ x: o.pts.map(p => p.x), y: o.pts.map(p => p.y), text: o.pts.map(p => p.name),
-      mode: 'markers', marker: { color: AM, size: 6, opacity: 0.45 }, hovertemplate: '%{text}<extra></extra>' }],
+      mode: 'markers', marker: { color: AM, size: 6, opacity: dotOp(0.45) }, hovertemplate: '%{text}<extra></extra>' }],
       Object.assign({}, BASE_LAYOUT, {
         xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { title: o.covLabel, type: 'linear', autorange: true }),
         yaxis: Object.assign({}, BASE_LAYOUT.yaxis, { title: 'upward mobility (rank at p25)', type: 'linear', autorange: true }),

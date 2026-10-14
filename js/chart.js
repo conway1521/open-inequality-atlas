@@ -109,6 +109,21 @@ function cssVar(name, fallback) {
 }
 // which way a second line of the same facet should be shaded: toward white on a light
 // page, toward black on a dark one, so the pair stays separable either way
+// a y range at least `span` tall, centred on the data, or nothing if the data is taller
+function minSpan(traces, span) {
+  if (!span) return {};
+  const ys = traces.flatMap(t => (t.y || []).filter(v => typeof v === 'number' && isFinite(v)));
+  if (!ys.length) return {};
+  const lo = Math.min(...ys), hi = Math.max(...ys);
+  if (hi - lo >= span * 0.8) return {};
+  // centred on the data, and never below zero for data that is never below zero
+  let a = (lo + hi) / 2 - span / 2;
+  if (lo >= 0 && a < 0) a = 0;
+  return { range: [a, a + span], autorange: false };
+}
+// dots are drawn see-through so a dense cloud shows where it is dense. at 45% a blue dot
+// on a near-black page all but disappeared, so on a dark page they are drawn more solid
+function dotOp(o) { return isDark() ? Math.min(0.85, o + 0.3) : o; }
 function isDark() {
   const a = document.documentElement.getAttribute('data-theme');
   return a === 'dark' || (!a && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -253,7 +268,7 @@ function drawChartBody() {
       text: pts.map(p => p.name), customdata: pts.map(p => [mx.fmt(p.x), my.fmt(p.y)]) });
     const traces = [{
       type: 'scatter', mode: 'markers', ...mk(bg),
-      marker: { color: ACC(), size: 7, opacity: 0.42 },   // the face you're on owns the chart
+      marker: { color: ACC(), size: 7, opacity: dotOp(0.42) },   // the face you're on owns the chart
       hovertemplate: '%{text}<br>' + mx.label + ': %{customdata[0]}<br>' + my.label + ': %{customdata[1]}<extra></extra>',
     }];
     if (sc.fit) {   // the robust line, drawn across the x-range
@@ -655,7 +670,7 @@ function drawChartBody() {
         hoverinfo: 'skip' },
       { type: 'scatter', mode: 'markers', showlegend: false,
         x: pts.map(p => p.im), y: pts.map(p => p.wm), text: pts.map(p => BY_ISO[p.iso].name),
-        marker: { color: metricColor('wealth_top1'), size: 7, opacity: 0.45 },
+        marker: { color: metricColor('wealth_top1'), size: 7, opacity: dotOp(0.45) },
         hovertemplate: '%{text}<br>earning gap %{x:.0f}x<br>owning gap %{y:.0f}x<extra></extra>' },
     ].concat(here ? [{ type: 'scatter', mode: 'markers+text', showlegend: false,
         x: [here.im], y: [here.wm], text: [BY_ISO[here.iso].name], textposition: 'top center',
@@ -858,7 +873,7 @@ function drawChartBody() {
       { type: 'scatter', mode: 'lines+markers', showlegend: false,
         x: xs, y: ys, text: yrs.map(String),
         line: { color: metricColor(pa.x), width: 2, shape: 'linear' },
-        marker: { size: 5, color: metricColor(pa.x), opacity: 0.55 },
+        marker: { size: 5, color: metricColor(pa.x), opacity: dotOp(0.55) },
         hovertemplate: '%{text}<br>' + mx.label + ' %{x}<br>' + my.label + ' %{y}<extra></extra>' },
       { type: 'scatter', mode: 'markers+text', showlegend: false,
         x: ends.map(i => xs[i]), y: ends.map(i => ys[i]), text: ends.map(i => String(yrs[i])),
@@ -946,7 +961,7 @@ function drawChartBody() {
       type: 'scatter', mode: 'markers',
       x: bg.map(r => sc(r.dv)), y: swarm(bg),
       text: bg.map(r => r.name), customdata: bg.map(r => fmtD(r.dv)),
-      marker: { color: metricColor(pr.key), size: 7, opacity: 0.5 },
+      marker: { color: metricColor(pr.key), size: 7, opacity: dotOp(0.5) },
       hovertemplate: '%{text}: %{customdata}<extra></extra>',
     }, {
       type: 'scatter', mode: 'markers+text',
@@ -996,7 +1011,7 @@ function drawChartBody() {
       x: plain.map(q => q.ri), y: plain.map(q => q.rw),
       text: plain.map(q => lab.has(q.iso) ? q.name : ''),
       textposition: 'top center', textfont: { size: 10, color: cssVar('--ink-2', '#555555') },
-      marker: { size: 7, color: metricColor('wealth_top1'), opacity: 0.55 },
+      marker: { size: 7, color: metricColor('wealth_top1'), opacity: dotOp(0.55) },
       customdata: plain.map(q => [q.name, q.year]),
       hovertemplate: '%{customdata[0]} (%{customdata[1]})<br>income rank %{x}<br>wealth rank %{y}<extra></extra>',
     }];
@@ -1050,7 +1065,7 @@ function drawChartBody() {
       type: 'scatter3d', mode: 'markers', name: 'every country', showlegend: false,
       x: main.map(q => sc(mx, q.x)), y: main.map(q => sc(my, q.y)), z: main.map(q => sc(mz, q.z)),
       text: main.map(q => q.name + ', ' + q.year),
-      marker: { size: 3.8, opacity: 0.58, color: cssVar('--ink-3', '#999999') },
+      marker: { size: 3.8, opacity: dotOp(0.58), color: cssVar('--ink-3', '#999999') },
       hovertemplate: '%{text}<br>' + mx.label + ': %{x}<br>' + my.label + ': %{y}<br>' +
         mz.label + ': %{z}<extra></extra>',
     }];
@@ -1155,7 +1170,7 @@ function drawChartBody() {
       type: 'scatter', mode: 'markers',
       x: bg.map(r => scale(r.val)), y: yj(bg),
       text: bg.map(r => r.geo_name), customdata: bg.map(r => m.fmt(r.val)),
-      marker: { color: metricColor(st.key), size: 6, opacity: 0.5 },
+      marker: { color: metricColor(st.key), size: 6, opacity: dotOp(0.5) },
       hovertemplate: '%{text}: %{customdata}<extra></extra>',
     }];
     if (fg.length) traces.push({
@@ -1264,8 +1279,12 @@ function drawChartBody() {
         hovertemplate: `${BY_ISO[mk.iso].name}, ${at.year}: ` + m.hover + '<extra></extra>',
       });
     }
-    const labelable = traces.filter(t => t.showlegend !== false && !t.line.dash);
-    const annotations = labelable.length <= 4 ? labelable.map(t => ({
+    // names at the ends of the lines, where there is room for them. on a phone they took a
+    // third of the width and Plotly stretched the years to fit them, so the lines ran to
+    // 2040 and filled the left half; there the legend names them instead
+    const narrowLines = el.clientWidth < 520;
+    const labelable = narrowLines ? [] : traces.filter(t => t.showlegend !== false && !t.line.dash);
+    const annotations = labelable.length && labelable.length <= 4 ? labelable.map(t => ({
       x: t.x[t.x.length - 1], y: t.y[t.y.length - 1], xanchor: 'left', xshift: 6,
       text: t.name, showarrow: false,
       font: { size: 11, color: cssVar('--ink-2', '#555555') },
@@ -1276,11 +1295,15 @@ function drawChartBody() {
       hovermode: 'x unified',
       annotations: annotations.concat(eraLabels(eLo, eHi)),
       shapes: eraShapes(eLo, eHi),
-      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, (fromYear || toYear)
-        ? { range: [fromYear || eLo, toYear || Math.max(eHi, 2025)], autorange: false } : {}),
-      // a share reads as a share on the axis too, matching the sentence above it
-      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, axisFmt(m)),
-      margin: { t: 12, r: labelable.length <= 4 ? 110 : 16, b: 40, l: 46 },
+      // the years the lines cover, set rather than worked out: left to itself the axis
+      // grew to make room for the names at the ends of the lines
+      xaxis: Object.assign({}, BASE_LAYOUT.xaxis, { autorange: false,
+        range: (fromYear || toYear) ? [fromYear || eLo, toYear || Math.max(eHi, 2025)] : [eLo, eHi + 0.5] }),
+      // a share reads as a share on the axis too, matching the sentence above it. a Gini
+      // that moved 0.012 filled the whole height and looked like an upheaval, so a Gini
+      // axis spans at least a tenth and a share at least five points
+      yaxis: Object.assign({}, BASE_LAYOUT.yaxis, axisFmt(m), minSpan(traces, m.giniFam && m.fmt !== pc ? 0.1 : m.fmt === pc ? 0.05 : 0)),
+      margin: { t: 12, r: labelable.length && labelable.length <= 4 ? 110 : 16, b: 40, l: 46 },
     }), CFG);
     title.textContent = `${cap(m.label)} over time`;
     src.textContent = (m.lineSrc || '') + ' ' + provenance([metric]);

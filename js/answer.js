@@ -1581,6 +1581,16 @@ function buildAnswer(p, q) {
     // ranking the poorest countries inside the richer third would be a ranking of nothing
     const narrowed = rankNarrowed() && !(p.only && p.only.length) && key !== 'gdp_pc';
     if (narrowed) { const rt = richThird(); pool = pool.filter(r => rt.has(r.geo_id)); }
+    // a survey measure ranked at "the latest year" put Uzbekistan's 2003 survey at the top
+    // of extreme poverty against everyone else's 2019. readings more than fifteen years
+    // older than the newest are left out of the ranking, and named
+    let stale = [];
+    if (!p.year && !(p.only && p.only.length) && SERIES_BASIS[key] === 'survey') {
+      const newest = Math.max(...pool.map(r => r.year || 0));
+      stale = pool.filter(r => r.year && r.year < newest - 15);
+      if (stale.length && stale.length < pool.length) pool = pool.filter(r => !stale.includes(r));
+      else stale = [];
+    }
     if (p.only && p.only.length) {
       const want = p.only;
       pool = pool.filter(r => want.includes(r.geo_id));
@@ -1623,6 +1633,9 @@ function buildAnswer(p, q) {
       (narrowed ? ` <em>Ranked among the richer third of countries by GDP per person, which is close to ` +
         `the set with tax records behind the figure. Ask for the whole world to widen it.</em>` : '') +
       when +
+      (stale.length ? ` <em>Left out because their latest survey is more than fifteen years older than the ` +
+        `newest: ${stale.slice(0, 6).map(r => `${esc(r.geo_name)} (${r.year})`).join(', ')}` +
+        `${stale.length > 6 ? ` and ${stale.length - 6} more` : ''}.</em>` : '') +
       (f.missNote ? ` <em>${esc(f.missNote.join(', '))} ${f.missNote.length === 1 ? 'has' : 'have'} ` +
         `no ${esc(m.label)} on record, so ${f.missNote.length === 1 ? 'it is' : 'they are'} not drawn.</em>` : '');
   }
@@ -1635,6 +1648,11 @@ function buildAnswer(p, q) {
     const s = SERIES[key] || {};
     const dNarrow = rankNarrowed() && !(p.only && p.only.length);
     const dRich = dNarrow ? richThird() : null;
+    // ten years is the rule, because a shorter move is mostly noise. a question that names
+    // a shorter period ("did covid make it worse", five years) gets the period it asked
+    // for, at least three years, and the sentence says how short that is
+    let lastYr = 0; for (const iso in s) { const a = s[iso]; if (a.length) lastYr = Math.max(lastYr, a[a.length - 1].year); }
+    const minRun = p.year && !p.until ? Math.min(10, Math.max(3, lastYr - p.year - 1)) : 10;
     for (const iso in s) {
       if (!inScope(iso, p.region) || !BY_ISO[iso]) continue;
       if (dRich && !dRich.has(iso)) continue;
@@ -1642,7 +1660,7 @@ function buildAnswer(p, q) {
       if (pts.length < 2) continue;
       const from = pts[0];
       const to = pts[pts.length - 1];
-      if (to.year - from.year < 10) continue;
+      if (to.year - from.year < minRun) continue;
       pool.push({ geo_id: iso, geo_name: BY_ISO[iso].name, val: to.v - from.v,
         from: from.year, to: to.year });
     }
@@ -1691,7 +1709,8 @@ function buildAnswer(p, q) {
         `<strong>${m.fmtD(Math.abs(dPool[dRank - 1].val))}</strong>.` : '') +
       (chosen ? '' : ` Overall ${rose} rose and ${fell} fell.`) +
       ` <em>Each country is measured over its own years inside that window (${lo} to ${hi}), and only ` +
-      `those with ten years or more are ${chosen ? 'shown' : 'ranked'}: ${dPool.length} of them.</em>` +
+      `those with ${minRun < 10 ? minRun : 'ten'} years or more are ${chosen ? 'shown' : 'ranked'}: ${dPool.length} of them.` +
+      (minRun < 10 ? ` That is a short run: moves this small over so few years are as likely to be revisions as change.` : '') + `</em>` +
       (f.missNote ? ` <em>${esc(f.missNote.join(', '))} ${f.missNote.length === 1 ? 'has' : 'have'} ` +
         `no run that long inside those years, so ${f.missNote.length === 1 ? 'it is' : 'they are'} not drawn.</em>` : '');
   }
@@ -1736,7 +1755,8 @@ function buildAnswer(p, q) {
     const key = META[ctx.metric].series ? ctx.metric : 'wealth_gini';
     const m = META[key];
     const regLabel = p.region ? REGION_LABEL[p.region] : '';
-    const label = p.region ? `${cap(regLabel)} median` : 'World median';
+    // "World median median income" read as a stutter; a measure that is itself a median says "of"
+    const label = (p.region ? `${cap(regLabel)} median` : 'World median') + (/^median\b/.test(META[key].label) ? ' of' : '');
     const pool = rankedPool(key, 'high', p.region);
     if (!pool.length) return miss();
     const med = medianOf(pool.map(r => r.val));

@@ -17,8 +17,12 @@ const SERIES = {};          // metric -> iso -> [{year, v}]
 const SLOTS = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#e34948'];
 const colorOf = {};
 let nextSlot = 0;
-// mix a hex toward white or black: one hue, many steps
+// mix a hex toward white or black: one hue, many steps. on a dark page "toward black" is
+// toward the background, and a second series drawn a step darker all but vanished (the
+// owning-against-earning dots, Denmark beside Sweden), so there the steps run the other
+// way: darker ones lighten, lighter ones darken a little, and every step stays visible
 function shade(hex, t) {
+  if (t && typeof isDark === 'function' && isDark()) t = t > 0 ? -t * 0.8 : Math.min(-t, 0.3) * 0.9;
   const n = parseInt(hex.slice(1), 16);
   const r = n >> 16, g = (n >> 8) & 255, b = n & 255;
   const m = t < 0 ? [255, 255, 255] : [12, 14, 18], k = Math.abs(t);
@@ -46,6 +50,7 @@ const REGION_DEF = {
   mideast: 'ARE BHR EGY IRN IRQ ISR JOR KWT LBN OMN PSE QAT SAU SYR TUR YEM',
 };
 REGION_DEF.americas = REGION_DEF.latam + ' ' + REGION_DEF.northam;
+REGION_DEF.nordic = 'DNK FIN ISL NOR SWE';
 const REGION_SET = {};
 for (const k in REGION_DEF) REGION_SET[k] = new Set(REGION_DEF[k].split(' '));
 const REGION_TOKENS = [
@@ -53,6 +58,7 @@ const REGION_TOKENS = [
   [/\bnorth america(n)?\b/, 'northam', 'North America'],
   [/\bthe americas\b|\bamericas\b/, 'americas', 'the Americas'],
   [/\bmiddle east(ern)?\b|\bmideast\b/, 'mideast', 'the Middle East'],
+  [/\bscandinavia(n)?\b|\bnordics?\b|\bnordic countries\b/, 'nordic', 'the Nordic countries'],
   [/\beurope(an)?\b/, 'europe', 'Europe'],
   [/\bafrica(n)?\b/, 'africa', 'Africa'],
   [/\basia(n)?\b/, 'asia', 'Asia'],
@@ -84,7 +90,32 @@ const ALIASES = {
   'italien':'ITA','spanien':'ESP','espagne':'ESP','japon':'JPN','china popular':'CHN','chine':'CHN','inde':'IND',
   'sudafrica':'ZAF','afrique du sud':'ZAF','mexique':'MEX','dinamarca':'DNK','danemark':'DNK','polonia':'POL','pologne':'POL',
   'holanda':'NLD','paises bajos':'NLD','pays bas':'NLD','irlanda':'IRL','irlande':'IRL','grecia':'GRC','grece':'GRC',
+  // the people as well as the place: "how much does the average american earn" was read
+  // with no country at all and answered with a world median
+  'american':'USA','americans':'USA','british':'GBR','brits':'GBR','french':'FRA','german':'DEU','germans':'DEU',
+  'swedish':'SWE','swedes':'SWE','norwegian':'NOR','norwegians':'NOR','danish':'DNK','danes':'DNK','finnish':'FIN',
+  'dutch':'NLD','spanish':'ESP','italian':'ITA','italians':'ITA','irish':'IRL','greek':'GRC','greeks':'GRC',
+  'japanese':'JPN','chinese':'CHN','brazilian':'BRA','brazilians':'BRA','mexican':'MEX','mexicans':'MEX',
+  'canadian':'CAN','canadians':'CAN','australian':'AUS','australians':'AUS','aussies':'AUS','russian':'RUS','russians':'RUS',
+  'polish':'POL','swiss':'CHE','korean':'KOR','koreans':'KOR','turkish':'TUR','nigerian':'NGA','nigerians':'NGA',
+  'kenyan':'KEN','argentine':'ARG','argentinian':'ARG','chilean':'CHL','colombian':'COL','portuguese':'PRT',
+  'belgian':'BEL','austrian':'AUT','hungarian':'HUN','czech':'CZE','romanian':'ROU','ukrainian':'UKR','new zealanders':'NZL',
 };
+// cities outside the United States. the atlas goes down to countries there, so a city is
+// read as its country and the answer says so; "house prices in london" picked a country
+// at random. US cities are left to the US layer, which reads them as places
+const CITY_OF = {
+  'london':'GBR','manchester':'GBR','edinburgh':'GBR','glasgow':'GBR','liverpool':'GBR','paris':'FRA','marseille':'FRA','lyon':'FRA',
+  'berlin':'DEU','munich':'DEU','hamburg':'DEU','frankfurt':'DEU','madrid':'ESP','barcelona':'ESP','rome':'ITA','milan':'ITA',
+  'naples':'ITA','amsterdam':'NLD','rotterdam':'NLD','brussels':'BEL','vienna':'AUT','zurich':'CHE','geneva':'CHE',
+  'stockholm':'SWE','oslo':'NOR','copenhagen':'DNK','helsinki':'FIN','dublin':'IRL','lisbon':'PRT','athens':'GRC',
+  'warsaw':'POL','prague':'CZE','budapest':'HUN','bucharest':'ROU','tokyo':'JPN','osaka':'JPN','seoul':'KOR',
+  'beijing':'CHN','shanghai':'CHN','mumbai':'IND','delhi':'IND','new delhi':'IND','bangalore':'IND','sydney':'AUS',
+  'melbourne':'AUS','toronto':'CAN','vancouver':'CAN','montreal':'CAN','auckland':'NZL','sao paulo':'BRA',
+  'rio de janeiro':'BRA','mexico city':'MEX','buenos aires':'ARG','johannesburg':'ZAF','cape town':'ZAF','lagos':'NGA',
+  'nairobi':'KEN','cairo':'EGY','istanbul':'TUR','moscow':'RUS','kyiv':'UKR','kiev':'UKR','tel aviv':'ISR','dubai':'ARE',
+};
+const CITY_RE = new RegExp('\\b(' + Object.keys(CITY_OF).sort((a, b) => b.length - a.length).join('|') + ')\\b');
 let NAME_INDEX = [];
 
 function norm(s) {
@@ -119,7 +150,11 @@ const SPELL_WORDS = ('wealth wealthy income incomes inequality inequalities uneq
   'falling growth change history gap difference distribution population people person family families household households ' +
   'owns own owned property properties assets pension pensions inherit inheritance generation young younger older class workers ' +
   'unemployment economy economic government healthy health longer younger quarter tenth percentile comparable similar ' +
-  'measure measured correlation relationship ranking ranked').split(' ');
+  'measure measured correlation relationship ranking ranked ' +
+  // real words it used to "correct": "what is the poverty line" was read as life, and
+  // "happiest country" as happiness, which then ranked wealth concentration
+  'line lines happiest unhappiest saddest happier unhappy unhappiness happy productivity output wages dream ' +
+  'scandinavia scandinavian nordic nordics surprising crisis pandemic covid lockdown').split(' ');
 const COMMON = new Set(('a an the is are was were be been being do does did done have has had having of in on at to for from by with ' +
   'about into over under than then so and or but if not no yes it its this that these those there here where when what which who whom ' +
   'whose why how much many more less very too also just only even still ever never always again all any each every some such own same ' +

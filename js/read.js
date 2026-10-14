@@ -48,6 +48,8 @@ function detectMetrics(r) {
   push(/\bhous(e|es|ing)\b|\bhome ?prices?\b|\bproperty\b|\bmortgage\b|\brent\w*\b|\bafford\w*\b|\bon the ladder\b|\bget on the ladder\b/, 'house_price');
   push(/\bco2\b|\bcarbon\b|\bemissions?\b|\benvironment\w*\b|\bclimate\b/, 'co2_pc');
   push(/\brelative poverty\b|\bhalf (of )?the median\b|\bbelow half\b|\bpoverty line\b.*\bmedian\b/, 'poverty_relative');
+  // "how much do the poor own" is the bottom half's wealth; it was read as extreme poverty
+  push(/\b(the )?poor(est)?( people| half| households)?\b[\w\s]{0,24}\b(own|owns|hold|holds|have|has)\b|\b(own|owns|hold|holds)\b[\w\s]{0,24}\bthe poor(est)?\b/, 'wealth_bottom50');
   push(/\bpoverty\b|\bpoor\b(?!\s*(est\s*)?half)/, 'poverty_rate');
   push(/\bmedian income\b|\bmedian\b|\btypical income\b|\bmiddle income\b/, 'median_income');
   push(/\bproductiv\w*\b|\bper hour\b|\ban hour\b.*\b(worth|produce\w*|output)\b/, 'gdp_hour');
@@ -67,14 +69,18 @@ function detectMetrics(r) {
   if (!found.some(k => META[k].topic === 'income') && /\bwages?\b|\bearn\w*\b|\bpaid\b|\bsalar\w*\b|\bpay\b/.test(r)) found.push('median_income');
   if (!found.some(k => META[k].topic === 'income') && /\bincome\b/.test(r)) found.push('income_gini');
   if (!found.some(k => k === 'wealth_gini' || k === 'wealth_top1' || k === 'wealth_bottom50') && /\bwealth\b/.test(r)) found.push('wealth_top1');
-  push(/\bhappiness\b|\bhappy\b|\blife satisfaction\b|\bsatisfaction\b|\bcantril\b|\bladder\b/, 'life_satisfaction');
+  push(/\bhappiness\b|\bhappy\b|\bhappier\b|\bhappiest\b|\bunhapp\w*\b|\blife satisfaction\b|\bsatisfaction\b|\bcantril\b|\bladder\b/, 'life_satisfaction');
   if (/\bwell\s?being\b/.test(r) && !found.length) found.push('life_satisfaction');
   // bare "inequality"/"unequal" with nothing else: the concentration measure (fixes the dead front door)
   if (/\binequalit\w*\b|\bunequal\b/.test(r) && !found.some(k => isIneq(k) || k === 'wealth_top1')) {
     const cur = facetIneqDefault();
     found.push(isIneq(cur) || cur === 'wealth_bottom50' ? cur : (curFacet === 'income' ? 'income_top1' : 'wealth_top1'));
   }
-  if (/\bgini\b/.test(r) && !found.length) found.push(META[ctx.metric] && META[ctx.metric].giniFam ? ctx.metric : 'wealth_gini');
+  // a bare "gini" is a Gini: the income one on the income face, the wealth one otherwise.
+  // it used to keep whatever measure was last read if that one counted as Gini family,
+  // so "what is the gini of japan" answered with the top 1% share
+  if (/\bgini\b/.test(r) && !found.length)
+    found.push(curFacet === 'income' || (META[ctx.metric] && META[ctx.metric].topic === 'income') ? 'income_gini' : 'wealth_gini');
   return found;
 }
 function detectMetric(r) {
@@ -128,6 +134,10 @@ function parse(raw) {
   const p = says ? parseCore(rest) : { kind: 'unknown' };
   if (p.kind === 'unknown' || p.kind === 'pending') return { kind: 'among', pool: ALL_POOL };
   p.pool = ALL_POOL; if (p.region) p.region = null;
+  // poverty across the whole world is the survival line, not half of each country's median
+  if (p.metric === 'poverty_relative' && !/\brelative\b|\bhalf (of )?the median\b|\bbelow half\b/.test(t)) {
+    p.metric = 'poverty_rate'; if (p.metrics) p.metrics = p.metrics.map(k => k === 'poverty_relative' ? 'poverty_rate' : k);
+  }
   return p;
 }
 function parseCore(raw) {
@@ -140,6 +150,14 @@ function parseCore(raw) {
   const { isos, residual: r } = findCountries(text);
   const years = (r.match(/\b(?:19|20)\d{2}\b/g) || []).map(Number).filter(y => y >= 1950 && y <= 2025);
   const metrics = detectMetrics(r);
+  // "poverty" alone takes the line the place itself would use: half the median for the
+  // richer third and for the whole world ranked together, $2.15 a day for a poorer
+  // country. ranking rich countries on $2.15 was a ranking of rounding. "extreme" or a
+  // dollar line asked for by name always gets that line
+  if (metrics[0] === 'poverty_rate' && SERIES.poverty_relative &&
+      !/\bextreme\b|\$|\bdollars?\b|\ba day\b|\bsurviv\w*\b|\b2\.15\b|\babsolute\b|\bglobal\w*\b|\bpoorest countries\b/.test(r) &&
+      (!isos.length || isos.every(i => richThird().has(i))))
+    metrics[0] = 'poverty_relative';
   const metric = metrics.length ? metrics[0] : null;
   if (metrics.includes('PENDING')) return { kind: 'pending' };
 
@@ -168,7 +186,7 @@ function parseCore(raw) {
     return { kind: 'weather', isos, iso: isos[0] || null,
       year: years.length ? Math.max(...years) : null };
   // UNDERWATER: the headcount behind the share. household survey, euro area.
-  if (/\bhow many (people|households|of us)\b|\bowe more than\b|\bunder ?water\b|\bnegative (net )?wealth\b|\bin the red\b|\bhow many are in debt\b|\bmore debt than\b/.test(r)) {
+  if (!/\bpoverty\b|\bpoor\b/.test(r) && /\bhow many (people|households|of us)\b|\bowe more than\b|\bunder ?water\b|\bnegative (net )?wealth\b|\bin the red\b|\bhow many are in debt\b|\bmore debt than\b/.test(r)) {
     // the household survey covers the euro area. Sweden, Norway and Denmark are where the
     // bottom half is below zero as a group, and that is in the bottom half's share
     if (isos[0] && typeof HFCS_NEG !== 'undefined' && HFCS_NEG && !HFCS_NEG.by[isos[0]] && seriesOf('wealth_bottom50', isos[0]).length)
@@ -205,10 +223,14 @@ function parseCore(raw) {
     return Object.assign({ kind: 'three', isos, iso: isos[0] || null }, win);
 
   // REACH: did the country's growth arrive at the median, or somewhere else
-  if (/\breach(ed)? me\b|\breach the median\b|\bgot the growth\b|\bwho got\b|\btypical (income|person|wage)\b|\bgrowth actually\b/.test(r))
+  if (/\breach(ed)? me\b|\breach the median\b|\bgot the growth\b|\bwho got\b|\btypical (income|person|wage)\b|\bgrowth actually\b/.test(r) ||
+      /\b(wages?|pay|earnings|salar\w*)\b.*\b(productivity|output|growth)\b|\b(productivity|output)\b.*\b(wages?|pay|earnings)\b|\bkeep up with\b/.test(r))
     return { kind: 'reach', isos, iso: isos[0] || null };
-  // RATIO: the top against the bottom, said as a multiple instead of an index
-  if (/\brichest\b.*\bpoorest\b|\btop tenth\b|\bhow many times\b|\bhow much more\b.*\bhold\b|\btimes what\b/.test(r))
+  // RATIO: the top against the bottom, said as a multiple instead of an index. "how much
+  // does the top 10% own" is this too: the atlas holds the top tenth's wealth only beside
+  // the bottom half's, and the question was answered with the top tenth's income
+  if (/\brichest\b.*\bpoorest\b|\btop tenth\b|\bhow many times\b|\bhow much more\b.*\bhold\b|\btimes what\b/.test(r) ||
+      (/\btop\s*10\b|\b10%|\btop ten\b|\brichest (10|ten)\b/.test(r) && /\bown\w*\b|\bwealth\b|\bhold\w*\b|\bassets?\b/.test(r) && !/\bincome\b|\bearn\w*\b/.test(r)))
     return { kind: 'ratio', isos, iso: isos[0] || null };
   // TRIPLE: the three measured faces held together, one dot per country
   if (/\bthree faces\b|\ball three\b|\bfaces together\b|\bfaces sit\b|\bsit together\b|\bhealth (sit|together)\b/.test(r))
@@ -238,15 +260,15 @@ function parseCore(raw) {
       /\bworse\b|\bmore unequal\b|\bwider\b|\bbigger\b|\bgreater\b|\bhigher\b|\bthan\b|\bor\b/.test(r) && !/\bover time\b|\bsince\b|\bpulling apart\b|\bdiverg/.test(r))
     return isos.length ? { kind: 'wmultiple', isos, iso: isos[0] } : { kind: 'owngap' };
   const afterYear = r.match(/\b(after|since|from|post|following)\s+((?:19|20)\d{2})\b/);
-  const movingWords = /\bgetting (richer|poorer|worse|better|bigger|wider|more unequal)\b|\brising\b|\brisen\b|\bgone up\b|\bgoing up\b|\bgot worse\b|\bworse\b|\bincreas\w*\b|\bgrown\b|\bwiden\w*\b|\bchang(ed|ing)\b/;
-  const fallingWords = /\bgetting better\b|\bfallen\b|\bfalling\b|\bgone down\b|\bgoing down\b|\bdecreas\w*\b|\bnarrow\w*\b|\bimprov\w*\b/;
+  const movingWords = /\b(become|became|got|gotten|grown|grew) more unequal\b|\bless equal\b|\bgetting (richer|poorer|worse|better|bigger|wider|more unequal)\b|\brising\b|\brisen\b|\bgone up\b|\bgoing up\b|\bgot worse\b|\bworse\b|\bincreas\w*\b|\bgrown\b|\bwiden\w*\b|\bchang(ed|ing)\b/;
+  const fallingWords = /\b(become|became|got|gotten|grown|grew) (more equal|less unequal)\b|\bmore equal\b|\bless unequal\b|\bgetting better\b|\bfallen\b|\bfalling\b|\bgone down\b|\bgoing down\b|\bdecreas\w*\b|\bnarrow\w*\b|\bimprov\w*\b/;
   // "has inequality gone up since 2008" with no country used to hand the question to
   // whichever country the last one named, starting in 1990
   if (afterYear && !isos.length && (movingWords.test(r) || fallingWords.test(r)))
     return { kind: 'delta_rank', dir: fallingWords.test(r) ? 'down' : 'up', year: +afterYear[2], region, metric };
   if (afterYear) return { kind: 'time', isos, year: +afterYear[2], region, metric };
   // a place plus a direction word is a question about change, not about a level
-  const trend = /\bgetting (richer|poorer|worse|better|bigger|wider|more unequal)\b|\brising\b|\bfalling\b|\bgoing up\b|\bgone up\b|\bgot worse\b|\bworse\b|\bbetter\b|\bchang(ed|ing)\b|\bpulling away\b|\bwidening\b|\bwhat happened\b|\bhappened to\b/.test(r);
+  const trend = /\b(become|became|got|gotten|grown|grew) (more|less) (un)?equal\b|\bgetting (richer|poorer|worse|better|bigger|wider|more unequal)\b|\brising\b|\bfalling\b|\bgoing up\b|\bgone up\b|\bgot worse\b|\bworse\b|\bbetter\b|\bchang(ed|ing)\b|\bpulling away\b|\bwidening\b|\bwhat happened\b|\bhappened to\b/.test(r);
   const mine = /\bmy country\b|\bwhere i live\b|\bround here\b|\bmy place\b|\bback home\b/.test(r);
   if (trend && isos.length) return { kind: 'time', isos, year: years[0] || null, region, metric };
   // the same words with no country: which countries moved, and which way

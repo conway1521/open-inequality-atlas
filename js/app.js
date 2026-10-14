@@ -466,14 +466,15 @@ function catalogueMatch(q, f) {
 function describeRead(raw) {
   const t = (raw || '').trim();
   if (t.length < 3) return null;
-  const fix = spellFix(t), q = fix.text, nq = norm(q);
+  const fix = spellFix(t), q0 = fix.text, pe = readPlacesAndEvents(q0), q = pe.text, nq = norm(q);
   const out = { fixes: fix.changes, fixed: fix.changes.length ? q : null, say: '', unsure: false, near: [] };
   const names = isos => isos.map(i => BY_ISO[i] ? theName(i) : i).join(' and ');
   if (ABOUT.test(nq)) { out.say = 'what the atlas is and how to ask it'; return out; }
   for (const [re, to] of REWRITES) if (re.test(nq)) { out.say = 'read as: ' + to; return out; }
   if (METHOD.some(([re]) => re.test(nq))) { out.say = 'sources and method, with a link to the page'; return out; }
   if (NOT_HELD.some(([re]) => re.test(nq))) { out.say = 'something the atlas does not hold; it will say so and offer the nearest'; return out; }
-  if (GLOSSARY.some(([re]) => re.test(nq)) && /^(what is|what s|whats|what are|what does|define|explain|meaning of)\b/.test(nq)) { out.say = 'a short definition'; return out; }
+  if (GLOSSARY.some(([re]) => re.test(nq)) && /^(what is|what s|whats|what are|what does|define|explain|meaning of)\b/.test(nq) &&
+      !findCountries(q).isos.length) { out.say = 'a short definition'; return out; }
   const usp = US_CZ ? usPlaceFind(q) : null;
   if (usp) {
     out.say = usp.type === 'shared-zone' ? `several US places are called ${usp.name}: add the county or state`
@@ -693,7 +694,7 @@ function boot() {
     const asked = (cell.asked || '').trim();
     if (stage === 'chain' && (!v || v === asked)) { sendCell(); return; }   // the same one, send it
     // asking to be shown anything is asking for the die
-    if (/^(show me )?(something|anything)( interesting| random| good)?$|^surprise me$|^random$|^roll( the die| the dice| me one)?$|^pick (one|something)( for me)?$|^i don t know$|^idk$/.test(norm(v))) {
+    if (/^(show me )?(something|anything)( interesting| random| good)?$|^surprise me$|^random$|^roll( the die| the dice| me one| me)?$|^(show me |tell me )?(something|anything) (surprising|interesting|cool|new|random)$|^pick (one|something)( for me)?$|^i don t know$|^idk$/.test(norm(v))) {
       el.value = ''; shakeCube(); return;
     }
     // a question that could not be read must not fall through to the answer already on

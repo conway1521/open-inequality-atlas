@@ -377,8 +377,13 @@ function dimGroups(dim, filter) {
       g.push({ k: 'not in the atlas', gaps: [['mobility outside the US',
         'This layer is US commuting zones only.', null]] });
     } else if (dim === 'place') {
-      g.push({ k: 'not in the atlas', gaps: [['a country',
-        'Opportunity is measured across 741 US commuting zones, so the place is fixed.', null]] });
+      // this fold had nothing in it but "not in the atlas: a country", which read as if
+      // the atlas had no countries at all. it offers US places, which the layer reads
+      g.push({ k: 'a US place, or type any other', opts: [['Detroit', 'detroit'], ['Ohio', 'ohio'],
+        ['Wayne County, Michigan', 'wayne county michigan'], ['New York', 'new york city'],
+        ['Atlanta', 'atlanta georgia'], ['Los Angeles', 'los angeles'], ['Charlotte', 'charlotte']] });
+      g.push({ k: 'not in the atlas', gaps: [['somewhere outside the United States',
+        'This face is measured across US commuting zones, counties and states only. The wealth and income faces cover the countries.', null]] });
     } else if (dim === 'scope') {
       g.push({ k: 'not in the atlas', gaps: [['a region, or a group of countries',
         'This layer is one country, so there is no set of countries to choose from.', null]] });
@@ -580,11 +585,15 @@ function renderDrawer(dim, rib, opts, filter) {
   let html = '';
   if (dim === 'place' && !onUs())
     html += `<input type="text" class="opt-find" id="opt-q" autocomplete="off" spellcheck="false" placeholder="find a country" value="${esc(filter || '')}">`;
+  // a chosen place that cannot be taken off (the US on a reading only the US publishes)
+  // is shown chosen, without the cross, and says why when tapped
+  const fixedWhy = o => o[2] === 'chosen' && dim === 'place' ? whyNot('place', o[1]) : null;
+  capped.forEach(o => { if (o[0][0] !== '\u0001') { const w = fixedWhy(o); if (w) { o[2] = 'fixed'; o[3] = w; } } });
   html += `<div class="opt-wrap${dim === 'place' ? ' opt-scroll' : ''}">` + capped.map(o =>
     (o[0][0] === '\u0001'
       ? `<span class="opt-group-k">${esc(o[0].slice(1))}</span>`
-      : `<button type="button" class="opt${o[2] === 'chosen' ? ' on picked' : o[2] === 'off' ? ' off' : o[1] === cur ? ' on' : ''}" ` +
-        `data-val="${esc(o[1])}"${o[2] === 'off' ? ` data-why="${esc(o[3])}" aria-disabled="true"` : ''}` +
+      : `<button type="button" class="opt${o[2] === 'chosen' ? ' on picked' : o[2] === 'fixed' ? ' on' : o[2] === 'off' ? ' off' : o[1] === cur ? ' on' : ''}" ` +
+        `data-val="${esc(o[1])}"${o[2] === 'off' || o[2] === 'fixed' ? ` data-why="${esc(o[3])}" aria-disabled="true"` : ''}` +
         `>${esc(o[0])}${o[2] === 'chosen' ? '<span class="opt-x">\u00d7</span>' : ''}</button>`)
   ).join('') + '</div>';
   // typing a year is the precise way in; the pills above are only the common cases
@@ -709,7 +718,10 @@ function pickPlaceFor(shape) {
     return !bad;
   };
   if (ctx.lastIso && BY_ISO[ctx.lastIso] && fits(ctx.lastIso)) return ctx.lastIso;
-  const pool = placePool().map(p => p[1]);
+  let pool = placePool().map(p => p[1]);
+  // growth against the middle is the productivity and pay question, which is asked of
+  // output per hour; picked anywhere, it landed on countries that only have output per person
+  if (shape === 'reach') { const hr = pool.filter(i => seriesOf('gdp_hour', i).length >= 2); if (hr.length) pool = hr; }
   // somewhere the reading covers, preferring the better-measured set and somewhere
   // the last few answers have not already been about
   const rt = richThird();
@@ -736,14 +748,21 @@ function rollOnce() {
   rolling = true;
   try { return rollOnceInner(); } finally { rolling = false; }
 }
+// the face the reader chose themselves, with a chip or by turning the cube. a roll stays
+// on it: picking income and rolling used to land on a wealth question about as often as not
+let chosenFace = null;
 function rollOnceInner() {
-  const picks = rollable().filter(x => x.q !== lastRolled);   // already face-interleaved
+  const OPEN = ['wealth', 'income'];
+  let picks = rollable().filter(x => x.q !== lastRolled);   // already face-interleaved
+  if (chosenFace) {
+    const mine = picks.filter(x => x.face === chosenFace || (!x.face && OPEN.includes(chosenFace)));
+    if (mine.length) picks = mine;
+  }
   for (const pick of picks) {
     // A question that belongs to no face used to be shown on whichever face happened to
     // be up, so a wealth roll kept the cube on wealth and the next unfaceted question
     // stayed there too. It gets a face of its own instead.
-    const OPEN = ['wealth', 'income'];
-    const face = pick.face || randomOf(OPEN);
+    const face = pick.face || (OPEN.includes(chosenFace) ? chosenFace : randomOf(OPEN));
     if (FACETS[face] && !FACETS[face].soon && face !== curFacet) { paintFacet(face); faceToFront(face); }
     hideNotice();
     chain.length = 0;
@@ -827,7 +846,8 @@ function shakeCube() {
   if (motRAF) { cancelAnimationFrame(motRAF); motRAF = null; }
   clearTimeout(settleT);
   cRotX = Math.round(cRotX / 90) * 90;
-  cRotY = Math.round(cRotY / 90) * 90 + 360 + (1 + Math.floor(Math.random() * 3)) * 90;
+  // a face the reader chose is where the die lands again, after a full turn
+  cRotY = Math.round(cRotY / 90) * 90 + 360 + (chosenFace ? 0 : (1 + Math.floor(Math.random() * 3)) * 90);
   baseX = cRotX; baseY = cRotY;
   cubeApply();
   const pip = document.getElementById('die-pip');
@@ -1005,6 +1025,7 @@ function stopIdle() { if (motion !== 'tumble') return; faceToFront(curFacet); se
 function cubeSnap() {
   // whichever face ended up nearest the viewer wins, from any tumbled orientation
   chooseFacet(facetFromAngles());
+  if (FACETS[curFacet] && !FACETS[curFacet].soon) chosenFace = curFacet;
 }
 // the deck no longer condenses: it scrolls away and the minibar stands in for it
 let stage = 'compose', stageFocus = true;   // compose -> chain -> result
@@ -1014,7 +1035,9 @@ function setStage(next) {
   const v = document.getElementById('view-ask');
   if (v) { v.classList.remove('stage-compose', 'stage-chain', 'stage-result'); v.classList.add('stage-' + next); }
   const q = document.getElementById('q');
-  if (next === 'compose') { if (q && stageFocus) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
+  // on a touch screen focusing the box raises the keyboard over half the page, so going
+  // back to compose there leaves the box to be tapped when wanted
+  if (next === 'compose') { if (q && stageFocus && !matchMedia('(pointer: coarse)').matches) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
   else setHelp(false);
   // The folds close once there is an answer. They stay open while you are composing,
   // because picking three countries in a row is one gesture, but an answer you have to
@@ -1164,6 +1187,10 @@ function whyNot(dim, val) {
     return null;
   }
   if (dim === 'place') {
+    // the two readings only the United States publishes: tapping the chosen United States
+    // took it off, and the folds said "all countries" over an answer that was still the US
+    if ((cell.view === 'have' || cell.view === 'made') && val && cell.place === 'USA' && (val === '+USA' || val === 'USA'))
+      return `Only the United States publishes this, so the place stays the United States.`;
     if (cell.view === 'have' && val) {
       const iso = val[0] === '+' ? val.slice(1) : val;
       if (iso && iso !== 'USA') return `Only the United States publishes a household balance ` +
@@ -1265,6 +1292,8 @@ const GLOSSARY = [
     ['what does the top 1% own?', 'what is the wealth of the richest made of?']],
   [/^(what is|what s|whats|define|explain|meaning of) (an |the )?income$/, 'Income is what comes in over a year: pay, pensions, benefits, rent, interest and dividends. The atlas mostly measures it for a whole country, split into shares of the total, and as the median, the person in the exact middle.',
     ['what does the average person earn?', 'how unequal is income in the UK?']],
+  [/\bpoverty (line|threshold)s?\b/, 'The atlas uses two poverty lines. One is $2.15 a day in 2017 dollars, the World Bank\'s line for surviving, which reads close to zero in every rich country. The other is half of what the person in the middle of the country has, the line rich countries use for themselves. Asked about poverty, the atlas uses the second for the richer third of countries and the first elsewhere.',
+    ['relative poverty in the UK', 'extreme poverty in Nigeria']],
   [/\bgini\b/, 'The Gini coefficient is one number for how evenly something is shared. At 0 everyone has the same; at 1 one person has all of it. Income Ginis in rich countries mostly sit between 0.25 and 0.40; wealth Ginis run much higher, often above 0.70, because wealth piles up in a way pay does not.',
     ['which country is most unequal?', 'how unequal is the UK?']],
   [/\btop 1\s*%|\btop one per ?cent\b|\btop 1 share\b/, 'The top 1% share is the part of everything, either all the wealth or all the income, that goes to the richest one person in a hundred. If they held only their headcount it would be 1%; in most countries here they hold between 15% and 35% of the wealth.',
@@ -1279,6 +1308,20 @@ const GLOSSARY = [
 // things people ask about that the atlas does not hold, said plainly, with the nearest
 // thing that it does
 const NOT_HELD = [
+  [/\b(black|white|hispanic|latino|latinx|asian american|race|racial|ethnic\w*)\b.*\b(wealth|income|gap|pay|earn\w*|rich|poor)\b|\b(wealth|income|pay) gap between (black|white)\b|\bracial (wealth|income) gap\b/,
+    'The atlas has no wealth or income split by race or ethnicity. What it holds for the United States is by place: county by county, and by the income of the family a child grew up in.',
+    ['what does a family actually have?', 'if you grow up poor here, what do you earn later?']],
+  [/\btop\s*0?\.1\s*(%|per\s*cent|percent)|\b0\.1\s*(%|per\s*cent|percent)|\bthousandth\b|\btop one tenth of one\b/,
+    'The atlas holds the top 1% for every country. The richest thousandth is held for the United States alone, in what American wealth is made of.',
+    ['what is that wealth actually made of?', 'where is wealth most concentrated?']],
+  // pay by job, and between men and women: asked as "how much do nurses earn", it was
+  // answered with a ranking of median incomes and no word about the nurses
+  [/\b(nurse|teacher|doctor|ceo|engineer|lawyer|cleaner|plumber|footballer|banker|programmer|developer|chef|driver|farmer|soldier|police|firefighter|waiter|electrician|builder|carer|scientist|accountant)s?\b.*\b(earn|paid|pay|salar|make|wage|income)\w*|\b(earn|paid|pay|salar|make|wage)\w*\b.*\b(nurse|teacher|doctor|ceo|engineer|lawyer|cleaner|plumber|footballer|banker|programmer|developer|chef|driver|farmer|soldier|police|firefighter|waiter|electrician|builder|carer|scientist|accountant)s?\b|\bby (job|occupation|profession)\b/,
+    'The atlas has no pay by job. What it holds is what the person in the middle of each country lives on, and how a country\'s income is split between the top and everyone else.',
+    ['what does the person in the middle live on a day?', 'how many times more does one person at the top earn?']],
+  [/\bgender pay\b|\bgender (gap|wage)\b|\b(women|men)\b.*\b(earn|paid|pay|wages?|salar\w*)\b|\b(earn|paid|pay|wages?)\b.*\b(women|men)\b/,
+    'The atlas has no pay split by gender. Its income figures are per adult, with a couple\'s income shared equally between them, which is exactly what hides that gap.',
+    ['what does the person in the middle live on a day?', 'how many times more does one person at the top earn?']],
   // every house price series is an index against the country's own 2015, so nothing in
   // the atlas can say where a house costs most; what it can say is where they have moved
   [/\b(most|least) (expensive|affordable|unaffordable)\b.*\b(hous\w*|homes?|property|rent\w*)\b|\b(dearest|cheapest)\b.*\b(hous\w*|homes?|property)\b|\bwhere (are|is)\b.*\b(hous\w*|homes?)\b.*\b(expensive|cheap|dear)\w*\b/,
@@ -1311,6 +1354,7 @@ const NOT_HELD = [
 ];
 // questions whose only answer in the atlas is the United States layer: said before it is shown
 const TO_OPP = [
+  [/\bamerican dream\b|\bland of opportunity\b|\brags to riches\b/, 'if you grow up poor here, what do you earn later?'],
   [/\bwhere should (i|we) (move|live|raise)\b|\bbest places? to (grow up|raise|live)\b|\bsocial mobility\b|\bupward mobility\b|\bmobility\b|\bpoor kids\b|\bpoor children\b|\bgrow(ing)? up poor\b|\bborn poor\b|\bget out of poverty\b|\bclimb the ladder\b|\bcan (the )?poor\b.*\b(get rich|make it|climb)\b/,
     'if you grow up poor here, what do you earn later?'],
   [/\blife expectancy gap\b|\bgap in life expectancy\b|\blongevity gap\b|\bhow much longer\b.*\blive\b|\b(rich|poor|richer|poorer|richest|poorest|wealthy) (people|folk|families)?\s*(live|die)\b|\brich (vs|versus|and) poor\b.*\b(life|live|die|death)\w*\b|\b(life expectancy|live|die)\w*\b.*\brich (vs|versus|and) poor\b|\bpoor (people )?die younger\b|\bdo (the )?(poor|rich)\b.*\b(die|live)\b/,
@@ -1346,6 +1390,27 @@ const REWRITES = [
 ];
 const ABOUT = /^(what is this|what s this|whats this|what is (this|the) (site|page|thing|atlas)|what does (this|it) do|how does (this|it) work|help|about|what can (this|it) do)$/;
 let noteNext = null;   // one line said with the next answer, about how the question was read
+// a city outside the US is read as its country, and a named period as the year it began,
+// each said with the answer: "house prices in london" picked a country at random, and
+// "has the uk become more unequal since thatcher" ignored the half that said when
+const EVENT_YEAR = [[/\bthatcher\b/, 1979, 'Thatcher'], [/\breagan\b/, 1981, 'Reagan'], [/\bbrexit\b/, 2016, 'Brexit'],
+  [/\bcovid\w*\b|\bpandemic\b|\blockdowns?\b|\bcoronavirus\b/, 2019, 'the pandemic'],
+  [/\b(the )?(2008 )?(financial crisis|crash of 2008|2008 crash|great recession|credit crunch)\b/, 2007, 'the financial crisis'],
+  [/\b(euro|eurozone|sovereign) (debt )?crisis\b|\bdebt crisis\b|\bausterity\b/, 2009, 'the euro debt crisis']];
+function readPlacesAndEvents(q) {
+  let t = norm(q); const notes = [];
+  const c = t.match(CITY_RE);
+  if (c && !findCountries(t).isos.length && !(US_CZ && usPlaceFind(q))) {
+    const iso = CITY_OF[c[1]];
+    if (BY_ISO[iso]) { t = t.replace(CITY_RE, BY_ISO[iso].name.toLowerCase());
+      notes.push(`Read ${cap(c[1])} as ${theName(iso)}: outside the United States the atlas goes down to countries, not cities.`); }
+  }
+  if (!/\b(19|20)\d{2}\b/.test(t)) for (const [re, y, name] of EVENT_YEAR) if (re.test(t)) {
+    t = t.replace(re, /\b(since|after|from)\s*$/.test(t.slice(0, t.search(re))) ? String(y) : 'since ' + y);
+    notes.push(`Read ${name} as from ${y}.`); break;
+  }
+  return { text: t === norm(q) ? q : t, notes };
+}
 function previewQuestion(typed) {
   hideNotice();   // the last question's complaint is not about this one
   const faceBefore = curFacet;
@@ -1353,6 +1418,8 @@ function previewQuestion(typed) {
   const fix = spellFix(typed);
   let q = fix.text;
   noteNext = readAsNote(fix.changes) || null;
+  const pe = readPlacesAndEvents(q);
+  if (pe.notes.length) { q = pe.text; noteNext = (noteNext ? noteNext + ' ' : '') + pe.notes.map(n => `<em class="readas">${esc(n)}</em>`).join(' '); }
   if (ABOUT.test(norm(q))) {
     showNotice('The atlas answers questions about how wealth, income and opportunity are shared: country by country, over time, ' +
       'and county by county in the United States. Ask in your own words, roll the die for a question, or start with one of these: ' +
@@ -1367,7 +1434,10 @@ function previewQuestion(typed) {
     break;
   }
   const nq = norm(q);
-  const defining = /^(what is|what s|whats|what are|what does .* mean|define|explain|meaning of)\b/.test(nq);
+  // "what is the gini" wants the word explained; "what is the gini of japan" wants Japan's
+  // figure, and used to get the definition and lose the answer on screen
+  const defining = /^(what is|what s|whats|what are|what does .* mean|define|explain|meaning of)\b/.test(nq) &&
+    !findCountries(q).isos.length;
   if (defining) for (const [re, text, next] of GLOSSARY) if (re.test(nq)) {
     showNotice(esc(text) + ' Try: ' + next.map(c => `<button type="button" class="opt-near" data-q="${esc(c)}">${esc(c)}</button>`).join(', ') + '.');
     wireNear();
@@ -1604,15 +1674,38 @@ function notePicked(iso) {
 // when the page says so and still not an answer to "who owns everything". These are
 // read across countries instead: the reading's own measure, ranked. The die keeps its
 // random countries; that is what the die is for.
-const VIEW_ACROSS = { owns: 'wealth_bottom50', multiple: 'income_top1', basket: 'median_income', three: 'income_middle40' };
+// houses asked about with no country rank the price of a house against income across
+// countries; "is it harder to buy a house now" picked one country at random
+const VIEW_ACROSS = { owns: 'wealth_bottom50', multiple: 'income_top1', basket: 'median_income', three: 'income_middle40', houses: 'house_income' };
 function typedNoPlace() {
   return !!cell.asked && !cell.place && !cell.raw && !rolling;
 }
 function acrossNote(region) {
   noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">No country named, so this ranks ${region ? 'the countries in ' + esc(region) : 'them all'}.</em>`;
 }
+// "my country" read from the browser's own language setting (en-GB is the United Kingdom).
+// nothing is looked up anywhere: the setting is already in the page, and the answer says
+// that is where the country came from, so a wrong guess is one tap from being changed
+function localeCountry() {
+  try {
+    const names = new Intl.DisplayNames(['en'], { type: 'region' });
+    for (const l of (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language])) {
+      const m = /[-_]([A-Za-z]{2})\b/.exec(l || ''); if (!m) continue;
+      const hit = findCountries(names.of(m[1].toUpperCase()) || '').isos[0];
+      if (hit && BY_ISO[hit]) return hit;
+    }
+  } catch (err) {}
+  return null;
+}
 function sendCell() {
   if (!DATA_READY) { showNotice('The figures are still loading. Ask again in a moment.'); return; }
+  if (!cell.place && /\bmy (own )?country\b|\bwhere i live\b|\bback home\b|\bround here\b/.test(norm(cell.asked || '')) && !onUs()) {
+    const mine = localeCountry();
+    if (mine) {
+      cell.place = mine; updateCell();
+      noteNext = (noteNext ? noteNext + ' ' : '') + `<em class="readas">Read "my country" as ${esc(theName(mine))}, from your browser's language setting. Change it in the place fold.</em>`;
+    }
+  }
   if (typedNoPlace() && cell.view && VIEW_ACROSS[cell.view]) {
     adoptMetric(VIEW_ACROSS[cell.view]);
     cell.view = null; cell.form = 'rank';
@@ -1653,7 +1746,17 @@ function sendCell() {
     if (rib && !rib.classList.contains('expanded')) toggleRib('place');
     return;
   }
-  if (cell.raw) { const q = cell.raw; ask(q); return; }
+  // the raw path (the US layer, US places, two countries side by side) answered and then
+  // stopped, so its answer was left wherever it fell: at 606 pixels on a 768 pixel
+  // laptop with the chart below the bottom. it is brought into view like any other
+  if (cell.raw) {
+    const q = cell.raw; const before = chain.length ? chain[chain.length - 1] : null;
+    ask(q);
+    const after = chain.length ? chain[chain.length - 1] : null;
+    if (after && after !== before) revealAnswer();
+    else if (!document.getElementById('notice').hidden) revealAnswer('#notice');
+    return;
+  }
   // a measure on its own, typed, with no country: every country ranked on it, or the
   // countries of the region the question named
   if (cellNeedsPlace() && typedNoPlace() && !cell.view && cell.form !== 'lorenz') {
@@ -1737,6 +1840,16 @@ function initCube() {
   document.querySelectorAll('.fchip').forEach(el =>
     el.addEventListener('click', () => {
       const name = el.dataset.facet;
+      chosenFace = name;
+      // the US faces read a different layer: over an answer about a country, tapping one
+      // painted the cube rose and left the country's answer underneath, under the wrong face
+      const last = chain.length ? chain[chain.length - 1] : null;
+      if (stage === 'result' && last && last.kind !== 'opp' && US_FACES.includes(name) && name !== curFacet) {
+        chooseFacet(name);
+        ask(name === 'health' ? 'how much longer do the rich live here?' : 'if you grow up poor here, what do you earn later?');
+        revealAnswer();
+        return;
+      }
       // over a reading that brings its own measures, tapping a face changed only the cube
       // and read as broken. it drops the reading for that face's own, for the same place
       if (chain.length && cell.view && VIEW_DEF[cell.view] && (VIEW_DEF[cell.view].ignores || []).includes('facet') &&
