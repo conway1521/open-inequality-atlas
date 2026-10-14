@@ -35,6 +35,8 @@ export default async function (t) {
   t.check('relative poverty answers on the half-the-median line', /United Kingdom: relative poverty \d+\.\d%/.test(s.answer), s.answer.slice(0, 140));
 
   s = await read('poverty in sweden');
+  t.check('plain poverty in a rich country is the relative line', /Sweden: relative poverty \d+\.\d%/.test(s.answer), s.answer.slice(0, 140));
+  s = await read('extreme poverty in sweden');
   t.check('the $2.15 line at its floor gives the relative figure too', /half of what the person in the middle has, counts \d+\.\d% of Sweden/.test(s.answer), s.answer.slice(-260));
 
   s = await read('house prices in czechia');
