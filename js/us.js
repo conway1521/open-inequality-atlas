@@ -128,8 +128,12 @@ function usPlaceAnswer(pl, q) {
   const usd = v => '$' + Math.round(v).toLocaleString('en-US');
   // "rent in new york" means the city: a state asked about rent, with a commuting zone of
   // the same name, is read as that zone, which is where the rents are
-  if (housingAsk && /\brent\w*\b/.test(norm(q || '')) && pl.type === 'state') {
-    const z = Object.entries(US_CZ).find(([, r]) => r.name === pl.name && r.rent != null);
+  // "how long do the poor live in new york": the poorest quarter's own age, which is
+  // published for commuting zones. counties and states carry the average and the gap
+  const poorLifeAsk = /\b(poor|poorest|low[- ]income)\b/.test(norm(q || '')) && /\b(live|lives|living|life expectancy|lifespan|die|dies)\b/.test(norm(q || '')) &&
+    !/\b(rich|richest|wealthy|gap|longer|younger|outlive)\b/.test(norm(q || ''));
+  if (((housingAsk && /\brent\w*\b/.test(norm(q || ''))) || poorLifeAsk) && pl.type === 'state') {
+    const z = Object.entries(US_CZ).find(([, r]) => r.name === pl.name && (poorLifeAsk ? r.leq1M != null : r.rent != null));
     if (z) pl = { type: 'zone', id: z[0], name: pl.name };
   }
   // each bar carries the face its measure belongs to, and is drawn in that face's colour
@@ -151,7 +155,12 @@ function usPlaceAnswer(pl, q) {
     const health = curFacet === 'health';
     let t = `In the <strong>${esc(pl.name)}</strong> commuting zone, `;
     const rp = z.rent != null ? usPos(col('rent'), z.rent) : null;
-    if (housingAsk && rp) t += `a two-bedroom home rents for <strong>${usd(z.rent)} a month</strong> on average (2015), ` +
+    const pm = poorLifeAsk && z.leq1M != null ? usPos(col('leq1M'), z.leq1M) : null;
+    if (pm) t += `a man of forty in the poorest quarter of households can expect to reach <strong>${z.leq1M.toFixed(1)}</strong>` +
+      (z.leq1F != null ? ` and a woman <strong>${z.leq1F.toFixed(1)}</strong>` : '') + `; in the middle zone the poorest men reach ` +
+      `${pm.med.toFixed(1)}, so ${esc(pl.name)} is ${ord(pm.rankHigh)} of ${pm.n} zones for how long its poorest men live.` +
+      (z.leq4M != null ? ` The richest quarter of men here reach ${z.leq4M.toFixed(1)}.` : '') + ` And ` + climbS;
+    else if (housingAsk && rp) t += `a two-bedroom home rents for <strong>${usd(z.rent)} a month</strong> on average (2015), ` +
       `${ord(rp.rankHigh)} highest of ${rp.n} zones; the middle zone's is ${usd(rp.med)}.` +
       (z.inc ? ` A year of that rent is <strong>${Math.round(z.rent * 12 / z.inc * 100)}%</strong> of what the median household here ` +
         `takes in (${usd(z.inc)} a year, 2016).` : '') + ` And ` + climbS;
@@ -163,6 +172,7 @@ function usPlaceAnswer(pl, q) {
     t += ` <em>A commuting zone is a local job market, the counties people travel between for work. Children born in the early ` +
       `1980s, measured in their mid thirties, from Opportunity Insights. Life expectancy covers the ${Object.keys(gaps).filter(k => gaps[k] != null).length} zones large enough to measure it.</em>`;
     f.text = t;
+    if (pm) bar('poorest men, age reached', pm, 'higher', 'health');
     if (housingAsk && rp) bar('two-bed rent', rp, 'lower', 'wealth');
     if (curFacet === 'health') bar('rich-poor life gap at forty', gp, 'lower', 'health');
     bar('how far poor children climb', mob, 'higher'); bar('credit score, poorest quarter', cr, 'higher');
@@ -197,6 +207,15 @@ function usPlaceAnswer(pl, q) {
         (/\brent\w*\b/.test(norm(q || '')) ? ` ${pl.type === 'county' ? 'County' : 'State'} figures carry home values rather than rents; ask about a city for its rent.` : '') +
         ' ' + t.replace(/^In <strong>[^<]*<\/strong>, a /, 'A ');
       bar('median home value', hv, 'lower', 'wealth');
+    }
+    if (poorLifeAsk && v('us_life_exp') != null) {
+      // the county and state files carry everyone's age reached and the gap, not the
+      // poorest quarter's own: said, with where the poorest quarter's own figure is
+      t = `In <strong>${esc(name)}</strong>${pl.type === 'county' ? ',' : ''} a forty-year-old can expect to reach ` +
+        `<strong>${v('us_life_exp').toFixed(1)}</strong> on average` +
+        (v('us_le_gap') != null ? `, and the richest quarter outlive the poorest by <strong>${v('us_le_gap').toFixed(1)} years</strong>` : '') +
+        `. The poorest quarter's own age is published for cities rather than ${pl.type === 'county' ? 'counties' : 'states'}: ask about one.` +
+        ' ' + t.replace(/^In <strong>[^<]*<\/strong>, a /, 'A ');
     }
     if (pl.sharedZone) t += ` <em>${pl.sharedN} commuting zones are called ${esc(pl.sharedZone)} and the source does not say which state each is in, so this is ${esc(pl.name)} as a whole.</em>`;
     t += ` <em>Upward mobility is for children born in the early 1980s, measured in their mid thirties (Opportunity Insights); ` +

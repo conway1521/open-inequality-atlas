@@ -486,7 +486,7 @@ function buildAnswer(p, q) {
     } else {
       const yrsP = pts.map(x => x.xy).filter(Boolean);
       t = `Across ${pts.length} countries${where}${poolNote()}${p.year ? ' around ' + p.year : ''}, ` +
-        `${my.label} ${corrClause(r, mx.label)} (r = ${r.toFixed(2)}).` +
+        `${my.label} ${corrClause(r, mx.label)} (r = ${r.toFixed(2)}).` + focusLine() +
         (p.year && yrsP.length ? ` <em>Each country at the year nearest ${p.year} that carries both ` +
           `(${Math.min(...yrsP)} to ${Math.max(...yrsP)}).</em>` : '') +
         (pts.far ? ` <em>${pts.far} more countries carry both but never within ${POOL_YEAR_TOL} years of ` +
@@ -494,16 +494,25 @@ function buildAnswer(p, q) {
         (pts.dropped ? ` <em>${pts.dropped} more countries carry both measures but never in the same year, so they are left out.</em>` : '') +
         fitnessFlag(fit, fit.n < 25 ? `only ${fit.n} countries` : `years ${fit.med} apart`);
     }
-    if (focus.length === 1) {
-      const pt = pts.find(x => x.iso === focus[0]);
-      t += ` ${esc(pt.name)} is the highlighted point.`;
+    // the country asked about, said beside the finding rather than as "the highlighted
+    // point" at the end: its two readings, and which side of the line it falls
+    function focusLine() {
+      if (focus.length !== 1) return '';
+      const pt = pts.find(x => x.iso === focus[0]); if (!pt) return '';
+      const n = pts.length, mxv = pts.reduce((a, q) => a + q.x, 0) / n, myv = pts.reduce((a, q) => a + q.y, 0) / n;
+      const sxx = pts.reduce((a, q) => a + (q.x - mxv) ** 2, 0), sxy = pts.reduce((a, q) => a + (q.x - mxv) * (q.y - myv), 0);
+      const slope = sxx ? sxy / sxx : 0, res = q => q.y - (myv + slope * (q.x - mxv));
+      const sd = Math.sqrt(pts.reduce((a, q) => a + res(q) ** 2, 0) / n), d = res(pt);
+      // short enough to stay in the answer's first lines beside the finding
+      const side = Math.abs(d) < sd * 0.35 ? 'on the trend' : `${my.fmtD(Math.abs(d))} ${d > 0 ? 'above' : 'below'} the trend`;
+      return ` <strong>${esc(cap(theName(pt.iso)))}</strong> sits ${side}, at ${mx.fmt(pt.x)} and ${my.fmt(pt.y)}.`;
     }
     // across countries this is a national average against a national average, which is
     // why it is weak. the sharp version is inside one country, by income group.
     if (p.y === 'life_exp' && US_CZ && Object.values(US_CZ).some(z => z.leq1M != null))
       t += ` <em>Across countries this holds one average against another. Measured by income group ` +
         `inside the United States, the poorest quarter live 8.7 years less than the richest in the same ` +
-        `place: turn to opportunity and ask "how much longer do the rich live here?"</em>`;
+        `place: turn to the health face and ask "how much longer do the rich live here?"</em>`;
     // a weak global link often sharpens among rich countries: point there instead of leaving it flat
     if (Math.abs(r) < 0.22 && !p.region && !ctx.pool && SERIES.gdp_pc && pts.length > 30) {
       const rich = new Set(rankedPool('gdp_pc', 'high').slice(0, 60).map(rr => rr.geo_id));

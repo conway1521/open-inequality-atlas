@@ -147,6 +147,18 @@ export default async function (t) {
   await page.evaluate(() => scrollTo(0, 0)); await page.fill('#q', 'tell me more'); await page.press('#q', 'Enter'); await page.waitForTimeout(600);
   t.check('"tell me more" opens what is folded under the answer', await page.evaluate(() => !!document.querySelector('#answer details.more[open]')));
 
+  // the two left over: the marked country is named beside the finding, and the poor's
+  // own lifespan is answered as that, not as the gap
+  await read('how unequal is the uk');
+  await page.evaluate(() => { cell.span = 'moment'; cell.year = 2024; cell.against = 'income_gini'; runCell(); setStage('result'); render(); });
+  await page.waitForTimeout(400);
+  const lead = await page.evaluate(() => document.querySelector('#answer .lead').textContent);
+  t.check('the scatter names the country asked about in its first lines', /The United Kingdom sits .* the trend, at/.test(lead), lead);
+  s = await read('how long do the poor live in new york');
+  t.check('"how long do the poor live in new york" gives the poorest quarter\'s age', /poorest quarter of households can expect to reach \d+\.\d/.test(s.answer), s.answer.slice(0, 150));
+  s = await read('how long do the poor live in ohio');
+  t.check('a state asked the same says it holds the average and the gap, and where the rest is', /on average/.test(s.answer) && /published for cities rather than states/.test(s.answer), s.answer.slice(0, 200));
+
   // in dark mode nothing is drawn darker than the page can show
   const dark = await t.page({ dark: true });
   await ask(dark, 'wealth inequality sweden vs denmark since 2000', 1500);

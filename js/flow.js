@@ -64,6 +64,10 @@ function splitLead(html) {
   }
   let lead = cut >= 0 ? body.slice(0, cut) : body, rest = cut >= 0 ? body.slice(cut) : '';
   const LEAD = 35;
+  // the last sentence has nothing after it, so it never registered as an end and a short
+  // closing sentence was always folded, even when the whole answer fitted
+  const total = body.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length;
+  if (cut < 0 && /[.?!]\s*$/.test(body.replace(/<[^>]*>/g, '')) ) ends.push([body.length, total]);
   const inLead = ends.filter(([at]) => cut < 0 || at <= cut);
   if (inLead.length) {
     // the last sentence end that keeps the lead within the cap, or the first one if even
